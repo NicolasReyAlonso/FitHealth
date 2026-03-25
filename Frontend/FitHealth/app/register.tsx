@@ -17,33 +17,84 @@ import { useAuth } from '@/context/auth-context';
 export default function RegisterScreen() {
   const { register } = useAuth();
   const router = useRouter();
+  
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [role, setRole] = useState<'patient' | 'doctor'>('patient');
+  
+  // Real-time validation errors
+  const [emailErrorValidation, setEmailErrorValidation] = useState<string | null>(null);
+  const [usernameErrorValidation, setUsernameErrorValidation] = useState<string | null>(null);
+  const [passwordErrorValidation, setPasswordErrorValidation] = useState<string | null>(null);
+  const [confirmPasswordErrorValidation, setConfirmPasswordErrorValidation] = useState<string | null>(null);
+  
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const validateEmail = (text: string) => {
+    setEmail(text);
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!text) setEmailErrorValidation('El email es obligatorio');
+    else if (!emailRegex.test(text)) setEmailErrorValidation('Formato de email inválido');
+    else setEmailErrorValidation(null);
+  };
+
+  const validateUsername = (text: string) => {
+    setUsername(text);
+    if (!text) setUsernameErrorValidation('El nombre de usuario es obligatorio');
+    else if (text.length < 3) setUsernameErrorValidation('Mínimo 3 caracteres');
+    else setUsernameErrorValidation(null);
+  };
+
+  const validatePassword = (text: string) => {
+    setPassword(text);
+    if (!text) setPasswordErrorValidation('La contraseña es obligatoria');
+    else if (text.length < 6) setPasswordErrorValidation('La contraseña debe tener al menos 6 caracteres');
+    else setPasswordErrorValidation(null);
+
+    // Validate confirmation against the new password
+    if (confirmPassword && text !== confirmPassword) {
+      setConfirmPasswordErrorValidation('Las contraseñas no coinciden');
+    } else if (confirmPassword && text === confirmPassword) {
+      setConfirmPasswordErrorValidation(null);
+    }
+  };
+
+  const validateConfirmPassword = (text: string) => {
+    setConfirmPassword(text);
+    if (!text) setConfirmPasswordErrorValidation('Confirma tu contraseña');
+    else if (text !== password) setConfirmPasswordErrorValidation('Las contraseñas no coinciden');
+    else setConfirmPasswordErrorValidation(null);
+  };
+
   const handleRegister = async () => {
     setError(null);
+    
+    // Check if any fields are empty 
     if (!email || !username || !password || !confirmPassword) {
       setError('Por favor completa todos los campos');
       return;
     }
-    if (password !== confirmPassword) {
-      setError('Las contraseñas no coinciden');
+    
+    // Refuse submission if there remain real-time errors
+    if (emailErrorValidation || usernameErrorValidation || passwordErrorValidation || confirmPasswordErrorValidation) {
+      setError('Corrige los errores antes de continuar');
       return;
     }
-    if (password.length < 6) {
-      setError('La contraseña debe tener al menos 6 caracteres');
-      return;
-    }
+
     setLoading(true);
     try {
       await register(email.trim(), username.trim(), password, role);
-    } catch {
-      setError('No se pudo crear la cuenta. Verifica tus datos.');
+      // Tras registrar con éxito, vamos a la pantalla de aviso.
+      router.replace('/verify-notice');
+    } catch (err: any) {
+      if (err.response?.data?.detail) {
+        setError(err.response.data.detail);
+      } else {
+        setError('No se pudo crear la cuenta. Verifica tus datos.');
+      }
     } finally {
       setLoading(false);
     }
@@ -65,41 +116,45 @@ export default function RegisterScreen() {
           <Text style={styles.formTitle}>Registro</Text>
 
           <TextInput
-            style={styles.input}
+            style={[styles.input, emailErrorValidation ? { borderColor: '#D32F2F', borderWidth: 1 } : {}]}
             placeholder="Email"
             placeholderTextColor="#8E9AAF"
             value={email}
-            onChangeText={setEmail}
+            onChangeText={validateEmail}
             autoCapitalize="none"
             keyboardType="email-address"
           />
+          {emailErrorValidation && <Text style={{ color: '#D32F2F', fontSize: 12, marginBottom: 10, marginTop: -15 }}>{emailErrorValidation}</Text>}
 
           <TextInput
-            style={styles.input}
+            style={[styles.input, usernameErrorValidation ? { borderColor: '#D32F2F', borderWidth: 1 } : {}]}
             placeholder="Nombre de usuario"
             placeholderTextColor="#8E9AAF"
             value={username}
-            onChangeText={setUsername}
+            onChangeText={validateUsername}
             autoCapitalize="none"
           />
+          {usernameErrorValidation && <Text style={{ color: '#D32F2F', fontSize: 12, marginBottom: 10, marginTop: -15 }}>{usernameErrorValidation}</Text>}
 
           <TextInput
-            style={styles.input}
+            style={[styles.input, passwordErrorValidation ? { borderColor: '#D32F2F', borderWidth: 1 } : {}]}
             placeholder="Contraseña"
             placeholderTextColor="#8E9AAF"
             value={password}
-            onChangeText={setPassword}
+            onChangeText={validatePassword}
             secureTextEntry
           />
+          {passwordErrorValidation && <Text style={{ color: '#D32F2F', fontSize: 12, marginBottom: 10, marginTop: -15 }}>{passwordErrorValidation}</Text>}
 
           <TextInput
-            style={styles.input}
+            style={[styles.input, confirmPasswordErrorValidation ? { borderColor: '#D32F2F', borderWidth: 1 } : {}]}
             placeholder="Confirmar contraseña"
             placeholderTextColor="#8E9AAF"
             value={confirmPassword}
-            onChangeText={setConfirmPassword}
+            onChangeText={validateConfirmPassword}
             secureTextEntry
           />
+          {confirmPasswordErrorValidation && <Text style={{ color: '#D32F2F', fontSize: 12, marginBottom: 10, marginTop: -15 }}>{confirmPasswordErrorValidation}</Text>}
 
           {/* Role selector */}
           <View style={styles.roleContainer}>

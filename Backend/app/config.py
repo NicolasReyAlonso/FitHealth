@@ -9,6 +9,14 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
 
+    # Configuración de Correo (Gmail SMTP)
+    SMTP_SERVER: str = "smtp.gmail.com"
+    SMTP_PORT: int = 587
+    SMTP_USERNAME: str | None = None
+    SMTP_PASSWORD: str | None = None
+    FRONTEND_URL: str = "exp://192.168.1.X:8081" # Ponremos la URL correcta en el frontend si hace falta, pero para API usaremos localhost
+    BACKEND_URL: str = "http://localhost:8000"
+
     class Config:
         env_file = ".env"
 

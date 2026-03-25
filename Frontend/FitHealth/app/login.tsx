@@ -19,8 +19,24 @@ export default function LoginScreen() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  
+  // Real-time validation states
+  const [emailErrorValidation, setEmailErrorValidation] = useState<string | null>(null);
+  
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const validateEmail = (text: string) => {
+    setEmail(text);
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!text) {
+      setEmailErrorValidation('El email es obligatorio');
+    } else if (!emailRegex.test(text)) {
+      setEmailErrorValidation('Formato de email inválido');
+    } else {
+      setEmailErrorValidation(null);
+    }
+  };
 
   const handleLogin = async () => {
     setError(null);
@@ -28,11 +44,19 @@ export default function LoginScreen() {
       setError('Por favor completa todos los campos');
       return;
     }
+    if (emailErrorValidation) {
+      setError('Corrige los errores antes de continuar');
+      return;
+    }
     setLoading(true);
     try {
       await login(email.trim(), password);
-    } catch {
-      setError('Email o contraseña incorrectos');
+    } catch (err: any) {
+      if (err.response?.status === 403) {
+        setError(err.response.data.detail || 'Por favor, verifica tu correo antes de iniciar sesión.');
+      } else {
+        setError('Email o contraseña incorrectos');
+      }
     } finally {
       setLoading(false);
     }
@@ -54,14 +78,15 @@ export default function LoginScreen() {
           <Text style={styles.formTitle}>Iniciar Sesión</Text>
 
           <TextInput
-            style={styles.input}
+            style={[styles.input, emailErrorValidation ? { borderColor: '#D32F2F', borderWidth: 1 } : {}]}
             placeholder="Email"
             placeholderTextColor="#8E9AAF"
             value={email}
-            onChangeText={setEmail}
+            onChangeText={validateEmail}
             autoCapitalize="none"
             keyboardType="email-address"
           />
+          {emailErrorValidation && <Text style={{ color: '#D32F2F', fontSize: 12, marginBottom: 10, marginTop: -15 }}>{emailErrorValidation}</Text>}
 
           <TextInput
             style={styles.input}

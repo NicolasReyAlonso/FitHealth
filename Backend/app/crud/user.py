@@ -25,12 +25,13 @@ def get_doctors(db: Session) -> list[User]:
     return db.query(User).filter(User.role == "doctor", User.is_active == True).all()  # noqa: E712
 
 
-def create_user(db: Session, user_data: UserCreate) -> User:
+def create_user(db: Session, user_data: UserCreate, verification_token: str | None = None) -> User:
     db_user = User(
         email=user_data.email,
         username=user_data.username,
         hashed_password=hash_password(user_data.password),
         role=user_data.role,
+        verification_token=verification_token
     )
     db.add(db_user)
     db.commit()

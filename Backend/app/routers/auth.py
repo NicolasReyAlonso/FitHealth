@@ -1,11 +1,14 @@
+import secrets
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from fastapi.responses import HTMLResponse
 
 from app import crud
 from app.auth import verify_password, create_access_token, get_current_user
 from app.database import get_db
 from app.models.user import User
 from app.schemas.user import UserCreate, UserRead, Token, LoginRequest
+from app.email_utils import send_verification_email
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -18,7 +21,15 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Username ya registrado")
     if user_data.role not in ("patient", "doctor"):
         raise HTTPException(status_code=400, detail="Rol inválido")
-    return crud.user.create_user(db, user_data)
+    
+    # Generar token y enviar correo
+    verification_token = secrets.token_urlsafe(32)
+    user = crud.user.create_user(db, user_data, verification_token=verification_token)
+    
+    # Mandamos el correo (en modo simulador si no hay credenciales)
+    send_verification_email(user_data.email, verification_token)
+    
+    return user
 
 
 @router.post("/login", response_model=Token)
@@ -29,6 +40,11 @@ def login(login_data: LoginRequest, db: Session = Depends(get_db)):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Email o contraseña incorrectos",
         )
+    if not user.is_verified:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Por favor, verifica tu correo primero haciendo clic en el enlace que te enviamos.",
+        )
     token = create_access_token(data={"sub": str(user.id)})
     return {"access_token": token, "token_type": "bearer"}
 
@@ -36,3 +52,31 @@ def login(login_data: LoginRequest, db: Session = Depends(get_db)):
 @router.get("/me", response_model=UserRead)
 def get_me(current_user: User = Depends(get_current_user)):
     return current_user
+
+@router.get("/verify", response_class=HTMLResponse)
+def verify_email(token: str, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.verification_token == token).first()
+    
+    if not user:
+        return f"""
+        <html>
+            <body style="font-family: Arial, sans-serif; text-align: center; margin-top: 50px;">
+                <h1 style="color: red;">Enlace Inválido o Expirado ❌</h1>
+                <p>El enlace de verificación no es válido. Puede que ya hayas verificado tu cuenta o que el enlace esté incompleto.</p>
+            </body>
+        </html>
+        """
+        
+    user.is_verified = True
+    user.verification_token = None # Invalidar el token para que no se re-use
+    db.commit()
+    
+    return f"""
+    <html>
+        <body style="font-family: Arial, sans-serif; text-align: center; margin-top: 50px; background-color: #f0fdf4;">
+            <h1 style="color: #16a34a;">¡Cuenta Verificada Exitosamente! ✅</h1>
+            <p>Tu correo <b>{user.email}</b> ha sido verificado.</p>
+            <p>Ya puedes volver a la aplicación e iniciar sesión.</p>
+        </body>
+    </html>
+    """

@@ -63,7 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const register = async (email: string, username: string, password: string, role = 'patient') => {
     await api.post('/auth/register', { email, username, password, role });
-    await login(email, password);
+    // Ya no hacemos autologin porque el correo no está verificado aún.
   };
 
   const logout = async () => {
