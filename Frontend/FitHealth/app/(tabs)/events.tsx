@@ -40,6 +40,9 @@ export default function EventsScreen() {
   const [showModal, setShowModal] = useState(false);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingName, setEditingName] = useState('');
+  const [editingNotes, setEditingNotes] = useState('');
 
   // Form state
   const [name, setName] = useState('');
@@ -129,6 +132,33 @@ export default function EventsScreen() {
     }
   };
 
+  const handleEdit = (event: EventItem) => {
+    console.log('✏️ Abriendo edición para evento:', event.id);
+    setEditingId(event.id);
+    setEditingName(event.name);
+    setEditingNotes(event.notes || '');
+  };
+
+  const confirmEdit = async () => {
+    if (!editingId) return;
+    try {
+      console.log('📡 Actualizando evento:', editingId);
+      await api.patch(`/events/${editingId}`, {
+        name: editingName,
+        notes: editingNotes || null,
+      });
+      console.log('✅ Evento actualizado exitosamente');
+      setEditingId(null);
+      setEditingName('');
+      setEditingNotes('');
+      await fetchEvents();
+      Alert.alert('Éxito', 'Evento actualizado correctamente');
+    } catch (error: any) {
+      console.error('❌ Error al actualizar:', error);
+      Alert.alert('Error', error.message || 'No se pudo actualizar el evento');
+    }
+  };
+
   const getTypeEmoji = (type: string) => EVENT_TYPES.find((t) => t.key === type)?.label ?? '📝';
 
   if (loading) {
@@ -167,6 +197,13 @@ export default function EventsScreen() {
                     {new Date(e.timestamp).toLocaleString()}
                   </Text>
                 </View>
+                <TouchableOpacity
+                  onPress={() => handleEdit(e)}
+                  style={styles.deleteButton}
+                  activeOpacity={0.6}
+                >
+                  <Text style={styles.deleteIcon}>✏️</Text>
+                </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => handleDelete(e.id)}
                   style={styles.deleteButton}
@@ -210,6 +247,54 @@ export default function EventsScreen() {
                 <Text style={{ color: '#fff', fontWeight: '600' }}>
                   {deleting ? 'Eliminando...' : 'Eliminar'}
                 </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal de Edición de Evento */}
+      <Modal visible={editingId !== null} transparent animationType="slide">
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: colors.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 40 }}>
+            <Text style={{ fontSize: 20, fontWeight: 'bold', color: colors.text, marginBottom: 20 }}>
+              Editar Evento
+            </Text>
+            
+            <TextInput
+              style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text }]}
+              placeholder="Nombre del evento"
+              placeholderTextColor={colors.icon}
+              value={editingName}
+              onChangeText={setEditingName}
+            />
+            
+            <TextInput
+              style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text, height: 80 }]}
+              placeholder="Notas"
+              placeholderTextColor={colors.icon}
+              value={editingNotes}
+              onChangeText={setEditingNotes}
+              multiline
+              numberOfLines={3}
+            />
+            
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <TouchableOpacity
+                style={{ flex: 1, backgroundColor: colors.border, borderRadius: 12, padding: 14, alignItems: 'center' }}
+                onPress={() => {
+                  setEditingId(null);
+                  setEditingName('');
+                  setEditingNotes('');
+                }}
+              >
+                <Text style={{ color: colors.text, fontWeight: '600' }}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ flex: 1, backgroundColor: colors.secondary, borderRadius: 12, padding: 14, alignItems: 'center' }}
+                onPress={confirmEdit}
+              >
+                <Text style={{ color: '#fff', fontWeight: '600' }}>Guardar</Text>
               </TouchableOpacity>
             </View>
           </View>
