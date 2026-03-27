@@ -32,6 +32,11 @@ export default function RoutinesScreen() {
   const [showModal, setShowModal] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingName, setEditingName] = useState('');
+  const [editingDescription, setEditingDescription] = useState('');
 
   const fetchRoutines = async () => {
     try {
@@ -67,17 +72,53 @@ export default function RoutinesScreen() {
   };
 
   const handleDelete = (id: number) => {
-    Alert.alert('Eliminar', '¿Seguro que quieres eliminar esta rutina?', [
-      { text: 'Cancelar' },
-      {
-        text: 'Eliminar',
-        style: 'destructive',
-        onPress: async () => {
-          await api.delete(`/routines/${id}`);
-          fetchRoutines();
-        },
-      },
-    ]);
+    console.log('🗑️ Abriendo confirmación de delete para rutina:', id);
+    setDeleteId(id);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteId) return;
+    try {
+      setDeleting(true);
+      console.log('📡 Eliminando rutina:', deleteId);
+      await api.delete(`/routines/${deleteId}`);
+      console.log('✅ Rutina eliminada exitosamente');
+      setDeleteId(null);
+      await fetchRoutines();
+      Alert.alert('Éxito', 'Rutina eliminada correctamente');
+    } catch (error: any) {
+      console.error('❌ Error al eliminar:', error);
+      Alert.alert('Error', error.message || 'No se pudo eliminar la rutina');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleEdit = (routine: Routine) => {
+    console.log('✏️ Abriendo edición para rutina:', routine.id);
+    setEditingId(routine.id);
+    setEditingName(routine.name);
+    setEditingDescription(routine.description || '');
+  };
+
+  const confirmEdit = async () => {
+    if (!editingId) return;
+    try {
+      console.log('📡 Actualizando rutina:', editingId);
+      await api.patch(`/routines/${editingId}`, {
+        name: editingName,
+        description: editingDescription || null,
+      });
+      console.log('✅ Rutina actualizada exitosamente');
+      setEditingId(null);
+      setEditingName('');
+      setEditingDescription('');
+      await fetchRoutines();
+      Alert.alert('Éxito', 'Rutina actualizada correctamente');
+    } catch (error: any) {
+      console.error('❌ Error al actualizar:', error);
+      Alert.alert('Error', error.message || 'No se pudo actualizar la rutina');
+    }
   };
 
   if (loading) {
@@ -104,15 +145,34 @@ export default function RoutinesScreen() {
           </Text>
         ) : (
           routines.map((r) => (
-            <TouchableOpacity
+            <View
               key={r.id}
               style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}
-              onLongPress={() => handleDelete(r.id)}
             >
-              <Text style={[styles.cardTitle, { color: colors.primary }]}>{r.name}</Text>
-              {r.description && (
-                <Text style={[styles.cardDesc, { color: colors.text }]}>{r.description}</Text>
-              )}
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.cardTitle, { color: colors.primary }]}>{r.name}</Text>
+                  {r.description && (
+                    <Text style={[styles.cardDesc, { color: colors.text }]}>{r.description}</Text>
+                  )}
+                </View>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <TouchableOpacity
+                    onPress={() => handleEdit(r)}
+                    style={{ padding: 8 }}
+                    activeOpacity={0.6}
+                  >
+                    <Text style={{ fontSize: 18 }}>✏️</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => handleDelete(r.id)}
+                    style={{ padding: 8 }}
+                    activeOpacity={0.6}
+                  >
+                    <Text style={{ fontSize: 18 }}>🗑️</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
               <View style={styles.cardMeta}>
                 <Text style={[styles.metaText, { color: colors.icon }]}>
                   🏋️ {r.exercises.length} ejercicios
@@ -121,10 +181,93 @@ export default function RoutinesScreen() {
                   🥗 {r.diet_items.length} dietas
                 </Text>
               </View>
-            </TouchableOpacity>
+            </View>
           ))
         )}
       </ScrollView>
+
+      {/* Modal de Eliminación */}
+      <Modal visible={deleteId !== null} transparent animationType="fade">
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+          <View style={{ backgroundColor: colors.card, borderRadius: 16, padding: 24, width: '100%', maxWidth: 300 }}>
+            <Text style={{ fontSize: 18, fontWeight: 'bold', color: colors.text, marginBottom: 12 }}>
+              ¿Eliminar rutina?
+            </Text>
+            <Text style={{ fontSize: 14, color: colors.icon, marginBottom: 24 }}>
+              Esta acción no se puede deshacer
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <TouchableOpacity
+                style={{ flex: 1, backgroundColor: colors.border, borderRadius: 12, padding: 12, alignItems: 'center' }}
+                onPress={() => {
+                  console.log('❌ Cancelar delete');
+                  setDeleteId(null);
+                }}
+                disabled={deleting}
+              >
+                <Text style={{ color: colors.text, fontWeight: '600' }}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ flex: 1, backgroundColor: '#FF4444', borderRadius: 12, padding: 12, alignItems: 'center', opacity: deleting ? 0.6 : 1 }}
+                onPress={confirmDelete}
+                disabled={deleting}
+              >
+                <Text style={{ color: '#fff', fontWeight: '600' }}>
+                  {deleting ? 'Eliminando...' : 'Eliminar'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal de Edición */}
+      <Modal visible={editingId !== null} transparent animationType="slide">
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: colors.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 40 }}>
+            <Text style={{ fontSize: 20, fontWeight: 'bold', color: colors.text, marginBottom: 20 }}>
+              Editar Rutina
+            </Text>
+            
+            <TextInput
+              style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text }]}
+              placeholder="Nombre de la rutina"
+              placeholderTextColor={colors.icon}
+              value={editingName}
+              onChangeText={setEditingName}
+            />
+            
+            <TextInput
+              style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text, height: 80 }]}
+              placeholder="Descripción"
+              placeholderTextColor={colors.icon}
+              value={editingDescription}
+              onChangeText={setEditingDescription}
+              multiline
+              numberOfLines={3}
+            />
+            
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <TouchableOpacity
+                style={{ flex: 1, backgroundColor: colors.border, borderRadius: 12, padding: 14, alignItems: 'center' }}
+                onPress={() => {
+                  setEditingId(null);
+                  setEditingName('');
+                  setEditingDescription('');
+                }}
+              >
+                <Text style={{ color: colors.text, fontWeight: '600' }}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ flex: 1, backgroundColor: colors.primary, borderRadius: 12, padding: 14, alignItems: 'center' }}
+                onPress={confirmEdit}
+              >
+                <Text style={{ color: '#fff', fontWeight: '600' }}>Guardar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       <Modal visible={showModal} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
