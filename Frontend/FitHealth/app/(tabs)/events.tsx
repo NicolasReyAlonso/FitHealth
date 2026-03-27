@@ -38,6 +38,8 @@ export default function EventsScreen() {
   const [events, setEvents] = useState<EventItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   // Form state
   const [name, setName] = useState('');
@@ -105,17 +107,26 @@ export default function EventsScreen() {
   };
 
   const handleDelete = (id: number) => {
-    Alert.alert('Eliminar', '¿Seguro que quieres eliminar este evento?', [
-      { text: 'Cancelar' },
-      {
-        text: 'Eliminar',
-        style: 'destructive',
-        onPress: async () => {
-          await api.delete(`/events/${id}`);
-          fetchEvents();
-        },
-      },
-    ]);
+    console.log('🗑️ Mostrar confirmación para evento:', id);
+    setDeleteId(id);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteId) return;
+    try {
+      setDeleting(true);
+      console.log('📡 Eliminando evento:', deleteId);
+      await api.delete(`/events/${deleteId}`);
+      console.log('✅ Evento eliminado exitosamente');
+      setDeleteId(null);
+      await fetchEvents();
+      Alert.alert('Éxito', 'Evento eliminado correctamente');
+    } catch (error: any) {
+      console.error('❌ Error al eliminar:', error);
+      Alert.alert('Error', error.message || 'No se pudo eliminar el evento');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const getTypeEmoji = (type: string) => EVENT_TYPES.find((t) => t.key === type)?.label ?? '📝';
@@ -144,10 +155,9 @@ export default function EventsScreen() {
           </Text>
         ) : (
           events.map((e) => (
-            <TouchableOpacity
+            <View
               key={e.id}
               style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}
-              onLongPress={() => handleDelete(e.id)}
             >
               <View style={styles.cardHeader}>
                 <Text style={styles.emoji}>{getTypeEmoji(e.event_type)}</Text>
@@ -157,13 +167,56 @@ export default function EventsScreen() {
                     {new Date(e.timestamp).toLocaleString()}
                   </Text>
                 </View>
+                <TouchableOpacity
+                  onPress={() => handleDelete(e.id)}
+                  style={styles.deleteButton}
+                  activeOpacity={0.6}
+                >
+                  <Text style={styles.deleteIcon}>🗑️</Text>
+                </TouchableOpacity>
               </View>
               {e.notes && <Text style={[styles.cardNotes, { color: colors.icon }]}>{e.notes}</Text>}
-            </TouchableOpacity>
+            </View>
           ))
         )}
       </ScrollView>
 
+      {/* Modal de Confirmación de Delete */}
+      <Modal visible={deleteId !== null} transparent animationType="fade">
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+          <View style={{ backgroundColor: colors.card, borderRadius: 16, padding: 24, width: '100%', maxWidth: 300 }}>
+            <Text style={{ fontSize: 18, fontWeight: 'bold', color: colors.text, marginBottom: 12 }}>
+              ¿Eliminar evento?
+            </Text>
+            <Text style={{ fontSize: 14, color: colors.icon, marginBottom: 24 }}>
+              Esta acción no se puede deshacer
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <TouchableOpacity
+                style={{ flex: 1, backgroundColor: colors.border, borderRadius: 12, padding: 12, alignItems: 'center' }}
+                onPress={() => {
+                  console.log('❌ Cancelar delete');
+                  setDeleteId(null);
+                }}
+                disabled={deleting}
+              >
+                <Text style={{ color: colors.text, fontWeight: '600' }}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ flex: 1, backgroundColor: '#FF4444', borderRadius: 12, padding: 12, alignItems: 'center', opacity: deleting ? 0.6 : 1 }}
+                onPress={confirmDelete}
+                disabled={deleting}
+              >
+                <Text style={{ color: '#fff', fontWeight: '600' }}>
+                  {deleting ? 'Eliminando...' : 'Eliminar'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal de Crear Evento */}
       <Modal visible={showModal} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <ScrollView>
@@ -286,4 +339,6 @@ const styles = StyleSheet.create({
   input: { borderWidth: 1, borderRadius: 12, padding: 14, fontSize: 16, marginBottom: 12 },
   modalButtons: { flexDirection: 'row', gap: 12, marginTop: 8 },
   modalBtn: { flex: 1, borderRadius: 12, padding: 14, alignItems: 'center' },
+  deleteButton: { padding: 8, justifyContent: 'center', alignItems: 'center' },
+  deleteIcon: { fontSize: 20 },
 });
