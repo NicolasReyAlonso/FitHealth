@@ -5,4 +5,4 @@
 *.cpython-*
 *.pyc
 __pycache__/
-Backend/uploads/exercises/c3d9efc6-3c7a-4c22-858c-01fc3d9a124c.ef726a55-17b5-445b-8a06-4fe7ba3e0947
+Backend/uploads/*
