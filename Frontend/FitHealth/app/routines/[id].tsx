@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Image, Modal, TextInput } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Image, Modal, TextInput, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import api, { API_BASE_URL } from '@/services/api';
@@ -66,17 +66,30 @@ export default function RoutineDetailScreen() {
       setLoading(true);
       const filename = uri.split('/').pop() || 'photo.jpg';
       const match = /\.(\w+)$/.exec(filename);
-      const type = match ? `image/${match[1]}` : `image`;
+      const type = match ? `image/${match[1]}` : `image/jpeg`;
 
       const formData = new FormData();
-      formData.append('file', { uri, name: filename, type } as any);
+      
+      if (Platform.OS === 'web') {
+        // En la web, necesitamos convertir la URI en un Blob de verdad
+        const response = await fetch(uri);
+        const blob = await response.blob();
+        formData.append('file', blob, filename);
+      } else {
+        // En móvil usamos este atajo de React Native
+        formData.append('file', { uri, name: filename, type } as any);
+      }
 
       await api.post(`/routines/exercises/${exerciseId}/image`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          Accept: 'application/json',
+        },
       });
       fetchRoutine();
     } catch (e: any) {
-      Alert.alert('Error', 'Fallo al subir la imagen');
+      console.error(e?.response?.data || e);
+      Alert.alert('Error', `Fallo al subir la imagen: ${e?.response?.data?.detail?.[0]?.msg || e.message}`);
     } finally {
       setLoading(false);
     }
@@ -87,6 +100,19 @@ export default function RoutineDetailScreen() {
         Alert.alert('Aviso', 'El nombre es obligatorio');
         return;
     }
+    
+    // Normalizar la hora para evitar errores 422 de Pydantic
+    let formattedTime = itemTime ? itemTime.trim() : null;
+    if (formattedTime) {
+        // Simple regex to check and fix formats like "9", "9:00", "09", "09:00"
+        if (/^\d{1,2}$/.test(formattedTime)) {
+            formattedTime = `${formattedTime.padStart(2, '0')}:00:00`;
+        } else if (/^\d{1,2}:\d{2}$/.test(formattedTime)) {
+            const [h, m] = formattedTime.split(':');
+            formattedTime = `${h.padStart(2, '0')}:${m}:00`;
+        }
+    }
+
     try {
         setSavingItem(true);
         if (addingType === 'exercise') {
@@ -99,19 +125,20 @@ export default function RoutineDetailScreen() {
             await api.post(`/routines/${id}/days/${selectedDay}/diets`, {
                 name: itemName,
                 calories: itemCalories ? parseInt(itemCalories) : null,
-                time_of_day: itemTime || null
+                time_of_day: formattedTime
             });
         } else if (addingType === 'med') {
             await api.post(`/routines/${id}/days/${selectedDay}/medications`, {
                 name: itemName,
                 dose: itemDose || '1 pill',
-                time_of_day: itemTime || null
+                time_of_day: formattedTime
             });
         }
         setModalVisible(false);
         fetchRoutine();
     } catch (e: any) {
-        Alert.alert('Error', 'Fallo al guardar el elemento');
+        console.error("DEBUG HTTP 422:", JSON.stringify(e.response?.data || e.message));
+        Alert.alert('Error', 'Fallo al guardar: ' + (e.response?.data?.detail?.[0]?.msg || e.message));
     } finally {
         setSavingItem(false);
     }
