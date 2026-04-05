@@ -11,6 +11,7 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/context/auth-context';
 
@@ -23,6 +24,9 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [role, setRole] = useState<'patient' | 'doctor'>('patient');
+  
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
   // Real-time validation errors
   const [emailErrorValidation, setEmailErrorValidation] = useState<string | null>(null);
@@ -136,24 +140,56 @@ export default function RegisterScreen() {
           />
           {usernameErrorValidation && <Text style={{ color: '#D32F2F', fontSize: 12, marginBottom: 10, marginTop: -15 }}>{usernameErrorValidation}</Text>}
 
-          <TextInput
-            style={[styles.input, passwordErrorValidation ? { borderColor: '#D32F2F', borderWidth: 1 } : {}]}
-            placeholder="Contraseña"
-            placeholderTextColor="#8E9AAF"
-            value={password}
-            onChangeText={validatePassword}
-            secureTextEntry
-          />
+          <View style={styles.passwordContainer}>
+            <TextInput
+              style={[
+                styles.input, 
+                styles.passwordInput,
+                passwordErrorValidation ? { borderColor: '#D32F2F', borderWidth: 1 } : {}
+              ]}
+              placeholder="Contraseña"
+              placeholderTextColor="#8E9AAF"
+              value={password}
+              onChangeText={validatePassword}
+              secureTextEntry={!showPassword}
+            />
+            <TouchableOpacity 
+              style={styles.eyeIcon} 
+              onPress={() => setShowPassword(!showPassword)}
+            >
+              <Ionicons 
+                name={showPassword ? 'eye-off' : 'eye'} 
+                size={24} 
+                color="#8E9AAF" 
+              />
+            </TouchableOpacity>
+          </View>
           {passwordErrorValidation && <Text style={{ color: '#D32F2F', fontSize: 12, marginBottom: 10, marginTop: -15 }}>{passwordErrorValidation}</Text>}
 
-          <TextInput
-            style={[styles.input, confirmPasswordErrorValidation ? { borderColor: '#D32F2F', borderWidth: 1 } : {}]}
-            placeholder="Confirmar contraseña"
-            placeholderTextColor="#8E9AAF"
-            value={confirmPassword}
-            onChangeText={validateConfirmPassword}
-            secureTextEntry
-          />
+          <View style={styles.passwordContainer}>
+            <TextInput
+              style={[
+                styles.input, 
+                styles.passwordInput,
+                confirmPasswordErrorValidation ? { borderColor: '#D32F2F', borderWidth: 1 } : {}
+              ]}
+              placeholder="Confirmar contraseña"
+              placeholderTextColor="#8E9AAF"
+              value={confirmPassword}
+              onChangeText={validateConfirmPassword}
+              secureTextEntry={!showConfirmPassword}
+            />
+            <TouchableOpacity 
+              style={styles.eyeIcon} 
+              onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+            >
+              <Ionicons 
+                name={showConfirmPassword ? 'eye-off' : 'eye'} 
+                size={24} 
+                color="#8E9AAF" 
+              />
+            </TouchableOpacity>
+          </View>
           {confirmPasswordErrorValidation && <Text style={{ color: '#D32F2F', fontSize: 12, marginBottom: 10, marginTop: -15 }}>{confirmPasswordErrorValidation}</Text>}
 
           {/* Role selector */}
@@ -266,6 +302,21 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     backgroundColor: '#F1F8E9',
     color: '#1B5E20',
+  },
+  passwordContainer: {
+    position: 'relative',
+    justifyContent: 'center',
+    marginBottom: 0,
+  },
+  passwordInput: {
+    paddingRight: 50,
+    marginBottom: 14,
+  },
+  eyeIcon: {
+    position: 'absolute',
+    right: 14,
+    top: 14,
+    zIndex: 1,
   },
   roleContainer: {
     marginBottom: 14,

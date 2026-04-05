@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 
-from app.models.routine import Routine, RoutineExercise, RoutineDiet
+from app.models.routine import Routine, RoutineDay, RoutineExercise, RoutineDiet, RoutineMedication
 from app.schemas.routine import RoutineCreate, RoutineUpdate
 
 
@@ -18,10 +18,16 @@ def create_routine(db: Session, routine_data: RoutineCreate, user_id: int) -> Ro
         name=routine_data.name,
         description=routine_data.description,
     )
-    for ex in routine_data.exercises:
-        db_routine.exercises.append(RoutineExercise(**ex.model_dump()))
-    for di in routine_data.diet_items:
-        db_routine.diet_items.append(RoutineDiet(**di.model_dump()))
+    for day_data in routine_data.days:
+        db_day = RoutineDay(day_of_week=day_data.day_of_week)
+        for ex in day_data.exercises:
+            db_day.exercises.append(RoutineExercise(**ex.model_dump()))
+        for di in day_data.diet_items:
+            db_day.diet_items.append(RoutineDiet(**di.model_dump()))
+        for med in day_data.medications:
+            db_day.medications.append(RoutineMedication(**med.model_dump()))
+        db_routine.days.append(db_day)
+
     db.add(db_routine)
     db.commit()
     db.refresh(db_routine)

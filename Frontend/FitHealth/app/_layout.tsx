@@ -16,7 +16,7 @@ function RootNavigator() {
   useEffect(() => {
     if (isLoading) return;
 
-    const inAuthGroup = segments[0] === 'login' || segments[0] === 'register';
+    const inAuthGroup = segments[0] === 'login' || segments[0] === 'register' || segments[0] === 'verify-notice';
 
     if (!user && !inAuthGroup) {
       router.replace('/login');
@@ -38,6 +38,8 @@ function RootNavigator() {
       <Stack>
         <Stack.Screen name="login" options={{ headerShown: false }} />
         <Stack.Screen name="register" options={{ headerShown: false }} />
+        <Stack.Screen name="verify-notice" options={{ headerShown: false }} />
+        <Stack.Screen name="routines/[id]" options={{ title: 'Detalles de Rutina' }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
       </Stack>

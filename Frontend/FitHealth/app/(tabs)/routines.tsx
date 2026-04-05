@@ -10,7 +10,7 @@ import {
   ActivityIndicator,
   Modal,
 } from 'react-native';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import api from '@/services/api';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -19,12 +19,15 @@ type Routine = {
   id: number;
   name: string;
   description: string | null;
-  exercises: { id: number; name: string; sets: number | null; reps: number | null }[];
-  diet_items: { id: number; name: string; calories: number | null }[];
+  days: {
+    id: number;
+    day_of_week: number;
+  }[];
   created_at: string;
 };
 
 export default function RoutinesScreen() {
+  const router = useRouter();
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
   const [routines, setRoutines] = useState<Routine[]>([]);
@@ -145,9 +148,11 @@ export default function RoutinesScreen() {
           </Text>
         ) : (
           routines.map((r) => (
-            <View
+            <TouchableOpacity
               key={r.id}
               style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}
+              onPress={() => router.push(`/routines/${r.id}`)}
+              activeOpacity={0.7}
             >
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
                 <View style={{ flex: 1 }}>
@@ -158,14 +163,14 @@ export default function RoutinesScreen() {
                 </View>
                 <View style={{ flexDirection: 'row', gap: 8 }}>
                   <TouchableOpacity
-                    onPress={() => handleEdit(r)}
+                    onPress={(e) => { e.stopPropagation(); handleEdit(r); }}
                     style={{ padding: 8 }}
                     activeOpacity={0.6}
                   >
                     <Text style={{ fontSize: 18 }}>✏️</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    onPress={() => handleDelete(r.id)}
+                    onPress={(e) => { e.stopPropagation(); handleDelete(r.id); }}
                     style={{ padding: 8 }}
                     activeOpacity={0.6}
                   >
@@ -175,13 +180,10 @@ export default function RoutinesScreen() {
               </View>
               <View style={styles.cardMeta}>
                 <Text style={[styles.metaText, { color: colors.icon }]}>
-                  🏋️ {r.exercises.length} ejercicios
-                </Text>
-                <Text style={[styles.metaText, { color: colors.icon }]}>
-                  🥗 {r.diet_items.length} dietas
+                  🗓️ {r.days ? r.days.length : 0} días
                 </Text>
               </View>
-            </View>
+            </TouchableOpacity>
           ))
         )}
       </ScrollView>

@@ -10,7 +10,8 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./app:/app/app       # hot-reload: monta el código fuente en el contenedor
+      - ./app:/app/app       # hot-reload: monta el cÃ³digo fuente en el contenedor
+      - ./uploads:/app/uploads # upload files
     depends_on:
       db:
         condition: service_healthy

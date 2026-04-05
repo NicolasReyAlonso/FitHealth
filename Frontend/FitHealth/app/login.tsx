@@ -11,6 +11,7 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/context/auth-context';
 
@@ -19,6 +20,7 @@ export default function LoginScreen() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   
   // Real-time validation states
   const [emailErrorValidation, setEmailErrorValidation] = useState<string | null>(null);
@@ -88,14 +90,26 @@ export default function LoginScreen() {
           />
           {emailErrorValidation && <Text style={{ color: '#D32F2F', fontSize: 12, marginBottom: 10, marginTop: -15 }}>{emailErrorValidation}</Text>}
 
-          <TextInput
-            style={styles.input}
-            placeholder="Contraseña"
-            placeholderTextColor="#8E9AAF"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-          />
+          <View style={styles.passwordContainer}>
+            <TextInput
+              style={[styles.input, styles.passwordInput]}
+              placeholder="Contraseña"
+              placeholderTextColor="#8E9AAF"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+            />
+            <TouchableOpacity 
+              style={styles.eyeIcon} 
+              onPress={() => setShowPassword(!showPassword)}
+            >
+              <Ionicons 
+                name={showPassword ? 'eye-off' : 'eye'} 
+                size={24} 
+                color="#8E9AAF" 
+              />
+            </TouchableOpacity>
+          </View>
 
           {error && <Text style={styles.errorText}>{error}</Text>}
 
@@ -184,6 +198,21 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     backgroundColor: '#F1F8E9',
     color: '#1B5E20',
+  },
+  passwordContainer: {
+    position: 'relative',
+    justifyContent: 'center',
+    marginBottom: 0, 
+  },
+  passwordInput: {
+    paddingRight: 50, // space for the eye icon
+    marginBottom: 14,
+  },
+  eyeIcon: {
+    position: 'absolute',
+    right: 14,
+    top: 14,
+    zIndex: 1,
   },
   button: {
     backgroundColor: '#1565C0',

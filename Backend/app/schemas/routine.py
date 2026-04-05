@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, time
 
 from pydantic import BaseModel
 
@@ -10,16 +10,17 @@ class RoutineExerciseCreate(BaseModel):
     reps: int | None = None
     duration_minutes: int | None = None
     notes: str | None = None
-
+    image_url: str | None = None
 
 class RoutineExerciseRead(BaseModel):
     id: int
-    routine_id: int
+    routine_day_id: int
     name: str
     sets: int | None
     reps: int | None
     duration_minutes: int | None
     notes: str | None
+    image_url: str | None
 
     model_config = {"from_attributes": True}
 
@@ -33,11 +34,12 @@ class RoutineDietCreate(BaseModel):
     carbs_g: float | None = None
     fat_g: float | None = None
     notes: str | None = None
+    time_of_day: time | None = None
 
 
 class RoutineDietRead(BaseModel):
     id: int
-    routine_id: int
+    routine_day_id: int
     name: str
     description: str | None
     calories: int | None
@@ -45,6 +47,43 @@ class RoutineDietRead(BaseModel):
     carbs_g: float | None
     fat_g: float | None
     notes: str | None
+    time_of_day: time | None
+
+    model_config = {"from_attributes": True}
+
+
+# --- Routine Medication ---
+class RoutineMedicationCreate(BaseModel):
+    name: str
+    dose: str
+    notes: str | None = None
+    time_of_day: time | None = None
+
+class RoutineMedicationRead(BaseModel):
+    id: int
+    routine_day_id: int
+    name: str
+    dose: str
+    notes: str | None
+    time_of_day: time | None
+
+    model_config = {"from_attributes": True}
+
+
+# --- Routine Day ---
+class RoutineDayCreate(BaseModel):
+    day_of_week: int
+    exercises: list[RoutineExerciseCreate] = []
+    diet_items: list[RoutineDietCreate] = []
+    medications: list[RoutineMedicationCreate] = []
+
+class RoutineDayRead(BaseModel):
+    id: int
+    routine_id: int
+    day_of_week: int
+    exercises: list[RoutineExerciseRead] = []
+    diet_items: list[RoutineDietRead] = []
+    medications: list[RoutineMedicationRead] = []
 
     model_config = {"from_attributes": True}
 
@@ -53,8 +92,7 @@ class RoutineDietRead(BaseModel):
 class RoutineCreate(BaseModel):
     name: str
     description: str | None = None
-    exercises: list[RoutineExerciseCreate] = []
-    diet_items: list[RoutineDietCreate] = []
+    days: list[RoutineDayCreate] = []
 
 
 class RoutineRead(BaseModel):
@@ -63,8 +101,7 @@ class RoutineRead(BaseModel):
     name: str
     description: str | None
     created_at: datetime
-    exercises: list[RoutineExerciseRead] = []
-    diet_items: list[RoutineDietRead] = []
+    days: list[RoutineDayRead] = []
 
     model_config = {"from_attributes": True}
 

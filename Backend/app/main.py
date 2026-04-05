@@ -1,7 +1,9 @@
 from contextlib import asynccontextmanager
+import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
 from app.database import Base, engine
@@ -15,6 +17,8 @@ import app.models  # noqa: F401
 async def lifespan(app: FastAPI):
     # Crea las tablas al arrancar (en producción usar Alembic en su lugar)
     Base.metadata.create_all(bind=engine)
+    # Ensure static uploads directory exists
+    os.makedirs("uploads/exercises", exist_ok=True)
     yield
 
 
@@ -24,6 +28,9 @@ app = FastAPI(
     description="API de FitHealth — seguimiento de entrenamientos y salud",
     lifespan=lifespan,
 )
+
+# Mount static files directory
+app.mount("/static", StaticFiles(directory="uploads"), name="static")
 
 app.add_middleware(
     CORSMiddleware,
