@@ -11,6 +11,7 @@ class Event(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    routine_id: Mapped[int | None] = mapped_column(ForeignKey("routines.id", ondelete="SET NULL"), nullable=True)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     event_type: Mapped[str] = mapped_column(String(50), nullable=False)  # biometric, water, activity, food, weight, custom
     timestamp: Mapped[datetime] = mapped_column(DateTime, nullable=False)
@@ -18,6 +19,7 @@ class Event(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
     user: Mapped["User"] = relationship("User", back_populates="events")  # noqa: F821
+    routine: Mapped["Routine | None"] = relationship("Routine")  # noqa: F821
     biometric: Mapped["BiometricData | None"] = relationship("BiometricData", back_populates="event", uselist=False, cascade="all, delete-orphan")
     water_log: Mapped["WaterLog | None"] = relationship("WaterLog", back_populates="event", uselist=False, cascade="all, delete-orphan")
     activity_log: Mapped["ActivityLog | None"] = relationship("ActivityLog", back_populates="event", uselist=False, cascade="all, delete-orphan")
@@ -30,7 +32,10 @@ class BiometricData(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     event_id: Mapped[int] = mapped_column(ForeignKey("events.id", ondelete="CASCADE"), unique=True, nullable=False)
-    heart_rate: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    heart_rate_avg: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    heart_rate_max: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    heart_rate_min: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    blood_sugar: Mapped[float | None] = mapped_column(Float, nullable=True)
     blood_pressure_systolic: Mapped[int | None] = mapped_column(Integer, nullable=True)
     blood_pressure_diastolic: Mapped[int | None] = mapped_column(Integer, nullable=True)
     blood_oxygen: Mapped[float | None] = mapped_column(Float, nullable=True)

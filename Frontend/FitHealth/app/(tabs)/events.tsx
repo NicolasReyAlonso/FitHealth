@@ -36,6 +36,7 @@ export default function EventsScreen() {
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
   const [events, setEvents] = useState<EventItem[]>([]);
+  const [routines, setRoutines] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [deleteId, setDeleteId] = useState<number | null>(null);
@@ -48,11 +49,17 @@ export default function EventsScreen() {
   const [name, setName] = useState('');
   const [eventType, setEventType] = useState('custom');
   const [notes, setNotes] = useState('');
+  const [routineId, setRoutineId] = useState('');
   // Specific fields
   const [waterMl, setWaterMl] = useState('');
   const [weightKg, setWeightKg] = useState('');
   const [activityType, setActivityType] = useState('');
   const [foodName, setFoodName] = useState('');
+
+  const [hrAvg, setHrAvg] = useState('');
+  const [hrMax, setHrMax] = useState('');
+  const [hrMin, setHrMin] = useState('');
+  const [bloodSugar, setBloodSugar] = useState('');
 
   const fetchEvents = async () => {
     try {
@@ -65,9 +72,19 @@ export default function EventsScreen() {
     }
   };
 
+  const fetchRoutines = async () => {
+    try {
+      const res = await api.get('/routines/');
+      setRoutines(res.data);
+    } catch {
+      console.error('Error al cargar rutinas');
+    }
+  };
+
   useFocusEffect(
     useCallback(() => {
       fetchEvents();
+      fetchRoutines();
     }, [])
   );
 
@@ -82,6 +99,20 @@ export default function EventsScreen() {
       timestamp: new Date().toISOString(),
       notes: notes.trim() || null,
     };
+    if (routineId.trim()) {
+      payload.routine_id = parseInt(routineId.trim(), 10);
+    }
+    if (eventType === 'biometric') {
+      const biometricData: Record<string, unknown> = {};
+      if (hrAvg) biometricData.heart_rate_avg = parseInt(hrAvg, 10);
+      if (hrMax) biometricData.heart_rate_max = parseInt(hrMax, 10);
+      if (hrMin) biometricData.heart_rate_min = parseInt(hrMin, 10);
+      if (bloodSugar) biometricData.blood_sugar = parseFloat(bloodSugar);
+      
+      if (Object.keys(biometricData).length > 0) {
+        payload.biometric = biometricData;
+      }
+    }
     if (eventType === 'water' && waterMl) {
       payload.water_log = { amount_ml: parseInt(waterMl, 10) };
     }
@@ -102,6 +133,11 @@ export default function EventsScreen() {
       setWeightKg('');
       setActivityType('');
       setFoodName('');
+      setRoutineId('');
+      setHrAvg('');
+      setHrMax('');
+      setHrMin('');
+      setBloodSugar('');
       setShowModal(false);
       fetchEvents();
     } catch {
@@ -213,6 +249,19 @@ export default function EventsScreen() {
                 </TouchableOpacity>
               </View>
               {e.notes && <Text style={[styles.cardNotes, { color: colors.icon }]}>{e.notes}</Text>}
+              {(e as any).routine_id && (
+                <Text style={[styles.cardNotes, { color: colors.tint, fontWeight: 'bold' }]}>
+                  Rutina asociada: {routines.find((r) => r.id === (e as any).routine_id)?.name || (e as any).routine_id}
+                </Text>
+              )}
+              {e.event_type === 'biometric' && (e as any).biometric && (
+                <View style={{ marginTop: 5 }}>
+                  {(e as any).biometric.heart_rate_avg && <Text style={{ color: colors.text }}>BPM Medio: {(e as any).biometric.heart_rate_avg}</Text>}
+                  {(e as any).biometric.heart_rate_max && <Text style={{ color: colors.text }}>BPM Pico: {(e as any).biometric.heart_rate_max}</Text>}
+                  {(e as any).biometric.heart_rate_min && <Text style={{ color: colors.text }}>BPM Mínimo: {(e as any).biometric.heart_rate_min}</Text>}
+                  {(e as any).biometric.blood_sugar && <Text style={{ color: colors.text }}>Azúcar: {(e as any).biometric.blood_sugar} mg/dL</Text>}
+                </View>
+              )}
             </View>
           ))
         )}
@@ -373,6 +422,69 @@ export default function EventsScreen() {
                   onChangeText={setFoodName}
                 />
               )}
+              {eventType === 'biometric' && (
+                <>
+                  <TextInput
+                    style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text }]}
+                    placeholder="BPM Medio (opcional)"
+                    placeholderTextColor={colors.icon}
+                    value={hrAvg}
+                    onChangeText={setHrAvg}
+                    keyboardType="numeric"
+                  />
+                  <TextInput
+                    style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text }]}
+                    placeholder="BPM Pico (opcional)"
+                    placeholderTextColor={colors.icon}
+                    value={hrMax}
+                    onChangeText={setHrMax}
+                    keyboardType="numeric"
+                  />
+                  <TextInput
+                    style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text }]}
+                    placeholder="BPM Mínimo (opcional)"
+                    placeholderTextColor={colors.icon}
+                    value={hrMin}
+                    onChangeText={setHrMin}
+                    keyboardType="numeric"
+                  />
+                  <TextInput
+                    style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text }]}
+                    placeholder="Azúcar en sangre (mg/dL) (opcional)"
+                    placeholderTextColor={colors.icon}
+                    value={bloodSugar}
+                    onChangeText={setBloodSugar}
+                    keyboardType="decimal-pad"
+                  />
+                </>
+              )}
+
+              <Text style={{ color: colors.text, marginBottom: 8, marginTop: 4 }}>Rutina asociada (opcional):</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 15 }}>
+                <TouchableOpacity
+                  style={[
+                    styles.typeChip,
+                    { borderColor: colors.border, marginRight: 8 },
+                    !routineId ? { backgroundColor: colors.primary, borderColor: colors.primary } : { backgroundColor: colors.background }
+                  ]}
+                  onPress={() => setRoutineId('')}
+                >
+                  <Text style={{ color: !routineId ? '#fff' : colors.text }}>Ninguna</Text>
+                </TouchableOpacity>
+                {routines.map((r) => (
+                  <TouchableOpacity
+                    key={r.id}
+                    style={[
+                      styles.typeChip,
+                      { borderColor: colors.border, marginRight: 8 },
+                      routineId === String(r.id) ? { backgroundColor: colors.primary, borderColor: colors.primary } : { backgroundColor: colors.background }
+                    ]}
+                    onPress={() => setRoutineId(String(r.id))}
+                  >
+                    <Text style={{ color: routineId === String(r.id) ? '#fff' : colors.text }}>{r.name}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
 
               <TextInput
                 style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text }]}

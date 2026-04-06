@@ -14,10 +14,23 @@ router = APIRouter(prefix="/events", tags=["events"])
 def list_my_events(
     skip: int = 0,
     limit: int = 100,
+    routine_id: int | None = None,
+    event_type: str | None = None,
+    date: str | None = None,
+    time_str: str | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return crud.event.get_events_by_user(db, current_user.id, skip=skip, limit=limit)
+    return crud.event.get_events_by_user(
+        db, 
+        current_user.id, 
+        skip=skip, 
+        limit=limit,
+        routine_id=routine_id,
+        event_type=event_type,
+        date=date,
+        time_str=time_str
+    )
 
 
 @router.post("/", response_model=EventRead, status_code=status.HTTP_201_CREATED)
