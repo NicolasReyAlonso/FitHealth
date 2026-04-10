@@ -147,6 +147,9 @@ export default function HomeScreen() {
         </View>
       </View>
 
+
+
+
       {/* Weekly Activity Chart */}
       <View style={[styles.chartCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <Text style={[styles.chartTitle, { color: colors.text }]}>📊 Actividad de esta semana</Text>
