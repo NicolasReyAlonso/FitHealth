@@ -55,23 +55,12 @@ export const Colors = {
   },
 };
 
-export const Fonts = Platform.select({
-  ios: {
-    sans: '-apple-system',
-    serif: 'Georgia',
-    rounded: '-apple-system',
-    mono: 'Menlo',
-  },
-  default: {
-    sans: 'normal',
-    serif: 'serif',
-    rounded: 'normal',
-    mono: 'monospace',
-  },
-  web: {
-    sans: "'Segoe UI', sans-serif",
-    serif: "'Georgia', serif",
-    rounded: "'Segoe UI', sans-serif",
-    mono: "'Courier New', monospace",
-  },
-});
+/**
+ * Font definitions - Using only system fonts to avoid any external font loading
+ * This prevents FontFaceObserver timeouts and web load issues
+ */
+export const Fonts = {
+  sans: 'system-ui, -apple-system, sans-serif',
+  serif: 'Georgia, serif',
+  mono: 'monospace',
+};
