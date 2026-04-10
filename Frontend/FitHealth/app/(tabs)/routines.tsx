@@ -134,14 +134,21 @@ export default function RoutinesScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.text }]}>Mis Rutinas</Text>
-        <TouchableOpacity style={[styles.addButton, { backgroundColor: colors.primary }]} onPress={() => setShowModal(true)}>
-          <Text style={styles.addButtonText}>+ Nueva</Text>
+      <View style={[styles.header, { backgroundColor: colors.primary }]}>
+        <View>
+          <Text style={styles.title}>🏋️ Mis Rutinas</Text>
+          <Text style={styles.subtitle}>Organiza tu entrenamiento</Text>
+        </View>
+        <TouchableOpacity 
+          style={[styles.addButton, { backgroundColor: 'rgba(255,255,255,0.25)' }]}
+          onPress={() => setShowModal(true)}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.addButtonText}>＋</Text>
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.list}>
+      <ScrollView style={styles.list} showsVerticalScrollIndicator={false}>
         {routines.length === 0 ? (
           <Text style={[styles.empty, { color: colors.icon }]}>
             No tienes rutinas aún. ¡Crea tu primera rutina!
@@ -154,24 +161,22 @@ export default function RoutinesScreen() {
               onPress={() => router.push(`/routines/${r.id}`)}
               activeOpacity={0.7}
             >
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.cardTitle, { color: colors.primary }]}>{r.name}</Text>
+                  <Text style={[styles.cardTitle, { color: colors.text }]}>{r.name}</Text>
                   {r.description && (
-                    <Text style={[styles.cardDesc, { color: colors.text }]}>{r.description}</Text>
+                    <Text style={[styles.cardDesc, { color: colors.icon }]} numberOfLines={2}>{r.description}</Text>
                   )}
                 </View>
-                <View style={{ flexDirection: 'row', gap: 8 }}>
+                <View style={styles.actionButtons}>
                   <TouchableOpacity
                     onPress={(e) => { e.stopPropagation(); handleEdit(r); }}
-                    style={{ padding: 8 }}
                     activeOpacity={0.6}
                   >
                     <Text style={{ fontSize: 18 }}>✏️</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={(e) => { e.stopPropagation(); handleDelete(r.id); }}
-                    style={{ padding: 8 }}
                     activeOpacity={0.6}
                   >
                     <Text style={{ fontSize: 18 }}>🗑️</Text>
@@ -179,13 +184,16 @@ export default function RoutinesScreen() {
                 </View>
               </View>
               <View style={styles.cardMeta}>
-                <Text style={[styles.metaText, { color: colors.icon }]}>
-                  🗓️ {r.days ? r.days.length : 0} días
-                </Text>
+                <View style={[styles.badge, { backgroundColor: colors.primaryLight }]}>
+                  <Text style={[styles.badgeText, { color: colors.primary }]}>
+                    📅 {r.days ? r.days.length : 0} días
+                  </Text>
+                </View>
               </View>
             </TouchableOpacity>
           ))
         )}
+        <View style={{ height: 20 }} />
       </ScrollView>
 
       {/* Modal de Eliminación */}
@@ -306,23 +314,149 @@ export default function RoutinesScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingTop: 60 },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 16 },
-  title: { fontSize: 28, fontWeight: 'bold' },
-  addButton: { borderRadius: 12, paddingHorizontal: 16, paddingVertical: 10 },
-  addButtonText: { color: '#fff', fontWeight: '700', fontSize: 15 },
-  list: { paddingHorizontal: 20 },
-  empty: { textAlign: 'center', marginTop: 40, fontSize: 16 },
-  card: { borderRadius: 16, padding: 16, marginBottom: 12, borderWidth: 1 },
-  cardTitle: { fontSize: 18, fontWeight: '700', marginBottom: 4 },
-  cardDesc: { fontSize: 14, marginBottom: 8 },
-  cardMeta: { flexDirection: 'row', gap: 16 },
-  metaText: { fontSize: 13 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 24 },
-  modalContent: { borderRadius: 20, padding: 24 },
-  modalTitle: { fontSize: 22, fontWeight: '700', marginBottom: 16, textAlign: 'center' },
-  input: { borderWidth: 1, borderRadius: 12, padding: 14, fontSize: 16, marginBottom: 12 },
-  modalButtons: { flexDirection: 'row', gap: 12, marginTop: 8 },
-  modalBtn: { flex: 1, borderRadius: 12, padding: 14, alignItems: 'center' },
+  container: { 
+    flex: 1, 
+    paddingTop: 0,
+  },
+  center: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center' 
+  },
+  header: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    paddingHorizontal: 24, 
+    paddingVertical: 32,
+    paddingTop: 40,
+  },
+  title: { 
+    fontSize: 32, 
+    fontWeight: '800',
+    letterSpacing: -0.5,
+    color: '#FFFFFF',
+  },
+  subtitle: { 
+    fontSize: 14,
+    fontWeight: '500',
+    color: 'rgba(255,255,255,0.85)',
+    marginTop: 4,
+  },
+  addButton: { 
+    borderRadius: 12, 
+    paddingHorizontal: 14, 
+    paddingVertical: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  addButtonText: { 
+    color: '#fff', 
+    fontWeight: '800', 
+    fontSize: 18 
+  },
+  list: { 
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+  },
+  empty: { 
+    textAlign: 'center', 
+    marginTop: 60, 
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  card: { 
+    borderRadius: 16, 
+    padding: 18, 
+    marginBottom: 12, 
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  cardTitle: { 
+    fontSize: 16, 
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  cardDesc: { 
+    fontSize: 13, 
+    marginBottom: 2,
+    fontWeight: '400',
+    lineHeight: 18,
+  },
+  cardMeta: { 
+    flexDirection: 'row', 
+    gap: 8 
+  },
+  badge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  badgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  metaText: { 
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  modalOverlay: { 
+    flex: 1, 
+    backgroundColor: 'rgba(0,0,0,0.5)', 
+    justifyContent: 'center', 
+    padding: 24 
+  },
+  modalContent: { 
+    borderRadius: 24, 
+    padding: 28,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 8,
+  },
+  modalTitle: { 
+    fontSize: 24, 
+    fontWeight: '800', 
+    marginBottom: 20, 
+    textAlign: 'center' 
+  },
+  input: { 
+    borderWidth: 1, 
+    borderRadius: 14, 
+    padding: 16, 
+    fontSize: 16, 
+    marginBottom: 14,
+    fontWeight: '500',
+  },
+  modalButtons: { 
+    flexDirection: 'row', 
+    gap: 12, 
+    marginTop: 12 
+  },
+  modalBtn: { 
+    flex: 1, 
+    borderRadius: 14, 
+    padding: 16, 
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
 });
