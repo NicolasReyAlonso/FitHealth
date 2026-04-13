@@ -40,16 +40,6 @@ def get_current_user(
         detail="No se pudieron validar las credenciales",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    
-    # TEMPORARY: Allow mock token for development
-    if token == "mock-token-dev":
-        # Return a mock user for development
-        mock_user = db.query(User).filter(User.id == 1).first()
-        if mock_user:
-            return mock_user
-        # If user doesn't exist, create a temporary one
-        return User(id=1, email="dev@test.com", username="devuser", password_hash="", role="user", is_active=True)
-    
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         sub: str | None = payload.get("sub")
