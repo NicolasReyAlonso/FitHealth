@@ -9,6 +9,10 @@ type User = {
   role: string;
   is_active: boolean;
   created_at: string;
+
+  first_name?: string;
+  last_name?: string;
+  second_last_name?: string;
 };
 
 type AuthContextType = {

@@ -3,8 +3,11 @@ import { StyleSheet, Text, View, TouchableOpacity, Alert, Platform } from 'react
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/context/auth-context';
+import { useNavigation } from '@react-navigation/native';
+import { router } from 'expo-router';
 
 export default function ProfileScreen() {
+  const navigation = useNavigation();
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
   const { user, logout } = useAuth();
@@ -52,7 +55,18 @@ export default function ProfileScreen() {
             {user?.created_at ? new Date(user.created_at).toLocaleDateString() : '-'}
           </Text>
         </View>
+        <View style={[styles.infoCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Text style={[styles.infoLabel, { color: colors.icon }]}>Nombre</Text>
+          <Text style={[styles.infoValue, { color: colors.text }]}>
+            {/* {user?.created_at ? new Date(user.created_at).toLocaleDateString() : '-'} */}
+              {user?.first_name} {user?.last_name} {user?.second_last_name}
+          </Text>
+        </View>
       </View>
+
+      <TouchableOpacity style={{ marginTop: 10 }} onPress={() => router.push('/edit_profile')}>
+        <Text style={{ color: colors.primary }}>Edit profile</Text>
+      </TouchableOpacity>
 
       <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
         <Text style={styles.logoutText}>Cerrar Sesión</Text>
