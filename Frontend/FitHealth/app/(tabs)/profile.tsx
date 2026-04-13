@@ -1,18 +1,16 @@
 import React from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, Alert, Platform } from 'react-native';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/context/auth-context';
 import { useNavigation } from '@react-navigation/native';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from '@/components/language-switcher';
-
+import { profileStyles as styles } from '@/styles/profile-styles';
+import { useColors } from '@/hooks/use-colors';
 
 export default function ProfileScreen() {
   const navigation = useNavigation();
-  const colorScheme = useColorScheme() ?? 'light';
-  const colors = Colors[colorScheme];
+  const colors = useColors();
   const { user, logout } = useAuth();
   const { t } = useTranslation(); // translation
 
@@ -81,20 +79,3 @@ export default function ProfileScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, paddingTop: 80 },
-  header: { alignItems: 'center', marginBottom: 32 },
-  avatar: { width: 80, height: 80, borderRadius: 40, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
-  avatarText: { color: '#fff', fontSize: 32, fontWeight: 'bold' },
-  username: { fontSize: 24, fontWeight: 'bold' },
-  email: { fontSize: 14, marginTop: 4 },
-  roleBadge: { marginTop: 8, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 6 },
-  roleText: { fontSize: 14, fontWeight: '600' },
-  section: { paddingHorizontal: 20, gap: 12, marginBottom: 32 },
-  infoCard: { borderRadius: 14, padding: 16, borderWidth: 1, flexDirection: 'row', justifyContent: 'space-between' },
-  infoLabel: { fontSize: 14 },
-  infoValue: { fontSize: 14, fontWeight: '600' },
-  logoutButton: { marginHorizontal: 20, backgroundColor: '#EF5350', borderRadius: 14, padding: 16, alignItems: 'center' },
-  logoutText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-});

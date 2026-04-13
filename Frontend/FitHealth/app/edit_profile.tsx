@@ -1,31 +1,33 @@
 import React, { useState } from 'react';
 import { View, TextInput, Button } from 'react-native';
 import { useAuth } from '@/context/auth-context';
+import { profileStyles as styles } from '@/styles/profile-styles';
+import { useColors } from '@/hooks/use-colors';
+
+import api from '@/services/api';
 
 export default function EditProfileScreen() {
-  const { user, token } = useAuth();
+  const { user, setUser } = useAuth();
+  const colors = useColors();
 
   const [firstName, setFirstName] = useState(user?.first_name || '');
   const [lastName, setLastName] = useState(user?.last_name || '');
   const [secondLastName, setSecondLastName] = useState(user?.second_last_name || '');
-
+  
   const save = async () => {
-    await fetch('http://YOUR_API/me', {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        first_name: firstName,
-        last_name: lastName,
-        second_last_name: secondLastName,
-      }),
+    if (!user) return;
+
+    const res = await api.patch(`/users/${user.id}`, {
+      first_name: firstName,
+      last_name: lastName,
+      second_last_name: secondLastName,
     });
+
+    setUser(res.data); // update UI instantly
   };
 
   return (
-    <View style={{ padding: 20 }}>
+    <View style={[styles.infoCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
       <TextInput
         placeholder="First name"
         value={firstName}
