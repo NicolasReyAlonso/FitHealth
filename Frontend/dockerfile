@@ -2,9 +2,12 @@ FROM node:20-alpine
 
 WORKDIR /usr/src/app
 
+# Install build dependencies needed for native modules in Alpine
+RUN apk add --no-cache python3 make g++
+
 # Install dependencies first to leverage Docker layer cache.
 COPY FitHealth/package*.json ./
-RUN npm install
+RUN npm install --legacy-peer-deps
 
 # Copy Expo project source.
 COPY FitHealth/ ./

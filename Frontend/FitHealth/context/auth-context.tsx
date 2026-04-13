@@ -30,20 +30,29 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // TEMPORARY: Mock user for development
+  const mockUser: User = {
+    id: 1,
+    email: 'dev@test.com',
+    username: 'devuser',
+    role: 'user',
+    is_active: true,
+    created_at: new Date().toISOString(),
+  };
+  const mockToken = 'mock-token-dev';
+
+  const [user, setUser] = useState<User | null>(mockUser);
+  const [token, setToken] = useState<string | null>(mockToken);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Restore session on app start
   useEffect(() => {
     (async () => {
       try {
-        const storedToken = await AsyncStorage.getItem('access_token');
-        if (storedToken) {
-          setToken(storedToken);
-          const res = await api.get('/auth/me');
-          setUser(res.data);
-        }
+        // Store mock token so the API interceptor can use it
+        await AsyncStorage.setItem('access_token', mockToken);
+        setToken(mockToken);
+        setUser(mockUser);
       } catch {
         await AsyncStorage.removeItem('access_token');
       } finally {
