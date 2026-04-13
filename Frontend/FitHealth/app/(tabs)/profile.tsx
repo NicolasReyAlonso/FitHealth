@@ -5,12 +5,16 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/context/auth-context';
 import { useNavigation } from '@react-navigation/native';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
+import LanguageSwitcher from '@/components/language-switcher';
+
 
 export default function ProfileScreen() {
   const navigation = useNavigation();
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
   const { user, logout } = useAuth();
+  const { t } = useTranslation(); // translation
 
   const handleLogout = () => {
     if (Platform.OS === 'web') {
@@ -28,6 +32,7 @@ export default function ProfileScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
+        <LanguageSwitcher />
         <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
           <Text style={styles.avatarText}>
             {user?.username?.charAt(0).toUpperCase() ?? '?'}
@@ -64,7 +69,7 @@ export default function ProfileScreen() {
         </View>
         <TouchableOpacity style={[styles.infoCard, { backgroundColor: colors.edit, borderColor: colors.border }]}
             onPress={() => router.push('/edit_profile')}>
-          <Text style={[styles.infoLabel, { color: colors.icon }]}>✏️ Edit profile</Text>
+          <Text style={[styles.infoLabel, { color: colors.icon }]}>✏️ {t('edit_profile')}</Text>
         </TouchableOpacity>
 
       </View>

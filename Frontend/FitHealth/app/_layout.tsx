@@ -8,6 +8,8 @@ import 'react-native-reanimated';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider, useAuth } from '@/context/auth-context';
 
+import '../i18n';
+
 function RootNavigator() {
   const { user, isLoading } = useAuth();
   const segments = useSegments();
