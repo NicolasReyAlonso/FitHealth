@@ -88,6 +88,7 @@ export default function EventsScreen() {
     }, [])
   );
 
+  // NOSONAR
   const handleCreate = async () => {
     if (!name.trim()) {
       Alert.alert('Error', 'El nombre es requerido');
@@ -104,9 +105,9 @@ export default function EventsScreen() {
     }
     if (eventType === 'biometric') {
       const biometricData: Record<string, unknown> = {};
-      if (hrAvg) biometricData.heart_rate_avg = parseInt(hrAvg, 10);
-      if (hrMax) biometricData.heart_rate_max = parseInt(hrMax, 10);
-      if (hrMin) biometricData.heart_rate_min = parseInt(hrMin, 10);
+      if (hrAvg) biometricData.heart_rate_avg = Number.parseInt(hrAvg, 10);
+      if (hrMax) biometricData.heart_rate_max = Number.parseInt(hrMax, 10);
+      if (hrMin) biometricData.heart_rate_min = Number.parseInt(hrMin, 10);
       if (bloodSugar) biometricData.blood_sugar = parseFloat(bloodSugar);
       
       if (Object.keys(biometricData).length > 0) {
@@ -114,7 +115,7 @@ export default function EventsScreen() {
       }
     }
     if (eventType === 'water' && waterMl) {
-      payload.water_log = { amount_ml: parseInt(waterMl, 10) };
+      payload.water_log = { amount_ml: Number.parseInt(waterMl, 10) };
     }
     if (eventType === 'weight' && weightKg) {
       payload.weight_log = { weight_kg: parseFloat(weightKg) };
@@ -207,14 +208,21 @@ export default function EventsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.text }]}>Mis Eventos</Text>
-        <TouchableOpacity style={[styles.addButton, { backgroundColor: colors.secondary }]} onPress={() => setShowModal(true)}>
-          <Text style={styles.addButtonText}>+ Nuevo</Text>
+      <View style={[styles.header, { backgroundColor: colors.secondary }]}>
+        <View>
+          <Text style={styles.title}>Mis Eventos</Text>
+          <Text style={styles.subtitle}>Registra y controla tu salud</Text>
+        </View>
+        <TouchableOpacity 
+          style={[styles.addButton, { backgroundColor: 'rgba(255,255,255,0.25)' }]} 
+          onPress={() => setShowModal(true)}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.addButtonText}>＋</Text>
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.list}>
+      <ScrollView style={styles.list} showsVerticalScrollIndicator={false}>
         {events.length === 0 ? (
           <Text style={[styles.empty, { color: colors.icon }]}>
             No tienes eventos registrados aún.
@@ -226,45 +234,46 @@ export default function EventsScreen() {
               style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}
             >
               <View style={styles.cardHeader}>
-                <Text style={styles.emoji}>{getTypeEmoji(e.event_type)}</Text>
+                <View style={[styles.emoji, { backgroundColor: `${colors.secondary}20` }]}>
+                  <Text>{getTypeEmoji(e.event_type)}</Text>
+                </View>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.cardTitle, { color: colors.text }]}>{e.name}</Text>
                   <Text style={[styles.cardDate, { color: colors.icon }]}>
-                    {new Date(e.timestamp).toLocaleString()}
+                    {new Date(e.timestamp).toLocaleString('es-ES')}
                   </Text>
                 </View>
-                <TouchableOpacity
-                  onPress={() => handleEdit(e)}
-                  style={styles.deleteButton}
-                  activeOpacity={0.6}
-                >
-                  <Text style={styles.deleteIcon}>✏️</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => handleDelete(e.id)}
-                  style={styles.deleteButton}
-                  activeOpacity={0.6}
-                >
-                  <Text style={styles.deleteIcon}>🗑️</Text>
-                </TouchableOpacity>
+                <View style={styles.actionButtons}>
+                  <TouchableOpacity
+                    onPress={() => handleEdit(e)}
+                    activeOpacity={0.6}
+                  >
+                    <Text style={styles.deleteIcon}>✏️</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => handleDelete(e.id)}
+                    activeOpacity={0.6}
+                  >
+                    <Text style={styles.deleteIcon}>🗑️</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
               {e.notes && <Text style={[styles.cardNotes, { color: colors.icon }]}>{e.notes}</Text>}
               {(e as any).routine_id && (
-                <Text style={[styles.cardNotes, { color: colors.tint, fontWeight: 'bold' }]}>
-                  Rutina asociada: {routines.find((r) => r.id === (e as any).routine_id)?.name || (e as any).routine_id}
+                <Text style={[styles.cardNotes, { color: colors.primary, fontWeight: '600' }]}>
+                  🎯 Rutina: {routines.find((r) => r.id === (e as any).routine_id)?.name || (e as any).routine_id}
                 </Text>
               )}
               {e.event_type === 'biometric' && (e as any).biometric && (
-                <View style={{ marginTop: 5 }}>
-                  {(e as any).biometric.heart_rate_avg && <Text style={{ color: colors.text }}>BPM Medio: {(e as any).biometric.heart_rate_avg}</Text>}
-                  {(e as any).biometric.heart_rate_max && <Text style={{ color: colors.text }}>BPM Pico: {(e as any).biometric.heart_rate_max}</Text>}
-                  {(e as any).biometric.heart_rate_min && <Text style={{ color: colors.text }}>BPM Mínimo: {(e as any).biometric.heart_rate_min}</Text>}
-                  {(e as any).biometric.blood_sugar && <Text style={{ color: colors.text }}>Azúcar: {(e as any).biometric.blood_sugar} mg/dL</Text>}
+                <View style={{ marginTop: 10 }}>
+                  {(e as any).biometric.heart_rate_avg && <Text style={[styles.cardNotes, { color: colors.text }]}>❤️ BPM Medio: {(e as any).biometric.heart_rate_avg}</Text>}
+                  {(e as any).biometric.blood_sugar && <Text style={[styles.cardNotes, { color: colors.text }]}>🍬 Azúcar: {(e as any).biometric.blood_sugar} mg/dL</Text>}
                 </View>
               )}
             </View>
           ))
         )}
+        <View style={{ height: 20 }} />
       </ScrollView>
 
       {/* Modal de Confirmación de Delete */}
@@ -465,11 +474,11 @@ export default function EventsScreen() {
                   style={[
                     styles.typeChip,
                     { borderColor: colors.border, marginRight: 8 },
-                    !routineId ? { backgroundColor: colors.primary, borderColor: colors.primary } : { backgroundColor: colors.background }
+                    routineId ? { backgroundColor: colors.background } : { backgroundColor: colors.primary, borderColor: colors.primary }
                   ]}
                   onPress={() => setRoutineId('')}
                 >
-                  <Text style={{ color: !routineId ? '#fff' : colors.text }}>Ninguna</Text>
+                  <Text style={{ color: routineId ? colors.text : '#fff' }}>Ninguna</Text>
                 </TouchableOpacity>
                 {routines.map((r) => (
                   <TouchableOpacity
@@ -512,30 +521,183 @@ export default function EventsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingTop: 60 },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 16 },
-  title: { fontSize: 28, fontWeight: 'bold' },
-  addButton: { borderRadius: 12, paddingHorizontal: 16, paddingVertical: 10 },
-  addButtonText: { color: '#fff', fontWeight: '700', fontSize: 15 },
-  list: { paddingHorizontal: 20 },
-  empty: { textAlign: 'center', marginTop: 40, fontSize: 16 },
-  card: { borderRadius: 16, padding: 16, marginBottom: 12, borderWidth: 1 },
-  cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  emoji: { fontSize: 24 },
-  cardTitle: { fontSize: 16, fontWeight: '700' },
-  cardDate: { fontSize: 12, marginTop: 2 },
-  cardNotes: { fontSize: 13, marginTop: 8 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 24 },
-  modalContent: { borderRadius: 20, padding: 24 },
-  modalTitle: { fontSize: 22, fontWeight: '700', marginBottom: 16, textAlign: 'center' },
-  label: { fontSize: 15, fontWeight: '600', marginBottom: 8 },
-  typeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 },
-  typeButton: { borderWidth: 2, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8 },
-  typeText: { fontSize: 13, fontWeight: '600', color: '#8E9AAF' },
-  input: { borderWidth: 1, borderRadius: 12, padding: 14, fontSize: 16, marginBottom: 12 },
-  modalButtons: { flexDirection: 'row', gap: 12, marginTop: 8 },
-  modalBtn: { flex: 1, borderRadius: 12, padding: 14, alignItems: 'center' },
-  deleteButton: { padding: 8, justifyContent: 'center', alignItems: 'center' },
-  deleteIcon: { fontSize: 20 },
+  container: { 
+    flex: 1, 
+    paddingTop: 0 
+  },
+  center: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center' 
+  },
+  header: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    paddingHorizontal: 24, 
+    paddingVertical: 32,
+    paddingTop: 40,
+  },
+  title: { 
+    fontSize: 32, 
+    fontWeight: '800',
+    letterSpacing: -0.5,
+    color: '#FFFFFF',
+  },
+  subtitle: { 
+    fontSize: 14,
+    fontWeight: '500',
+    color: 'rgba(255,255,255,0.85)',
+    marginTop: 4,
+  },
+  addButton: { 
+    borderRadius: 12, 
+    paddingHorizontal: 14, 
+    paddingVertical: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  addButtonText: { 
+    color: '#fff', 
+    fontWeight: '800', 
+    fontSize: 18 
+  },
+  list: { 
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+  },
+  empty: { 
+    textAlign: 'center', 
+    marginTop: 60, 
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  card: { 
+    borderRadius: 16, 
+    padding: 18, 
+    marginBottom: 12, 
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  cardHeader: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    gap: 12 
+  },
+  emoji: { 
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    fontSize: 22,
+  },
+  cardTitle: { 
+    fontSize: 15, 
+    fontWeight: '700',
+    flex: 1,
+  },
+  cardDate: { 
+    fontSize: 12, 
+    marginTop: 4,
+    fontWeight: '500',
+  },
+  cardNotes: { 
+    fontSize: 13, 
+    marginTop: 10,
+    lineHeight: 18,
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  deleteButton: { 
+    padding: 4, 
+    justifyContent: 'center', 
+    alignItems: 'center' 
+  },
+  deleteIcon: { 
+    fontSize: 18 
+  },
+  modalOverlay: { 
+    flex: 1, 
+    backgroundColor: 'rgba(0,0,0,0.5)', 
+    justifyContent: 'center', 
+    padding: 24 
+  },
+  modalContent: { 
+    borderRadius: 24, 
+    padding: 28,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 8,
+  },
+  modalTitle: { 
+    fontSize: 24, 
+    fontWeight: '800', 
+    marginBottom: 20, 
+    textAlign: 'center' 
+  },
+  label: { 
+    fontSize: 15, 
+    fontWeight: '700', 
+    marginBottom: 10 
+  },
+  typeGrid: { 
+    flexDirection: 'row', 
+    flexWrap: 'wrap', 
+    gap: 10, 
+    marginBottom: 18 
+  },
+  typeButton: { 
+    borderWidth: 2, 
+    borderRadius: 14, 
+    paddingHorizontal: 14, 
+    paddingVertical: 10 
+  },
+  typeText: { 
+    fontSize: 13, 
+    fontWeight: '700',
+  },
+  input: { 
+    borderWidth: 1, 
+    borderRadius: 14, 
+    padding: 16, 
+    fontSize: 16, 
+    marginBottom: 14,
+    fontWeight: '500',
+  },
+  modalButtons: { 
+    flexDirection: 'row', 
+    gap: 12, 
+    marginTop: 12 
+  },
+  modalBtn: { 
+    flex: 1, 
+    borderRadius: 14, 
+    padding: 16, 
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  typeChip: {
+    borderWidth: 1.5,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
 });

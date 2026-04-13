@@ -5,61 +5,62 @@
 
 import { Platform } from 'react-native';
 
-const tintColorLight = '#1565C0';
-const tintColorDark = '#81D4FA';
+const tintColorLight = '#6366F1';
+const tintColorDark = '#818CF8';
 
 export const Colors = {
   light: {
-    text: '#1B5E20',
-    background: '#E8F5E9',
+    text: '#0F172A',
+    background: '#FFFFFF',
     tint: tintColorLight,
-    icon: '#388E3C',
-    tabIconDefault: '#8E9AAF',
+    icon: '#64748B',
+    tabIconDefault: '#CBD5E1',
     tabIconSelected: tintColorLight,
     card: '#FFFFFF',
-    primary: '#1565C0',
-    primaryLight: '#E3F2FD',
-    secondary: '#2E7D32',
-    secondaryLight: '#C8E6C9',
-    border: '#C8E6C9',
+    primary: '#6366F1',
+    primaryLight: '#EEF2FF',
+    secondary: '#EC4899',
+    secondaryLight: '#FCE7F3',
+    border: '#E2E8F0',
+    accent: '#F59E0B',
+    success: '#10B981',
+    danger: '#EF4444',
+    warning: '#F59E0B',
+    gray50: '#F9FAFB',
+    gray100: '#F3F4F6',
+    gray200: '#E5E7EB',
+    gray300: '#D1D5DB',
   },
   dark: {
-    text: '#E8F5E9',
-    background: '#0D1B0E',
+    text: '#F1F5F9',
+    background: '#0F172A',
     tint: tintColorDark,
-    icon: '#81C784',
-    tabIconDefault: '#607D8B',
+    icon: '#94A3B8',
+    tabIconDefault: '#475569',
     tabIconSelected: tintColorDark,
-    card: '#1B2E1C',
-    primary: '#42A5F5',
-    primaryLight: '#0D47A1',
-    secondary: '#66BB6A',
-    secondaryLight: '#1B5E20',
-    border: '#2E7D32',
+    card: '#1E293B',
+    primary: '#818CF8',
+    primaryLight: '#312E81',
+    secondary: '#F472B6',
+    secondaryLight: '#831843',
+    border: '#334155',
+    accent: '#FBBF24',
+    success: '#34D399',
+    danger: '#F87171',
+    warning: '#FBBF24',
+    gray50: '#1E293B',
+    gray100: '#0F172A',
+    gray200: '#1E293B',
+    gray300: '#334155',
   },
 };
 
-export const Fonts = Platform.select({
-  ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
-    sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
-    serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
-    rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
-    mono: 'ui-monospace',
-  },
-  default: {
-    sans: 'normal',
-    serif: 'serif',
-    rounded: 'normal',
-    mono: 'monospace',
-  },
-  web: {
-    sans: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
-    serif: "Georgia, 'Times New Roman', serif",
-    rounded: "'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif",
-    mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
-  },
-});
+/**
+ * Font definitions - Using only system fonts to avoid any external font loading
+ * This prevents FontFaceObserver timeouts and web load issues
+ */
+export const Fonts = {
+  sans: 'system-ui, -apple-system, sans-serif',
+  serif: 'Georgia, serif',
+  mono: 'monospace',
+};
