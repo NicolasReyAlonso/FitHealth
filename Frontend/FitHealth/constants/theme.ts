@@ -4,6 +4,7 @@
  */
 
 import { Platform } from 'react-native';
+import { blue } from 'react-native-reanimated/lib/typescript/Colors';
 
 const tintColorLight = '#1565C0';
 const tintColorDark = '#81D4FA';
@@ -22,6 +23,7 @@ export const Colors = {
     secondary: '#2E7D32',
     secondaryLight: '#C8E6C9',
     border: '#C8E6C9',
+    edit: '#2563eb'
   },
   dark: {
     text: '#E8F5E9',
@@ -36,6 +38,7 @@ export const Colors = {
     secondary: '#66BB6A',
     secondaryLight: '#1B5E20',
     border: '#2E7D32',
+    edit: '#2563eb'
   },
 };
 
