@@ -1,18 +1,21 @@
-import { StyleSheet, Text, View, ScrollView, Pressable } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, Pressable, Modal } from 'react-native';
 import { useAuth } from '@/context/auth-context';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import api from '@/services/api';
 
 export default function HomeScreen() {
   const { user } = useAuth();
+  const router = useRouter();
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
   const [routines, setRoutines] = useState(0);
   const [events, setEvents] = useState(0);
   const [weekStats, setWeekStats] = useState([0, 0, 0, 0, 0, 0, 0]);
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const [dayModalVisible, setDayModalVisible] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -31,25 +34,50 @@ export default function HomeScreen() {
       setRoutines(routinesData.length);
       setEvents(eventsData.length);
       
-      // Calcular eventos de los últimos 7 días
+      // Calcular actividad de esta semana (rutinas recurrentes + eventos)
       const today = new Date();
+      const currentDay = today.getDay();
+      const daysFromMonday = currentDay === 0 ? 6 : currentDay - 1;
+      const mondayOfWeek = new Date(today);
+      mondayOfWeek.setDate(today.getDate() - daysFromMonday);
+      mondayOfWeek.setHours(0, 0, 0, 0);
+      
+      const sundayOfWeek = new Date(mondayOfWeek);
+      sundayOfWeek.setDate(mondayOfWeek.getDate() + 6);
+      sundayOfWeek.setHours(23, 59, 59, 999);
+      
       const weekData = [0, 0, 0, 0, 0, 0, 0]; // Lun, Mar, Mié, Jue, Vie, Sab, Dom
       
+      // Contar rutinas recurrentes por día de la semana
+      routinesData.forEach((routine: any) => {
+        if (routine.days && Array.isArray(routine.days)) {
+          routine.days.forEach((routineDay: any) => {
+            // day_of_week: 0=Lunes, 6=Domingo
+            if (routineDay.day_of_week >= 0 && routineDay.day_of_week <= 6) {
+              weekData[routineDay.day_of_week]++;
+            }
+          });
+        }
+      });
+      
+      // Contar eventos que caen en esta semana
       eventsData.forEach((event: any) => {
-        if (event.date) {
-          const eventDate = new Date(event.date);
-          const dayOfWeek = eventDate.getDay();
-          // Convertir: domingo=0 → domingo=6, lunes=1 → lunes=0
-          const adjustedDay = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+        if (event.timestamp) {
+          const eventDate = new Date(event.timestamp);
+          console.log('Event:', event.name, 'Timestamp:', event.timestamp, 'Parsed date:', eventDate);
+          console.log('Monday:', mondayOfWeek, 'Sunday:', sundayOfWeek);
+          console.log('Is in range?', eventDate >= mondayOfWeek && eventDate <= sundayOfWeek);
           
-          // Solo contar si es de esta semana
-          const diffDays = Math.floor((today.getTime() - eventDate.getTime()) / (1000 * 60 * 60 * 24));
-          if (diffDays >= 0 && diffDays < 7) {
-            weekData[adjustedDay]++;
+          if (eventDate >= mondayOfWeek && eventDate <= sundayOfWeek) {
+            const dayOfWeek = eventDate.getDay();
+            const dayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+            weekData[dayIndex]++;
+            console.log('✅ Event counted on day', dayOfWeek, 'index', dayIndex);
           }
         }
       });
       
+      console.log('Weekly activity:', weekData);
       setWeekStats(weekData);
     } catch (error) {
       console.error('Error cargando estadísticas:', error);
@@ -81,6 +109,34 @@ export default function HomeScreen() {
 
   const getTodayDate = () => new Date().getDate();
 
+  const handleStatPress = (screen: 'routines' | 'events') => {
+    router.push(`/(tabs)/${screen}` as any);
+  };
+
+  const handleDayPress = (day: number | null) => {
+    if (day !== null) {
+      setSelectedDay(day);
+      setDayModalVisible(true);
+    }
+  };
+
+  const handleFeaturePress = (feature: string) => {
+    switch (feature) {
+      case 'Tu Resumen':
+        router.push('/(tabs)');
+        break;
+      case 'Rutinas':
+        router.push('/(tabs)/routines');
+        break;
+      case 'Eventos':
+        router.push('/(tabs)/events');
+        break;
+      case 'Chat Médico':
+        router.push('/(tabs)/chat');
+        break;
+    }
+  };
+
   const features = [
     {
       icon: '📊',
@@ -108,11 +164,12 @@ export default function HomeScreen() {
   const dayLabels = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sab', 'Dom'];
 
   return (
-    <ScrollView 
-      style={[styles.container, { backgroundColor: colors.background }]}
-      contentContainerStyle={styles.contentContainer}
-      showsVerticalScrollIndicator={false}
-    >
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <ScrollView 
+        style={{ flex: 1 }}
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+      >
       {/* Header Hero */}
       <View style={[styles.heroSection, { backgroundColor: colors.primary }]}>
         <Text style={styles.heroGreeting}>
@@ -130,21 +187,39 @@ export default function HomeScreen() {
 
       {/* Stats Cards */}
       <View style={styles.statsContainer}>
-        <View style={[styles.statBox, { backgroundColor: colors.primaryLight }]}>
+        <Pressable
+          onPress={() => handleStatPress('routines')}
+          style={({ pressed }) => [
+            styles.statBox,
+            { backgroundColor: colors.primaryLight },
+            pressed && styles.statBoxPressed,
+          ]}>
           <Text style={styles.statNumber}>{routines}</Text>
           <Text style={[styles.statLabel, { color: colors.primary }]}>Rutinas</Text>
           <Text style={[styles.statSubtext, { color: colors.primary }]}>activas</Text>
-        </View>
-        <View style={[styles.statBox, { backgroundColor: colors.secondaryLight }]}>
+        </Pressable>
+        <Pressable
+          onPress={() => handleStatPress('events')}
+          style={({ pressed }) => [
+            styles.statBox,
+            { backgroundColor: colors.secondaryLight },
+            pressed && styles.statBoxPressed,
+          ]}>
           <Text style={styles.statNumber}>{events}</Text>
           <Text style={[styles.statLabel, { color: colors.secondary }]}>Eventos</Text>
           <Text style={[styles.statSubtext, { color: colors.secondary }]}>registrados</Text>
-        </View>
-        <View style={[styles.statBox, { backgroundColor: `${colors.accent}15` }]}>
+        </Pressable>
+        <Pressable
+          onPress={() => handleStatPress('events')}
+          style={({ pressed }) => [
+            styles.statBox,
+            { backgroundColor: `${colors.accent}15` },
+            pressed && styles.statBoxPressed,
+          ]}>
           <Text style={styles.statNumber}>0</Text>
           <Text style={[styles.statLabel, { color: colors.accent }]}>Kilómetros</Text>
           <Text style={[styles.statSubtext, { color: colors.accent }]}>esta semana</Text>
-        </View>
+        </Pressable>
       </View>
 
 
@@ -157,7 +232,10 @@ export default function HomeScreen() {
           {weekStats.map((value, index) => {
             const dayLabel = dayLabels[index];
             return (
-              <View key={dayLabel} style={styles.barWrapper}>
+              <Pressable
+                key={dayLabel}
+                onPress={() => handleDayPress(index)}
+                style={styles.barWrapper}>
                 <View style={styles.barLabels}>
                   <Text style={[styles.barValue, { color: colors.primary }]}>{value}</Text>
                 </View>
@@ -171,7 +249,7 @@ export default function HomeScreen() {
                   ]}
                 />
                 <Text style={[styles.dayLabel, { color: colors.icon }]}>{dayLabels[index]}</Text>
-              </View>
+              </Pressable>
             );
           })}
         </View>
@@ -191,20 +269,22 @@ export default function HomeScreen() {
             const isToday = day === today;
             const cellKey = day !== null ? `day-${day}` : `empty-${Math.random()}`;
             return (
-              <View
+              <Pressable
                 key={cellKey}
-                style={[
+                onPress={() => handleDayPress(day)}
+                disabled={day === null}
+                style={({ pressed }) => [
                   styles.dayCell,
                   {
                     backgroundColor: isToday ? colors.primary : colors.gray50,
                     borderColor: isToday ? colors.primary : colors.border,
+                    opacity: day === null ? 0 : pressed && day !== null ? 0.8 : 1,
                   },
-                ]}
-              >
+                ]}>
                 <Text style={[styles.dayNumber, { color: isToday ? '#fff' : colors.text }]}>
                   {day}
                 </Text>
-              </View>
+              </Pressable>
             );
           })}
         </View>
@@ -237,6 +317,7 @@ export default function HomeScreen() {
           {features.map((feature) => (
             <Pressable
               key={feature.title}
+              onPress={() => handleFeaturePress(feature.title)}
               style={({ pressed }) => [
                 styles.featureCard,
                 {
@@ -265,6 +346,46 @@ export default function HomeScreen() {
       {/* Spacing */}
       <View style={{ height: 30 }} />
     </ScrollView>
+
+    {/* Day Details Modal */}
+    <Modal
+      animationType="slide"
+      transparent={true}
+      visible={dayModalVisible}
+      onRequestClose={() => setDayModalVisible(false)}>
+      <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
+        <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
+          <View style={styles.modalHeader}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>
+              Eventos - {selectedDay} de {getMonthName()}
+            </Text>
+            <Pressable
+              onPress={() => setDayModalVisible(false)}
+              style={styles.closeButton}>
+              <Text style={[styles.closeButtonText, { color: colors.primary }]}>✕</Text>
+            </Pressable>
+          </View>
+          <View style={styles.modalBody}>
+            <Text style={[styles.noEventsText, { color: colors.icon }]}>
+              Pulsa el botón "Eventos" para agregar registros del día {selectedDay}
+            </Text>
+          </View>
+          <Pressable
+            onPress={() => {
+              setDayModalVisible(false);
+              router.push('/(tabs)/events');
+            }}
+            style={({ pressed }) => [
+              styles.modalButton,
+              { backgroundColor: colors.primary },
+              pressed && { opacity: 0.8 },
+            ]}>
+            <Text style={styles.modalButtonText}>Ver Eventos</Text>
+          </Pressable>
+        </View>
+      </View>
+      </Modal>
+    </View>
   );
 }
 
@@ -505,5 +626,62 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
     fontWeight: '400',
+  },
+  statBoxPressed: {
+    opacity: 0.8,
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 32,
+    maxHeight: '70%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    flex: 1,
+  },
+  closeButton: {
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closeButtonText: {
+    fontSize: 24,
+    fontWeight: '600',
+  },
+  modalBody: {
+    marginBottom: 20,
+  },
+  noEventsText: {
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  modalButton: {
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  modalButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
   },
 });
