@@ -22,6 +22,9 @@ export default function RoutineDetailScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [addingType, setAddingType] = useState<'exercise'|'diet'|'med'|null>(null);
   const [savingItem, setSavingItem] = useState(false);
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+  const [selectedDaysForDuplicate, setSelectedDaysForDuplicate] = useState<number[]>([]);
+  const [copyingDays, setCopyingDays] = useState(false);
   
   // Forms states
   const [itemName, setItemName] = useState('');
@@ -118,13 +121,13 @@ export default function RoutineDetailScreen() {
         if (addingType === 'exercise') {
             await api.post(`/routines/${id}/days/${selectedDay}/exercises`, {
                 name: itemName,
-                sets: itemSets ? parseInt(itemSets) : null,
-                reps: itemReps ? parseInt(itemReps) : null
+                sets: itemSets ? Number.parseInt(itemSets) : null,
+                reps: itemReps ? Number.parseInt(itemReps) : null
             });
         } else if (addingType === 'diet') {
             await api.post(`/routines/${id}/days/${selectedDay}/diets`, {
                 name: itemName,
-                calories: itemCalories ? parseInt(itemCalories) : null,
+                calories: itemCalories ? Number.parseInt(itemCalories) : null,
                 time_of_day: formattedTime
             });
         } else if (addingType === 'med') {
@@ -164,6 +167,30 @@ export default function RoutineDetailScreen() {
       setModalVisible(true);
   };
 
+  const confirmDuplicateDays = async () => {
+    if (selectedDaysForDuplicate.length === 0) {
+      Alert.alert('Aviso', 'Selecciona al menos un día');
+      return;
+    }
+    try {
+      setCopyingDays(true);
+      // Usar el nuevo endpoint que copia el contenido del día actual a otros días
+      await api.post(`/routines/${id}/duplicate-day`, { 
+        source_day: selectedDay,
+        target_days: selectedDaysForDuplicate 
+      });
+      Alert.alert('Éxito', 'Rutina copiada a los días seleccionados');
+      setShowDuplicateModal(false);
+      setSelectedDaysForDuplicate([]);
+      fetchRoutine();
+    } catch (error: any) {
+      console.error('Error duplicating day:', error);
+      Alert.alert('Error', error.response?.data?.detail || 'No se pudo copiar la rutina');
+    } finally {
+      setCopyingDays(false);
+    }
+  };
+
   if (loading || !routine) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
@@ -183,16 +210,20 @@ export default function RoutineDetailScreen() {
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           {DAYS.map((dayName, index) => {
             const isSelected = selectedDay === index;
+            const dayHasContent = routine.days.some((d: any) => d.day_of_week === index);
             return (
               <TouchableOpacity
                 key={index}
                 style={[
                     styles.dayTab, 
-                    isSelected && { backgroundColor: colors.primary, borderColor: colors.primary }
+                    isSelected && { backgroundColor: colors.primary, borderColor: colors.primary },
+                    dayHasContent && !isSelected && { backgroundColor: colors.primaryLight, borderColor: colors.primary }
                 ]}
                 onPress={() => setSelectedDay(index)}
               >
-                <Text style={{ color: isSelected ? '#FFF' : colors.text, fontWeight: 'bold' }}>{dayName}</Text>
+                <Text style={{ color: isSelected ? '#FFF' : dayHasContent ? colors.primary : colors.text, fontWeight: 'bold' }}>
+                  {dayName} {dayHasContent ? '✓' : ''}
+                </Text>
               </TouchableOpacity>
             );
           })}
@@ -264,6 +295,18 @@ export default function RoutineDetailScreen() {
               </View>
           ))}
           
+          {/* Sección para copiar a otros días */}
+          <View style={{ marginTop: 32, marginBottom: 20, borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 20 }}>
+            <TouchableOpacity 
+              style={{ backgroundColor: colors.primaryLight, borderRadius: 12, padding: 16, borderWidth: 2, borderColor: colors.primary }}
+              onPress={() => setShowDuplicateModal(true)}
+            >
+              <Text style={{ color: colors.primary, fontWeight: '600', fontSize: 16, textAlign: 'center' }}>
+                📋 Añadir esta rutina para otros días
+              </Text>
+            </TouchableOpacity>
+          </View>
+          
           <View style={{ height: 40 }} />
       </ScrollView>
 
@@ -312,6 +355,98 @@ export default function RoutineDetailScreen() {
                 {savingItem ? <ActivityIndicator color="#fff" /> : <Text style={{ textAlign: 'center', color: '#fff', fontWeight: 'bold' }}>Guardar</Text>}
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal Copiar a otros días */}
+      <Modal visible={showDuplicateModal} transparent animationType="slide">
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: colors.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 40, maxHeight: '80%' }}>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={{ fontSize: 20, fontWeight: 'bold', color: colors.text, marginBottom: 8 }}>
+                Copiar a otros días
+              </Text>
+              <Text style={{ fontSize: 14, color: colors.icon, marginBottom: 16 }}>
+                Copiando contenido de <Text style={{ fontWeight: 'bold', color: colors.primary }}>{DAYS[selectedDay]}</Text> a:
+              </Text>
+              
+              {DAYS.map((dayName, index) => {
+                const isSelected = selectedDaysForDuplicate.includes(index);
+                const isSourceDay = index === selectedDay;
+                const bgColor = isSelected ? colors.primaryLight : colors.background;
+                const borderClr = isSelected ? colors.primary : colors.border;
+                const textOpacity = isSourceDay ? 0.5 : 1;
+                const textColor = isSourceDay ? colors.icon : (isSelected ? colors.primary : colors.text);
+                const icon = isSourceDay ? '📍' : (isSelected ? '✅' : '☐');
+                
+                return (
+                  <TouchableOpacity
+                    key={`day-${index}`}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      paddingHorizontal: 16,
+                      paddingVertical: 12,
+                      marginBottom: 8,
+                      borderRadius: 12,
+                      backgroundColor: bgColor,
+                      borderWidth: 1,
+                      borderColor: borderClr,
+                      opacity: textOpacity,
+                    }}
+                    onPress={() => {
+                      if (isSourceDay) {
+                        Alert.alert('Aviso', `${dayName} es el día de origen (ya tiene este contenido)`);
+                        return;
+                      }
+                      if (isSelected) {
+                        setSelectedDaysForDuplicate(selectedDaysForDuplicate.filter(d => d !== index));
+                      } else {
+                        setSelectedDaysForDuplicate([...selectedDaysForDuplicate, index]);
+                      }
+                    }}
+                    disabled={isSourceDay}
+                  >
+                    <Text style={{ fontSize: 20, marginRight: 12 }}>
+                      {icon}
+                    </Text>
+                    <Text style={{ 
+                      color: textColor, 
+                      fontSize: 16, 
+                      fontWeight: isSelected ? '600' : '500', 
+                      flex: 1 
+                    }}>
+                      {dayName}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+              
+              <View style={{ flexDirection: 'row', gap: 12, marginTop: 24 }}>
+                <TouchableOpacity
+                  style={{ flex: 1, backgroundColor: colors.border, borderRadius: 12, padding: 14, alignItems: 'center' }}
+                  onPress={() => {
+                    setShowDuplicateModal(false);
+                    setSelectedDaysForDuplicate([]);
+                  }}
+                  disabled={copyingDays}
+                >
+                  <Text style={{ color: colors.text, fontWeight: '600' }}>Cancelar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={{ flex: 1, backgroundColor: colors.primary, borderRadius: 12, padding: 14, alignItems: 'center', opacity: selectedDaysForDuplicate.length > 0 && !copyingDays ? 1 : 0.5 }}
+                  onPress={confirmDuplicateDays}
+                  disabled={selectedDaysForDuplicate.length === 0 || copyingDays}
+                >
+                  {copyingDays ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={{ color: '#fff', fontWeight: '600' }}>Copiar ({selectedDaysForDuplicate.length})</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
           </View>
         </View>
       </Modal>

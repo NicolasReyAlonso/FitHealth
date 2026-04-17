@@ -104,6 +104,7 @@ export default function RoutinesScreen() {
     setEditingDescription(routine.description || '');
   };
 
+
   const confirmEdit = async () => {
     if (!editingId) return;
     try {
@@ -168,7 +169,7 @@ export default function RoutinesScreen() {
                     <Text style={[styles.cardDesc, { color: colors.icon }]} numberOfLines={2}>{r.description}</Text>
                   )}
                 </View>
-                <View style={styles.actionButtons}>
+              <View style={styles.actionButtons}>
                   <TouchableOpacity
                     onPress={(e) => { e.stopPropagation(); handleEdit(r); }}
                     activeOpacity={0.6}

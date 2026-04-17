@@ -10,7 +10,7 @@ from app.models.user import User
 from app.schemas.routine import (
     RoutineCreate, RoutineRead, RoutineUpdate,
     RoutineExerciseCreate, RoutineDietCreate, RoutineMedicationCreate,
-    RoutineExerciseRead, RoutineDietRead, RoutineMedicationRead
+    RoutineExerciseRead, RoutineDietRead, RoutineMedicationRead, RoutineDayRead
 )
 from app.models.routine import RoutineDay, RoutineExercise, RoutineDiet, RoutineMedication
 
@@ -159,6 +159,108 @@ def create_routine(
     current_user: User = Depends(get_current_user),
 ):
     return crud.routine.create_routine(db, routine_data, user_id=current_user.id)
+
+
+@router.post("/{routine_id}/days", response_model=RoutineRead)
+def add_day_to_routine(
+    routine_id: int,
+    day_data: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    db_routine = crud.routine.get_routine(db, routine_id)
+    if not db_routine or db_routine.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Rutina no encontrada")
+    
+    day_of_week = day_data.get("day_of_week")
+    if day_of_week is None or not isinstance(day_of_week, int) or day_of_week < 0 or day_of_week > 6:
+        raise HTTPException(status_code=400, detail="day_of_week debe ser un número entre 0 y 6")
+    
+    # Verificar si ya existe
+    existing_day = next((d for d in db_routine.days if d.day_of_week == day_of_week), None)
+    if not existing_day:
+        # Crear nuevo día
+        new_day = RoutineDay(routine_id=routine_id, day_of_week=day_of_week)
+        db.add(new_day)
+        db.commit()
+    
+    # Refrescar la rutina completa y devolverla
+    db.refresh(db_routine)
+    return db_routine
+
+
+@router.post("/{routine_id}/duplicate-day", response_model=RoutineRead)
+def duplicate_routine_day(
+    routine_id: int,
+    day_data: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Copia el contenido de un día a otros días de la rutina"""
+    db_routine = crud.routine.get_routine(db, routine_id)
+    if not db_routine or db_routine.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Rutina no encontrada")
+    
+    source_day = day_data.get("source_day")
+    target_days = day_data.get("target_days", [])
+    
+    if source_day is None or not isinstance(source_day, int) or source_day < 0 or source_day > 6:
+        raise HTTPException(status_code=400, detail="source_day debe ser un número entre 0 y 6")
+    
+    if not isinstance(target_days, list) or len(target_days) == 0:
+        raise HTTPException(status_code=400, detail="target_days debe ser una lista con al menos un día")
+    
+    # Obtener el día fuente
+    source_routine_day = next((d for d in db_routine.days if d.day_of_week == source_day), None)
+    if not source_routine_day:
+        raise HTTPException(status_code=404, detail="El día de origen no existe en la rutina")
+    
+    # Para cada día destino
+    for target_day in target_days:
+        if not isinstance(target_day, int) or target_day < 0 or target_day > 6:
+            continue
+        
+        # Crear el día destino si no existe
+        target_routine_day = next((d for d in db_routine.days if d.day_of_week == target_day), None)
+        if not target_routine_day:
+            target_routine_day = RoutineDay(routine_id=routine_id, day_of_week=target_day)
+            db.add(target_routine_day)
+            db.flush()  # Para obtener el ID antes de hacer commit
+        
+        # Copiar ejercicios
+        for exercise in source_routine_day.exercises:
+            new_exercise = RoutineExercise(
+                routine_day_id=target_routine_day.id,
+                name=exercise.name,
+                sets=exercise.sets,
+                reps=exercise.reps,
+                image_url=exercise.image_url
+            )
+            db.add(new_exercise)
+        
+        # Copiar dietas
+        for diet in source_routine_day.diet_items:
+            new_diet = RoutineDiet(
+                routine_day_id=target_routine_day.id,
+                name=diet.name,
+                calories=diet.calories,
+                time_of_day=diet.time_of_day
+            )
+            db.add(new_diet)
+        
+        # Copiar medicamentos
+        for medication in source_routine_day.medications:
+            new_medication = RoutineMedication(
+                routine_day_id=target_routine_day.id,
+                name=medication.name,
+                dose=medication.dose,
+                time_of_day=medication.time_of_day
+            )
+            db.add(new_medication)
+    
+    db.commit()
+    db.refresh(db_routine)
+    return db_routine
 
 
 @router.get("/{routine_id}", response_model=RoutineRead)
