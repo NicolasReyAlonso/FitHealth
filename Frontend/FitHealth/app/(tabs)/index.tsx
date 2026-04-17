@@ -16,6 +16,9 @@ export default function HomeScreen() {
   const [weekStats, setWeekStats] = useState([0, 0, 0, 0, 0, 0, 0]);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [dayModalVisible, setDayModalVisible] = useState(false);
+  const [routinesData, setRoutinesData] = useState<any[]>([]);
+  const [eventsData, setEventsData] = useState<any[]>([]);
+  const [dayActivityMap, setDayActivityMap] = useState<{ [key: number]: { routines: number; events: number } }>({});
 
   useFocusEffect(
     useCallback(() => {
@@ -28,11 +31,13 @@ export default function HomeScreen() {
       const routinesRes = await api.get('/routines/');
       const eventsRes = await api.get('/events/');
       
-      const routinesData = routinesRes.data || [];
-      const eventsData = eventsRes.data || [];
+      const routinesDataFetch = routinesRes.data || [];
+      const eventsDataFetch = eventsRes.data || [];
       
-      setRoutines(routinesData.length);
-      setEvents(eventsData.length);
+      setRoutines(routinesDataFetch.length);
+      setEvents(eventsDataFetch.length);
+      setRoutinesData(routinesDataFetch);
+      setEventsData(eventsDataFetch);
       
       // Calcular actividad de esta semana (rutinas recurrentes + eventos)
       const today = new Date();
@@ -47,9 +52,10 @@ export default function HomeScreen() {
       sundayOfWeek.setHours(23, 59, 59, 999);
       
       const weekData = [0, 0, 0, 0, 0, 0, 0]; // Lun, Mar, Mié, Jue, Vie, Sab, Dom
+      const activityMap: { [key: number]: { routines: number; events: number } } = {};
       
       // Contar rutinas recurrentes por día de la semana
-      routinesData.forEach((routine: any) => {
+      routinesDataFetch.forEach((routine: any) => {
         if (routine.days && Array.isArray(routine.days)) {
           routine.days.forEach((routineDay: any) => {
             // day_of_week: 0=Lunes, 6=Domingo
@@ -61,7 +67,7 @@ export default function HomeScreen() {
       });
       
       // Contar eventos que caen en esta semana
-      eventsData.forEach((event: any) => {
+      eventsDataFetch.forEach((event: any) => {
         if (event.timestamp) {
           const eventDate = new Date(event.timestamp);
           
@@ -73,6 +79,44 @@ export default function HomeScreen() {
         }
       });
       
+      // Mapear actividad por día del mes
+      const year = today.getFullYear();
+      const month = today.getMonth();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      
+      for (let day = 1; day <= daysInMonth; day++) {
+        let routineCount = 0;
+        let eventCount = 0;
+        
+        const dayDate = new Date(year, month, day);
+        const dayOfWeek = dayDate.getDay();
+        const dayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+        
+        routinesDataFetch.forEach((routine: any) => {
+          if (routine.days && Array.isArray(routine.days)) {
+            routine.days.forEach((routineDay: any) => {
+              if (routineDay.day_of_week === dayIndex) {
+                routineCount++;
+              }
+            });
+          }
+        });
+        
+        eventsDataFetch.forEach((event: any) => {
+          if (event.timestamp) {
+            const eventDate = new Date(event.timestamp);
+            if (eventDate.getDate() === day && eventDate.getMonth() === month && eventDate.getFullYear() === year) {
+              eventCount++;
+            }
+          }
+        });
+        
+        if (routineCount > 0 || eventCount > 0) {
+          activityMap[day] = { routines: routineCount, events: eventCount };
+        }
+      }
+      
+      setDayActivityMap(activityMap);
       console.log('Weekly activity:', weekData);
       setWeekStats(weekData);
     } catch (error) {
@@ -263,23 +307,36 @@ export default function HomeScreen() {
           {getDaysOfMonth().map((day) => {
             const today = getTodayDate();
             const isToday = day === today;
-            const cellKey = day !== null ? `day-${day}` : `empty-${Math.random()}`;
+            const cellKey = day ? `day-${day}` : `empty-${Math.random()}`;
+            const hasActivity = day && dayActivityMap[day];
+            const activity = hasActivity ? dayActivityMap[day] : null;
+            const totalActivity = activity ? activity.routines + activity.events : 0;
+            const backgroundColor = isToday ? colors.primary : hasActivity ? colors.primaryLight : colors.gray50;
+            const borderColor = isToday ? colors.primary : hasActivity ? colors.primary : colors.border;
+            const opacity = day ? 1 : 0;
+            const textColor = isToday ? '#fff' : hasActivity ? colors.primary : colors.text;
+            
             return (
               <Pressable
                 key={cellKey}
                 onPress={() => handleDayPress(day)}
-                disabled={day === null}
+                disabled={!day}
                 style={({ pressed }) => [
                   styles.dayCell,
                   {
-                    backgroundColor: isToday ? colors.primary : colors.gray50,
-                    borderColor: isToday ? colors.primary : colors.border,
-                    opacity: day === null ? 0 : pressed && day !== null ? 0.8 : 1,
+                    backgroundColor,
+                    borderColor,
+                    opacity: day ? (pressed ? 0.8 : opacity) : 0,
                   },
                 ]}>
-                <Text style={[styles.dayNumber, { color: isToday ? '#fff' : colors.text }]}>
+                <Text style={[styles.dayNumber, { color: textColor }]}>
                   {day}
                 </Text>
+                {hasActivity && totalActivity > 0 && (
+                  <View style={[styles.activityIndicator, { backgroundColor: colors.primary }]}>
+                    <Text style={styles.activityCount}>{totalActivity}</Text>
+                  </View>
+                )}
               </Pressable>
             );
           })}
@@ -353,7 +410,7 @@ export default function HomeScreen() {
         <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
           <View style={styles.modalHeader}>
             <Text style={[styles.modalTitle, { color: colors.text }]}>
-              Eventos - {selectedDay} de {getMonthName()}
+              {selectedDay} de {getMonthName()}
             </Text>
             <Pressable
               onPress={() => setDayModalVisible(false)}
@@ -361,11 +418,58 @@ export default function HomeScreen() {
               <Text style={[styles.closeButtonText, { color: colors.primary }]}>✕</Text>
             </Pressable>
           </View>
-          <View style={styles.modalBody}>
-            <Text style={[styles.noEventsText, { color: colors.icon }]}>
-              Pulsa el botón "Eventos" para agregar registros del día {selectedDay}
-            </Text>
-          </View>
+          <ScrollView style={styles.modalBody}>
+            {selectedDay && dayActivityMap[selectedDay] ? (
+              <>
+                {dayActivityMap[selectedDay].routines > 0 && (
+                  <View style={{ marginBottom: 20 }}>
+                    <Text style={[styles.activitySectionTitle, { color: colors.primary }]}>🏋️ Rutinas ({dayActivityMap[selectedDay].routines})</Text>
+                    {routinesData.map((routine: any) => {
+                      const year = new Date().getFullYear();
+                      const month = new Date().getMonth();
+                      const dayDate = new Date(year, month, selectedDay);
+                      const dayOfWeek = dayDate.getDay();
+                      const dayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+                      
+                      const hasDay = routine.days?.some((d: any) => d.day_of_week === dayIndex);
+                      return hasDay ? (
+                        <View key={routine.id} style={[styles.activityItem, { backgroundColor: colors.primaryLight, borderColor: colors.primary }]}>
+                          <Text style={{ color: colors.primary, fontWeight: '600' }}>{routine.name}</Text>
+                          {routine.description && <Text style={{ color: colors.icon, fontSize: 12 }}>{routine.description}</Text>}
+                        </View>
+                      ) : null;
+                    })}
+                  </View>
+                )}
+                {dayActivityMap[selectedDay].events > 0 && (
+                  <View style={{ marginBottom: 20 }}>
+                    <Text style={[styles.activitySectionTitle, { color: colors.secondary }]}>📅 Eventos ({dayActivityMap[selectedDay].events})</Text>
+                    {eventsData.map((event: any) => {
+                      if (event.timestamp) {
+                        const eventDate = new Date(event.timestamp);
+                        const year = new Date().getFullYear();
+                        const month = new Date().getMonth();
+                        
+                        if (eventDate.getDate() === selectedDay && eventDate.getMonth() === month && eventDate.getFullYear() === year) {
+                          return (
+                            <View key={event.id} style={[styles.activityItem, { backgroundColor: colors.secondaryLight, borderColor: colors.secondary }]}>
+                              <Text style={{ color: colors.secondary, fontWeight: '600' }}>{event.name}</Text>
+                              <Text style={{ color: colors.icon, fontSize: 12 }}>{new Date(event.timestamp).toLocaleTimeString()}</Text>
+                            </View>
+                          );
+                        }
+                      }
+                      return null;
+                    })}
+                  </View>
+                )}
+              </>
+            ) : (
+              <Text style={[styles.noEventsText, { color: colors.icon }]}>
+                No hay rutinas ni eventos para este día
+              </Text>
+            )}
+          </ScrollView>
           <Pressable
             onPress={() => {
               setDayModalVisible(false);
@@ -376,7 +480,7 @@ export default function HomeScreen() {
               { backgroundColor: colors.primary },
               pressed && { opacity: 0.8 },
             ]}>
-            <Text style={styles.modalButtonText}>Ver Eventos</Text>
+            <Text style={styles.modalButtonText}>Agregar evento</Text>
           </Pressable>
         </View>
       </View>
@@ -679,5 +783,31 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
+  },
+  activityIndicator: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  activityCount: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  activitySectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 12,
+  },
+  activityItem: {
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 8,
+    borderWidth: 1,
   },
 });
