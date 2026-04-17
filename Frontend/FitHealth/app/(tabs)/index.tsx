@@ -64,15 +64,11 @@ export default function HomeScreen() {
       eventsData.forEach((event: any) => {
         if (event.timestamp) {
           const eventDate = new Date(event.timestamp);
-          console.log('Event:', event.name, 'Timestamp:', event.timestamp, 'Parsed date:', eventDate);
-          console.log('Monday:', mondayOfWeek, 'Sunday:', sundayOfWeek);
-          console.log('Is in range?', eventDate >= mondayOfWeek && eventDate <= sundayOfWeek);
           
           if (eventDate >= mondayOfWeek && eventDate <= sundayOfWeek) {
             const dayOfWeek = eventDate.getDay();
             const dayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
             weekData[dayIndex]++;
-            console.log('✅ Event counted on day', dayOfWeek, 'index', dayIndex);
           }
         }
       });

@@ -44,6 +44,9 @@ export default function EventsScreen() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editingName, setEditingName] = useState('');
   const [editingNotes, setEditingNotes] = useState('');
+  const [editingDate, setEditingDate] = useState(new Date());
+  const [editingType, setEditingType] = useState('custom');
+  const [editingRoutineId, setEditingRoutineId] = useState('');
 
   // Form state
   const [name, setName] = useState('');
@@ -60,6 +63,10 @@ export default function EventsScreen() {
   const [hrMax, setHrMax] = useState('');
   const [hrMin, setHrMin] = useState('');
   const [bloodSugar, setBloodSugar] = useState('');
+  
+  // Date picker state
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   const fetchEvents = async () => {
     try {
@@ -97,7 +104,7 @@ export default function EventsScreen() {
     const payload: Record<string, unknown> = {
       name: name.trim(),
       event_type: eventType,
-      timestamp: new Date().toISOString(),
+      timestamp: selectedDate.toISOString(),
       notes: notes.trim() || null,
     };
     if (routineId.trim()) {
@@ -139,6 +146,7 @@ export default function EventsScreen() {
       setHrMax('');
       setHrMin('');
       setBloodSugar('');
+      setSelectedDate(new Date());
       setShowModal(false);
       fetchEvents();
     } catch {
@@ -174,20 +182,34 @@ export default function EventsScreen() {
     setEditingId(event.id);
     setEditingName(event.name);
     setEditingNotes(event.notes || '');
+    setEditingDate(new Date(event.timestamp));
+    setEditingType(event.event_type);
+    setEditingRoutineId((event as any).routine_id ? String((event as any).routine_id) : '');
   };
 
   const confirmEdit = async () => {
     if (!editingId) return;
     try {
       console.log('📡 Actualizando evento:', editingId);
-      await api.patch(`/events/${editingId}`, {
+      const payload: Record<string, unknown> = {
         name: editingName,
         notes: editingNotes || null,
-      });
+        timestamp: editingDate.toISOString(),
+        event_type: editingType,
+      };
+      if (editingRoutineId) {
+        payload.routine_id = Number.parseInt(editingRoutineId, 10);
+      } else {
+        payload.routine_id = null;
+      }
+      await api.patch(`/events/${editingId}`, payload);
       console.log('✅ Evento actualizado exitosamente');
       setEditingId(null);
       setEditingName('');
       setEditingNotes('');
+      setEditingDate(new Date());
+      setEditingType('custom');
+      setEditingRoutineId('');
       await fetchEvents();
       Alert.alert('Éxito', 'Evento actualizado correctamente');
     } catch (error: any) {
@@ -235,7 +257,7 @@ export default function EventsScreen() {
             >
               <View style={styles.cardHeader}>
                 <View style={[styles.emoji, { backgroundColor: `${colors.secondary}20` }]}>
-                  <Text>{getTypeEmoji(e.event_type)}</Text>
+                  <Text>{getTypeEmoji(e.event_type).split(' ')[0]}</Text>
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.cardTitle, { color: colors.text }]}>{e.name}</Text>
@@ -314,47 +336,167 @@ export default function EventsScreen() {
       {/* Modal de Edición de Evento */}
       <Modal visible={editingId !== null} transparent animationType="slide">
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
-          <View style={{ backgroundColor: colors.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 40 }}>
-            <Text style={{ fontSize: 20, fontWeight: 'bold', color: colors.text, marginBottom: 20 }}>
-              Editar Evento
-            </Text>
-            
-            <TextInput
-              style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text }]}
-              placeholder="Nombre del evento"
-              placeholderTextColor={colors.icon}
-              value={editingName}
-              onChangeText={setEditingName}
-            />
-            
-            <TextInput
-              style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text, height: 80 }]}
-              placeholder="Notas"
-              placeholderTextColor={colors.icon}
-              value={editingNotes}
-              onChangeText={setEditingNotes}
-              multiline
-              numberOfLines={3}
-            />
-            
-            <View style={{ flexDirection: 'row', gap: 12 }}>
-              <TouchableOpacity
-                style={{ flex: 1, backgroundColor: colors.border, borderRadius: 12, padding: 14, alignItems: 'center' }}
-                onPress={() => {
-                  setEditingId(null);
-                  setEditingName('');
-                  setEditingNotes('');
-                }}
-              >
-                <Text style={{ color: colors.text, fontWeight: '600' }}>Cancelar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={{ flex: 1, backgroundColor: colors.secondary, borderRadius: 12, padding: 14, alignItems: 'center' }}
-                onPress={confirmEdit}
-              >
-                <Text style={{ color: '#fff', fontWeight: '600' }}>Guardar</Text>
-              </TouchableOpacity>
-            </View>
+          <View style={{ backgroundColor: colors.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 40, maxHeight: '90%' }}>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={{ fontSize: 20, fontWeight: 'bold', color: colors.text, marginBottom: 16 }}>
+                Editar Evento
+              </Text>
+              
+              {/* Nombre */}
+              <TextInput
+                style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text }]}
+                placeholder="Nombre del evento"
+                placeholderTextColor={colors.icon}
+                value={editingName}
+                onChangeText={setEditingName}
+              />
+
+              {/* Tipo de Evento */}
+              <Text style={{ color: colors.text, marginBottom: 8, marginTop: 12, fontWeight: '600', fontSize: 14 }}>Tipo:</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+                {EVENT_TYPES.map((type) => (
+                  <TouchableOpacity
+                    key={type.key}
+                    style={[
+                      styles.typeChip,
+                      { borderColor: colors.border, marginRight: 8 },
+                      editingType === type.key 
+                        ? { backgroundColor: colors.primary, borderColor: colors.primary } 
+                        : { backgroundColor: colors.background }
+                    ]}
+                    onPress={() => setEditingType(type.key)}
+                  >
+                    <Text style={{ color: editingType === type.key ? '#fff' : colors.text, fontSize: 12 }}>
+                      {type.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+
+              {/* Fecha y Hora (compacto) */}
+              <Text style={{ color: colors.text, marginBottom: 8, fontWeight: '600', fontSize: 14 }}>Fecha y Hora:</Text>
+              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+                <TextInput
+                  style={[styles.input, { 
+                    flex: 1.5,
+                    borderColor: colors.border, 
+                    backgroundColor: colors.background, 
+                    color: colors.text,
+                    height: 40,
+                    fontSize: 12
+                  }]}
+                  placeholder="DD/MM/AAAA"
+                  placeholderTextColor={colors.icon}
+                  value={`${String(editingDate.getDate()).padStart(2, '0')}/${String(editingDate.getMonth() + 1).padStart(2, '0')}/${editingDate.getFullYear()}`}
+                  onChangeText={(text) => {
+                    const parts = text.split('/');
+                    if (parts.length === 3) {
+                      const day = Number.parseInt(parts[0], 10);
+                      const month = Number.parseInt(parts[1], 10) - 1;
+                      const year = Number.parseInt(parts[2], 10);
+                      if (day > 0 && day <= 31 && month >= 0 && month < 12 && year > 1900) {
+                        const newDate = new Date(editingDate);
+                        newDate.setFullYear(year, month, day);
+                        setEditingDate(newDate);
+                      }
+                    }
+                  }}
+                />
+                <TextInput
+                  style={[styles.input, { 
+                    flex: 1,
+                    borderColor: colors.border, 
+                    backgroundColor: colors.background, 
+                    color: colors.text,
+                    height: 40,
+                    fontSize: 12
+                  }]}
+                  placeholder="HH:MM"
+                  placeholderTextColor={colors.icon}
+                  value={`${String(editingDate.getHours()).padStart(2, '0')}:${String(editingDate.getMinutes()).padStart(2, '0')}`}
+                  onChangeText={(text) => {
+                    const parts = text.split(':');
+                    if (parts.length === 2) {
+                      const hours = Number.parseInt(parts[0], 10);
+                      const minutes = Number.parseInt(parts[1], 10);
+                      if (hours >= 0 && hours < 24 && minutes >= 0 && minutes < 60) {
+                        const newDate = new Date(editingDate);
+                        newDate.setHours(hours, minutes);
+                        setEditingDate(newDate);
+                      }
+                    }
+                  }}
+                />
+              </View>
+
+              {/* Rutina asociada */}
+              <Text style={{ color: colors.text, marginBottom: 8, fontWeight: '600', fontSize: 14 }}>Rutina asociada:</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+                <TouchableOpacity
+                  style={[
+                    styles.typeChip,
+                    { borderColor: colors.border, marginRight: 8 },
+                    editingRoutineId.length > 0
+                      ? { backgroundColor: colors.background }
+                      : { backgroundColor: colors.primary, borderColor: colors.primary }
+                  ]}
+                  onPress={() => setEditingRoutineId('')}
+                >
+                  <Text style={{ color: editingRoutineId.length > 0 ? colors.text : '#fff', fontSize: 12 }}>Ninguna</Text>
+                </TouchableOpacity>
+                {routines.map((r) => (
+                  <TouchableOpacity
+                    key={r.id}
+                    style={[
+                      styles.typeChip,
+                      { borderColor: colors.border, marginRight: 8 },
+                      editingRoutineId === String(r.id) ? { backgroundColor: colors.primary, borderColor: colors.primary } : { backgroundColor: colors.background }
+                    ]}
+                    onPress={() => setEditingRoutineId(String(r.id))}
+                  >
+                    <Text style={{ color: editingRoutineId === String(r.id) ? '#fff' : colors.text, fontSize: 12 }}>
+                      {r.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+
+              {/* Notas */}
+              <Text style={{ color: colors.text, marginBottom: 8, fontWeight: '600', fontSize: 14 }}>Notas:</Text>
+              <TextInput
+                style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text, height: 60 }]}
+                placeholder="Agregar notas..."
+                placeholderTextColor={colors.icon}
+                value={editingNotes}
+                onChangeText={setEditingNotes}
+                multiline
+                numberOfLines={2}
+              />
+              
+              {/* Botones */}
+              <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
+                <TouchableOpacity
+                  style={{ flex: 1, backgroundColor: colors.border, borderRadius: 12, padding: 12, alignItems: 'center' }}
+                  onPress={() => {
+                    setEditingId(null);
+                    setEditingName('');
+                    setEditingNotes('');
+                    setEditingDate(new Date());
+                    setEditingType('custom');
+                    setEditingRoutineId('');
+                    setShowEditDatePicker(false);
+                  }}
+                >
+                  <Text style={{ color: colors.text, fontWeight: '600', fontSize: 14 }}>Cancelar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={{ flex: 1, backgroundColor: colors.secondary, borderRadius: 12, padding: 12, alignItems: 'center' }}
+                  onPress={confirmEdit}
+                >
+                  <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>Guardar</Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -373,6 +515,151 @@ export default function EventsScreen() {
                 value={name}
                 onChangeText={setName}
               />
+
+              {/* Date/Time Picker */}
+              <Text style={{ color: colors.text, marginBottom: 8, marginTop: 12, fontWeight: '600' }}>Fecha y Hora:</Text>
+              <TouchableOpacity 
+                style={[styles.input, { borderColor: colors.primary, backgroundColor: colors.primaryLight, borderWidth: 2, justifyContent: 'center' }]}
+                onPress={() => setShowDatePicker(!showDatePicker)}
+              >
+                <Text style={{ color: colors.primary, fontWeight: '600' }}>
+                  📅 {selectedDate.toLocaleString('es-ES', { 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric', 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                  })}
+                </Text>
+              </TouchableOpacity>
+
+              {showDatePicker && (
+                <View style={{ 
+                  backgroundColor: colors.background, 
+                  borderRadius: 12, 
+                  padding: 16, 
+                  marginBottom: 16,
+                  borderWidth: 1,
+                  borderColor: colors.border
+                }}>
+                  <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+                    <TextInput
+                      style={[styles.input, { 
+                        flex: 1,
+                        borderColor: colors.border, 
+                        backgroundColor: colors.card, 
+                        color: colors.text,
+                        height: 44
+                      }]}
+                      placeholder="DD"
+                      placeholderTextColor={colors.icon}
+                      maxLength={2}
+                      keyboardType="numeric"
+                      value={String(selectedDate.getDate()).padStart(2, '0')}
+                      onChangeText={(val) => {
+                        const day = Math.min(31, Math.max(1, Number.parseInt(val, 10) || selectedDate.getDate()));
+                        const newDate = new Date(selectedDate);
+                        newDate.setDate(day);
+                        setSelectedDate(newDate);
+                      }}
+                    />
+                    <TextInput
+                      style={[styles.input, { 
+                        flex: 1,
+                        borderColor: colors.border, 
+                        backgroundColor: colors.card, 
+                        color: colors.text,
+                        height: 44
+                      }]}
+                      placeholder="MM"
+                      placeholderTextColor={colors.icon}
+                      maxLength={2}
+                      keyboardType="numeric"
+                      value={String(selectedDate.getMonth() + 1).padStart(2, '0')}
+                      onChangeText={(val) => {
+                        const month = Math.min(12, Math.max(1, Number.parseInt(val, 10) || 1)) - 1;
+                        const newDate = new Date(selectedDate);
+                        newDate.setMonth(month);
+                        setSelectedDate(newDate);
+                      }}
+                    />
+                    <TextInput
+                      style={[styles.input, { 
+                        flex: 1,
+                        borderColor: colors.border, 
+                        backgroundColor: colors.card, 
+                        color: colors.text,
+                        height: 44
+                      }]}
+                      placeholder="AAAA"
+                      placeholderTextColor={colors.icon}
+                      maxLength={4}
+                      keyboardType="numeric"
+                      value={String(selectedDate.getFullYear())}
+                      onChangeText={(val) => {
+                        const year = Number.parseInt(val, 10) || selectedDate.getFullYear();
+                        const newDate = new Date(selectedDate);
+                        newDate.setFullYear(year);
+                        setSelectedDate(newDate);
+                      }}
+                    />
+                  </View>
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    <TextInput
+                      style={[styles.input, { 
+                        flex: 1,
+                        borderColor: colors.border, 
+                        backgroundColor: colors.card, 
+                        color: colors.text,
+                        height: 44
+                      }]}
+                      placeholder="HH"
+                      placeholderTextColor={colors.icon}
+                      maxLength={2}
+                      keyboardType="numeric"
+                      value={String(selectedDate.getHours()).padStart(2, '0')}
+                      onChangeText={(val) => {
+                        const hours = Math.min(23, Math.max(0, Number.parseInt(val, 10) || selectedDate.getHours()));
+                        const newDate = new Date(selectedDate);
+                        newDate.setHours(hours);
+                        setSelectedDate(newDate);
+                      }}
+                    />
+                    <TextInput
+                      style={[styles.input, { 
+                        flex: 1,
+                        borderColor: colors.border, 
+                        backgroundColor: colors.card, 
+                        color: colors.text,
+                        height: 44
+                      }]}
+                      placeholder="MM"
+                      placeholderTextColor={colors.icon}
+                      maxLength={2}
+                      keyboardType="numeric"
+                      value={String(selectedDate.getMinutes()).padStart(2, '0')}
+                      onChangeText={(val) => {
+                        const minutes = Math.min(59, Math.max(0, Number.parseInt(val, 10) || selectedDate.getMinutes()));
+                        const newDate = new Date(selectedDate);
+                        newDate.setMinutes(minutes);
+                        setSelectedDate(newDate);
+                      }}
+                    />
+                    <TouchableOpacity
+                      style={[styles.input, { 
+                        flex: 1,
+                        backgroundColor: colors.primary,
+                        borderColor: colors.primary,
+                        justifyContent: 'center',
+                        height: 44
+                      }]}
+                      onPress={() => setShowDatePicker(false)}
+                    >
+                      <Text style={{ color: '#fff', fontWeight: '600', textAlign: 'center' }}>Hecho</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
 
               <Text style={[styles.label, { color: colors.text }]}>Tipo:</Text>
               <View style={styles.typeGrid}>
