@@ -5,6 +5,7 @@ export function useColors() {
   return {
     background: useThemeColor({}, 'background'),
     text: useThemeColor({}, 'text'),
+    placeholder: useThemeColor({}, 'placeholder'),
     tint: useThemeColor({}, 'tint'),
     icon: useThemeColor({}, 'icon'),
     tabIconDefault: useThemeColor({}, 'tabIconDefault'),

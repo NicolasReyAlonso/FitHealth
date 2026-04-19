@@ -5,6 +5,7 @@ import { profileStyles as styles } from '@/styles/profile-styles';
 import { useColors } from '@/hooks/use-colors';
 
 import api from '@/services/api';
+import { router } from 'expo-router';
 
 export default function EditProfileScreen() {
   const { user, setUser } = useAuth();
@@ -24,24 +25,28 @@ export default function EditProfileScreen() {
     });
 
     setUser(res.data); // update UI instantly
+    router.replace('/profile'); // redirect to profile
   };
 
   return (
     <View style={[styles.infoCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-      <TextInput
+      <TextInput style={[styles.infoValue, { color: colors.text }]}
         placeholder="First name"
+        placeholderTextColor={colors.placeholder}
         value={firstName}
         onChangeText={setFirstName}
       />
 
-      <TextInput
+      <TextInput style={[styles.infoValue, { color: colors.text }]}
         placeholder="Last name"
+        placeholderTextColor={colors.placeholder}
         value={lastName}
         onChangeText={setLastName}
       />
 
-      <TextInput
+      <TextInput style={[styles.infoValue, { color: colors.text }]}
         placeholder="Second last name"
+        placeholderTextColor={colors.placeholder}
         value={secondLastName}
         onChangeText={setSecondLastName}
       />
