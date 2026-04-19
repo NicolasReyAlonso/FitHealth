@@ -1,3 +1,7 @@
 {
-  "edit_profile": "Editar perfil"
+  "edit_profile": "Editar perfil",
+  "birthday": "Fecha de nacimiento",
+  "not_provided": "No proporcionado",
+  "greeting": "¡Hola",
+  "welcome": "Bienvenido a FitHealth"
 }

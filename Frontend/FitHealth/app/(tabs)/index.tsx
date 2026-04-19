@@ -2,20 +2,24 @@ import { StyleSheet, Text, View, ScrollView } from 'react-native';
 import { useAuth } from '@/context/auth-context';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useTranslation } from 'react-i18next';
+
 
 export default function HomeScreen() {
   const { user } = useAuth();
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
+  const { t } = useTranslation(); // translation
+  
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
         <Text style={[styles.greeting, { color: colors.text }]}>
-          ¡Hola, {user?.username}! 👋
+          {t('greeting', { username: user?.username })} 👋
         </Text>
         <Text style={[styles.subtitle, { color: colors.icon }]}>
-          Bienvenido a FitHealth
+          {t('welcome')}
         </Text>
       </View>
 

@@ -13,6 +13,8 @@ type User = {
   first_name?: string;
   last_name?: string;
   second_last_name?: string;
+  birthday?: string;
+  notes?: string;
 
 };
 

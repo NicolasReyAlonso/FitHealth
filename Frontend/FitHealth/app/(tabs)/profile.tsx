@@ -65,6 +65,12 @@ export default function ProfileScreen() {
               {user?.first_name} {user?.last_name} {user?.second_last_name}
           </Text>
         </View>
+        <View style={[styles.infoCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Text style={[styles.infoLabel, { color: colors.icon }]}>{t('birthday')}</Text>
+          <Text style={[styles.infoValue, { color: colors.text }]}>
+            {user?.birthday ? new Date(user.birthday).toLocaleDateString() : t('not_provided')}
+          </Text>
+        </View>
         <TouchableOpacity style={[styles.infoCard, { backgroundColor: colors.edit, borderColor: colors.border }]}
             onPress={() => router.push('/edit_profile')}>
           <Text style={[styles.infoLabel, { color: colors.icon }]}>✏️ {t('edit_profile')}</Text>

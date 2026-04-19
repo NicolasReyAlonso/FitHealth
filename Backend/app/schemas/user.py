@@ -21,6 +21,8 @@ class UserRead(BaseModel):
     first_name: str | None = None
     last_name: str | None = None
     second_last_name: str | None = None
+    birthday: datetime | None = None
+    notes: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -31,6 +33,8 @@ class UserUpdate(BaseModel):
     first_name: str | None = None
     last_name: str | None = None
     second_last_name: str | None = None
+    birthday: datetime | None = None
+    notes: str | None = None
 
 
 class Token(BaseModel):

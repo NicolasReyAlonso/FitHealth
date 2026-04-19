@@ -1,4 +1,8 @@
 {
-  "edit_profile": "Upravit profil"
+  "edit_profile": "Upravit profil",
+  "birthday": "Datum narození",
+  "not_provided": "Nevyplněno",
+  "greeting": "Ahoj",
+  "welcome": "Vítej ve FitHealth"
 }
 
