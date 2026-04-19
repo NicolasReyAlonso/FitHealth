@@ -7,7 +7,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
 from app.database import Base, engine
-from app.routers import auth, users, workouts, routines, events, chat
+from app.routers import auth, users, workouts, routines, events, chat, relationships
 
 # Import all models so they are registered with Base.metadata
 import app.models  # noqa: F401
@@ -46,7 +46,7 @@ app.include_router(workouts.router)
 app.include_router(routines.router)
 app.include_router(events.router)
 app.include_router(chat.router)
-
+app.include_router(relationships.router)
 
 @app.get("/health", tags=["health"])
 def health_check():

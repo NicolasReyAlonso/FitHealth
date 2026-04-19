@@ -36,6 +36,8 @@ def list_my_chat_rooms(
     return result
 
 
+from app.models.relationship import DoctorPatient
+
 @router.post("/rooms/{other_user_id}", response_model=ChatRoomRead, status_code=status.HTTP_201_CREATED)
 def create_or_get_chat_room(
     other_user_id: int,
@@ -52,6 +54,16 @@ def create_or_get_chat_room(
         doctor_id, patient_id = other_user.id, current_user.id
     else:
         raise HTTPException(status_code=400, detail="El chat debe ser entre un doctor y un paciente")
+
+    # Only allow if there's an accepted relationship
+    rel = db.query(DoctorPatient).filter(
+        DoctorPatient.doctor_id == doctor_id, 
+        DoctorPatient.patient_id == patient_id,
+        DoctorPatient.status == "accepted"
+    ).first()
+    if not rel:
+        raise HTTPException(status_code=403, detail="Debes ser paciente/doctor asociado para iniciar chat")
+
     room = crud.chat.get_or_create_chat_room(db, doctor_id=doctor_id, patient_id=patient_id)
     return ChatRoomRead(
         id=room.id,

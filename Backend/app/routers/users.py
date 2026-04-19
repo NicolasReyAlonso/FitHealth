@@ -8,6 +8,24 @@ from app.schemas.user import UserCreate, UserRead, UserUpdate
 router = APIRouter(prefix="/users", tags=["users"])
 
 
+from app.models.user import User
+
+@router.get("/search", response_model=list[dict])
+def search_users(
+    query: str,
+    role: str | None = None,
+    db: Session = Depends(get_db),
+):
+    search_pattern = f"%{query}%"
+    db_query = db.query(User).filter(
+        (User.username.ilike(search_pattern)) | (User.email.ilike(search_pattern))
+    )
+    if role:
+        db_query = db_query.filter(User.role == role)
+        
+    users = db_query.limit(20).all()
+    return [{"id": u.id, "username": u.username, "email": u.email, "role": u.role, "profile_picture": u.profile_picture} for u in users]
+
 @router.get("/", response_model=list[UserRead])
 def list_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     return crud.user.get_users(db, skip=skip, limit=limit)

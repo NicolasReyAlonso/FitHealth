@@ -13,7 +13,7 @@ import {
   Platform,
   Image,
 } from 'react-native';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import api from '@/services/api';
 import { WS_BASE_URL } from '@/services/api';
@@ -41,6 +41,7 @@ type Message = {
 
 export default function ChatScreen() {
   const { t } = useTranslation();
+  const router = useRouter();
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
   const { user, token } = useAuth();
@@ -64,10 +65,12 @@ export default function ChatScreen() {
     }
   };
 
-  const fetchDoctors = async () => {
+  const fetchUsersToChat = async () => {
+    if (!user) return;
     try {
-      const res = await api.get('/chat/doctors');
-      setDoctors(res.data);
+      const endpoint = user.role === 'patient' ? '/relationships/patient/doctors' : '/relationships/doctor/patients';
+      const res = await api.get(endpoint);
+      setDoctors(res.data); // doctors maps to relation profiles
     } catch {
       // ignore
     }
@@ -76,8 +79,8 @@ export default function ChatScreen() {
   useFocusEffect(
     useCallback(() => {
       fetchRooms();
-      if (user?.role === 'patient') fetchDoctors();
-    }, [])
+      fetchUsersToChat();
+    }, [user?.role])
   );
 
   // Connect / disconnect WebSocket when selectedRoom changes
@@ -244,16 +247,19 @@ export default function ChatScreen() {
   // Room list view
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { backgroundColor: colors.accent }]}>
-        <View>
+      <View style={[styles.header, { backgroundColor: colors.accent }, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}>
+        <View style={{ flex: 1, marginRight: 16 }}>
           <Text style={styles.title}>{t('chatTitle')}</Text>
           <Text style={styles.subtitle}>{t('commDoctor')}</Text>
         </View>
+        <TouchableOpacity style={{ backgroundColor: '#fff', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20 }} onPress={() => router.push('/contacts')}>
+          <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 13 }}>{user?.role === 'patient' ? 'Mis Doctores' : 'Mis Pacientes'}</Text>
+        </TouchableOpacity>
       </View>
 
-      {user?.role === 'patient' && doctors.length > 0 && (
+      {doctors.length > 0 && selectedRoom === null && (
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Doctores disponibles</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>{user?.role === 'patient' ? 'Mis Doctores' : 'Mis Pacientes'}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.doctorList}>
             {doctors.map((d) => (
               <TouchableOpacity
@@ -265,7 +271,7 @@ export default function ChatScreen() {
                 {d.profile_picture ? (
                   <Image source={{ uri: d.profile_picture }} style={styles.doctorAvatarImage} />
                 ) : (
-                  <Text style={[styles.doctorName, { color: colors.primary }]}>🩺</Text>
+                  <Text style={[styles.doctorName, { color: colors.primary }]}>{user?.role === 'patient' ? '🩺' : '👤'}</Text>
                 )}
                 <Text style={[styles.doctorNameText, { color: colors.primary }]}>{d.username.split(' ')[0]}</Text>
               </TouchableOpacity>

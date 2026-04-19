@@ -43,6 +43,7 @@ function RootNavigator() {
         <Stack.Screen name="routines/[id]" options={{ title: 'Detalles de Rutina' }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+        <Stack.Screen name="contacts" options={{ presentation: 'modal' }} />
       </Stack>
       <StatusBar style="auto" />
     </>
