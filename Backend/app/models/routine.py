@@ -11,11 +11,13 @@ class Routine(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    creator_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     name: Mapped[str] = mapped_column(String(150), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
-    user: Mapped["User"] = relationship("User", back_populates="routines")  # noqa: F821
+    user: Mapped["User"] = relationship("User", foreign_keys=[user_id], back_populates="routines")  # noqa: F821
+    creator: Mapped["User"] = relationship("User", foreign_keys=[creator_id])  # noqa: F821
     days: Mapped[list["RoutineDay"]] = relationship("RoutineDay", back_populates="routine", cascade="all, delete-orphan")
     objectives: Mapped[list["RoutineObjective"]] = relationship("RoutineObjective", back_populates="routine", cascade="all, delete-orphan")
 
@@ -73,6 +75,7 @@ class RoutineMedication(Base):
     dose: Mapped[str] = mapped_column(String(100), nullable=False)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     time_of_day: Mapped[time | None] = mapped_column(Time, nullable=True)
+    is_completed: Mapped[bool] = mapped_column(default=False)
 
     day: Mapped["RoutineDay"] = relationship("RoutineDay", back_populates="medications")
 

@@ -7,6 +7,7 @@ from app import crud
 from app.auth import get_current_user
 from app.database import get_db
 from app.models.user import User
+from app.models.relationship import DoctorPatient
 from app.schemas.routine import (
     RoutineCreate, RoutineRead, RoutineUpdate,
     RoutineExerciseCreate, RoutineDietCreate, RoutineMedicationCreate,
@@ -26,8 +27,9 @@ def add_exercise_to_routine(
     current_user: User = Depends(get_current_user),
 ):
     db_routine = crud.routine.get_routine(db, routine_id)
-    if not db_routine or db_routine.user_id != current_user.id:
-        raise HTTPException(status_code=404, detail="Rutina no encontrada")
+    if not db_routine: raise HTTPException(status_code=404, detail="Rutina no encontrada")
+    if db_routine.user_id != current_user.id and db_routine.creator_id != current_user.id: raise HTTPException(status_code=403, detail="No autorizado")
+    if db_routine.user_id == current_user.id and db_routine.creator_id is not None and db_routine.creator_id != current_user.id: raise HTTPException(status_code=403, detail="No puedes modificar esta rutina de doctor")
     
     day = next((d for d in db_routine.days if d.day_of_week == day_of_week), None)
     if not day:
@@ -51,8 +53,9 @@ def add_diet_to_routine(
     current_user: User = Depends(get_current_user),
 ):
     db_routine = crud.routine.get_routine(db, routine_id)
-    if not db_routine or db_routine.user_id != current_user.id:
-        raise HTTPException(status_code=404, detail="Rutina no encontrada")
+    if not db_routine: raise HTTPException(status_code=404, detail="Rutina no encontrada")
+    if db_routine.user_id != current_user.id and db_routine.creator_id != current_user.id: raise HTTPException(status_code=403, detail="No autorizado")
+    if db_routine.user_id == current_user.id and db_routine.creator_id is not None and db_routine.creator_id != current_user.id: raise HTTPException(status_code=403, detail="No puedes modificar esta rutina de doctor")
     
     day = next((d for d in db_routine.days if d.day_of_week == day_of_week), None)
     if not day:
@@ -76,8 +79,9 @@ def add_medication_to_routine(
     current_user: User = Depends(get_current_user),
 ):
     db_routine = crud.routine.get_routine(db, routine_id)
-    if not db_routine or db_routine.user_id != current_user.id:
-        raise HTTPException(status_code=404, detail="Rutina no encontrada")
+    if not db_routine: raise HTTPException(status_code=404, detail="Rutina no encontrada")
+    if db_routine.user_id != current_user.id and db_routine.creator_id != current_user.id: raise HTTPException(status_code=403, detail="No autorizado")
+    if db_routine.user_id == current_user.id and db_routine.creator_id is not None and db_routine.creator_id != current_user.id: raise HTTPException(status_code=403, detail="No puedes modificar esta rutina de doctor")
     
     day = next((d for d in db_routine.days if d.day_of_week == day_of_week), None)
     if not day:
@@ -115,11 +119,16 @@ def delete_routine_item(
         
     # Check permissions based on relation type
     if item_type == "objective":
-        if db_item.routine.user_id != current_user.id:
-            raise HTTPException(status_code=404, detail="Ítem no encontrado")
+        owner_id = db_item.routine.user_id
+        creator_id = db_item.routine.creator_id
     else:
-        if db_item.day.routine.user_id != current_user.id:
-            raise HTTPException(status_code=404, detail="Ítem no encontrado")
+        owner_id = db_item.day.routine.user_id
+        creator_id = db_item.day.routine.creator_id
+        
+    if owner_id != current_user.id and creator_id != current_user.id:
+        raise HTTPException(status_code=403, detail="No autorizado")
+    if owner_id == current_user.id and creator_id is not None and creator_id != current_user.id:
+        raise HTTPException(status_code=403, detail="No puedes eliminar items de la rutina de tu doctor")
     
     db.delete(db_item)
     db.commit()
@@ -133,8 +142,16 @@ async def upload_exercise_image(
 ):
     # Ensure exercise belongs to the current user
     db_ex = db.query(RoutineExercise).filter(RoutineExercise.id == exercise_id).first()
-    if not db_ex or db_ex.day.routine.user_id != current_user.id:
+    if not db_ex:
         raise HTTPException(status_code=404, detail="Ejercicio no encontrado")
+        
+    owner_id = db_ex.day.routine.user_id
+    creator_id = db_ex.day.routine.creator_id
+    
+    if owner_id != current_user.id and creator_id != current_user.id:
+        raise HTTPException(status_code=403, detail="No autorizado")
+    if owner_id == current_user.id and creator_id is not None and creator_id != current_user.id:
+        raise HTTPException(status_code=403, detail="No puedes modificar la foto de un ejercicio de tu doctor")
 
     # Guardar archivo localmente
     file_ext = file.filename.split(".")[-1]
@@ -161,13 +178,61 @@ def list_my_routines(
     return crud.routine.get_routines_by_user(db, current_user.id, skip=skip, limit=limit)
 
 
+from app.schemas.routine import RoutineMedicationUpdate
+
+@router.patch("/medications/{medication_id}", response_model=RoutineMedicationRead)
+def update_medication(
+    medication_id: int,
+    medication_data: RoutineMedicationUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    db_med = crud.routine.get_routine_medication(db, medication_id)
+    if not db_med:
+        raise HTTPException(status_code=404, detail="Medicación no encontrada")
+    
+    db_day = db.query(RoutineDay).filter(RoutineDay.id == db_med.routine_day_id).first()
+    db_routine = crud.routine.get_routine(db, db_day.routine_id)
+    
+    is_owner = db_routine and db_routine.user_id == current_user.id
+    is_creator = db_routine and db_routine.creator_id == current_user.id
+    
+    if not is_owner and not is_creator:
+        raise HTTPException(status_code=403, detail="No autorizado")
+
+    if is_owner and db_routine.creator_id is not None and db_routine.creator_id != current_user.id:
+        update_data = medication_data.model_dump(exclude_unset=True)
+        allowed_keys = {"is_completed"}
+        if any(k not in allowed_keys for k in update_data.keys()):
+             raise HTTPException(status_code=403, detail="Solo puedes completar una medicacion de doctor")
+             
+    updated_med = crud.routine.update_routine_medication(
+        db, medication_id, medication_data.model_dump(exclude_unset=True)
+    )
+    return updated_med
+
 @router.post("/", response_model=RoutineRead, status_code=status.HTTP_201_CREATED)
 def create_routine(
     routine_data: RoutineCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return crud.routine.create_routine(db, routine_data, user_id=current_user.id)
+    target_user_id = current_user.id
+    creator_id = None
+    
+    if current_user.role == "doctor" and routine_data.patient_id is not None:
+        # Check if the doctor is assigned to this patient
+        rel = db.query(DoctorPatient).filter(
+            DoctorPatient.doctor_id == current_user.id,
+            DoctorPatient.patient_id == routine_data.patient_id,
+            DoctorPatient.status == "accepted"
+        ).first()
+        if not rel:
+            raise HTTPException(status_code=403, detail="No puedes asignar rutinas a este paciente")
+        target_user_id = routine_data.patient_id
+        creator_id = current_user.id
+        
+    return crud.routine.create_routine(db, routine_data, user_id=target_user_id, creator_id=creator_id)
 
 
 @router.post("/{routine_id}/days", response_model=RoutineRead)
@@ -178,8 +243,9 @@ def add_day_to_routine(
     current_user: User = Depends(get_current_user),
 ):
     db_routine = crud.routine.get_routine(db, routine_id)
-    if not db_routine or db_routine.user_id != current_user.id:
-        raise HTTPException(status_code=404, detail="Rutina no encontrada")
+    if not db_routine: raise HTTPException(status_code=404, detail="Rutina no encontrada")
+    if db_routine.user_id != current_user.id and db_routine.creator_id != current_user.id: raise HTTPException(status_code=403, detail="No autorizado")
+    if db_routine.user_id == current_user.id and db_routine.creator_id is not None and db_routine.creator_id != current_user.id: raise HTTPException(status_code=403, detail="No puedes modificar esta rutina de doctor")
     
     day_of_week = day_data.get("day_of_week")
     if day_of_week is None or not isinstance(day_of_week, int) or day_of_week < 0 or day_of_week > 6:
@@ -207,8 +273,9 @@ def duplicate_routine_day(
 ):
     """Copia el contenido de un día a otros días de la rutina"""
     db_routine = crud.routine.get_routine(db, routine_id)
-    if not db_routine or db_routine.user_id != current_user.id:
-        raise HTTPException(status_code=404, detail="Rutina no encontrada")
+    if not db_routine: raise HTTPException(status_code=404, detail="Rutina no encontrada")
+    if db_routine.user_id != current_user.id and db_routine.creator_id != current_user.id: raise HTTPException(status_code=403, detail="No autorizado")
+    if db_routine.user_id == current_user.id and db_routine.creator_id is not None and db_routine.creator_id != current_user.id: raise HTTPException(status_code=403, detail="No puedes modificar esta rutina de doctor")
     
     source_day = day_data.get("source_day")
     target_days = day_data.get("target_days", [])
@@ -279,7 +346,9 @@ def get_routine(
     current_user: User = Depends(get_current_user),
 ):
     db_routine = crud.routine.get_routine(db, routine_id)
-    if not db_routine or db_routine.user_id != current_user.id:
+    if not db_routine:
+        raise HTTPException(status_code=404, detail="Rutina no encontrada")
+    if db_routine.user_id != current_user.id and db_routine.creator_id != current_user.id:
         raise HTTPException(status_code=404, detail="Rutina no encontrada")
     return db_routine
 
@@ -292,8 +361,19 @@ def update_routine(
     current_user: User = Depends(get_current_user),
 ):
     db_routine = crud.routine.get_routine(db, routine_id)
-    if not db_routine or db_routine.user_id != current_user.id:
+    if not db_routine:
         raise HTTPException(status_code=404, detail="Rutina no encontrada")
+    
+    # User must be creator or owner, but if it has a creator, owner can't edit
+    is_owner = db_routine.user_id == current_user.id
+    is_creator = db_routine.creator_id == current_user.id
+    
+    if not is_owner and not is_creator:
+        raise HTTPException(status_code=403, detail="No tienes acceso a esta rutina")
+        
+    if is_owner and db_routine.creator_id is not None and db_routine.creator_id != current_user.id:
+        raise HTTPException(status_code=403, detail="No puedes editar una rutina asignada por un doctor")
+        
     return crud.routine.update_routine(db, routine_id, routine_data)
 
 
@@ -304,8 +384,18 @@ def delete_routine(
     current_user: User = Depends(get_current_user),
 ):
     db_routine = crud.routine.get_routine(db, routine_id)
-    if not db_routine or db_routine.user_id != current_user.id:
+    if not db_routine:
         raise HTTPException(status_code=404, detail="Rutina no encontrada")
+        
+    is_owner = db_routine.user_id == current_user.id
+    is_creator = db_routine.creator_id == current_user.id
+    
+    if not is_owner and not is_creator:
+        raise HTTPException(status_code=403, detail="No tienes acceso a esta rutina")
+        
+    if is_owner and db_routine.creator_id is not None and db_routine.creator_id != current_user.id:
+        raise HTTPException(status_code=403, detail="No puedes eliminar una rutina asignada por un doctor")
+        
     crud.routine.delete_routine(db, routine_id)
 
 
@@ -317,8 +407,9 @@ def add_objective_to_routine(
     current_user: User = Depends(get_current_user),
 ):
     db_routine = crud.routine.get_routine(db, routine_id)
-    if not db_routine or db_routine.user_id != current_user.id:
-        raise HTTPException(status_code=404, detail="Rutina no encontrada")
+    if not db_routine: raise HTTPException(status_code=404, detail="Rutina no encontrada")
+    if db_routine.user_id != current_user.id and db_routine.creator_id != current_user.id: raise HTTPException(status_code=403, detail="No autorizado")
+    if db_routine.user_id == current_user.id and db_routine.creator_id is not None and db_routine.creator_id != current_user.id: raise HTTPException(status_code=403, detail="No puedes modificar esta rutina de doctor")
     
     return crud.routine.create_routine_objective(db, routine_id, objective_data.model_dump())
 
@@ -334,9 +425,20 @@ def update_objective(
         raise HTTPException(status_code=404, detail="Objetivo no encontrado")
     
     db_routine = crud.routine.get_routine(db, db_obj.routine_id)
-    if not db_routine or db_routine.user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="No autorizado")
+    is_owner = db_routine and db_routine.user_id == current_user.id
+    is_creator = db_routine and db_routine.creator_id == current_user.id
     
+    if not is_owner and not is_creator:
+        raise HTTPException(status_code=403, detail="No autorizado")
+        
+    # Prevent patient from editing anything other than is_completed if created by doctor
+    if is_owner and db_routine.creator_id is not None and db_routine.creator_id != current_user.id:
+        update_data = objective_data.model_dump(exclude_unset=True)
+        # Check if they are trying to update something else than is_completed or current_value
+        allowed_keys = {"is_completed", "current_value"}
+        if any(k not in allowed_keys for k in update_data.keys()):
+             raise HTTPException(status_code=403, detail="Solo puedes completar o actualizar valor en una meta de doctor")
+             
     updated_obj = crud.routine.update_routine_objective(
         db, objective_id, objective_data.model_dump(exclude_unset=True)
     )

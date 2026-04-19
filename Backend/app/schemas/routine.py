@@ -58,6 +58,10 @@ class RoutineMedicationCreate(BaseModel):
     dose: str
     notes: str | None = None
     time_of_day: time | None = None
+    is_completed: bool = False
+
+class RoutineMedicationUpdate(BaseModel):
+    is_completed: bool
 
 class RoutineMedicationRead(BaseModel):
     id: int
@@ -66,6 +70,7 @@ class RoutineMedicationRead(BaseModel):
     dose: str
     notes: str | None
     time_of_day: time | None
+    is_completed: bool
 
     model_config = {"from_attributes": True}
 
@@ -132,6 +137,7 @@ class RoutineObjectiveRead(BaseModel):
 class RoutineCreate(BaseModel):
     name: str
     description: str | None = None
+    patient_id: int | None = None
     days: list[RoutineDayCreate] = []
     objectives: list[RoutineObjectiveCreate] = []
 
@@ -139,6 +145,7 @@ class RoutineCreate(BaseModel):
 class RoutineRead(BaseModel):
     id: int
     user_id: int
+    creator_id: int | None = None
     name: str
     description: str | None
     created_at: datetime

@@ -8,13 +8,18 @@ def get_routine(db: Session, routine_id: int) -> Routine | None:
     return db.query(Routine).filter(Routine.id == routine_id).first()
 
 
+from sqlalchemy import or_
+
 def get_routines_by_user(db: Session, user_id: int, skip: int = 0, limit: int = 100) -> list[Routine]:
-    return db.query(Routine).filter(Routine.user_id == user_id).offset(skip).limit(limit).all()
+    return db.query(Routine).filter(
+        or_(Routine.user_id == user_id, Routine.creator_id == user_id)
+    ).offset(skip).limit(limit).all()
 
 
-def create_routine(db: Session, routine_data: RoutineCreate, user_id: int) -> Routine:
+def create_routine(db: Session, routine_data: RoutineCreate, user_id: int, creator_id: int | None = None) -> Routine:
     db_routine = Routine(
         user_id=user_id,
+        creator_id=creator_id,
         name=routine_data.name,
         description=routine_data.description,
     )
@@ -77,6 +82,19 @@ def update_routine_objective(db: Session, objective_id: int, obj_data: dict) -> 
     db.commit()
     db.refresh(db_obj)
     return db_obj
+
+def get_routine_medication(db: Session, medication_id: int) -> RoutineMedication | None:
+    return db.query(RoutineMedication).filter(RoutineMedication.id == medication_id).first()
+
+def update_routine_medication(db: Session, medication_id: int, med_data: dict) -> RoutineMedication | None:
+    db_med = get_routine_medication(db, medication_id)
+    if not db_med:
+        return None
+    for field, value in med_data.items():
+        setattr(db_med, field, value)
+    db.commit()
+    db.refresh(db_med)
+    return db_med
 
 def delete_routine_objective(db: Session, objective_id: int) -> bool:
     db_obj = get_routine_objective(db, objective_id)

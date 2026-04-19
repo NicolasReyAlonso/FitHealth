@@ -21,7 +21,7 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
     workouts: Mapped[list["Workout"]] = relationship("Workout", back_populates="user")  # noqa: F821
-    routines: Mapped[list["Routine"]] = relationship("Routine", back_populates="user")  # noqa: F821
+    routines: Mapped[list["Routine"]] = relationship("Routine", foreign_keys="[Routine.user_id]", back_populates="user")  # noqa: F821
     events: Mapped[list["Event"]] = relationship("Event", back_populates="user")  # noqa: F821
 
     # Chat relations

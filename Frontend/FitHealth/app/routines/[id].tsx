@@ -5,6 +5,7 @@ import * as ImagePicker from 'expo-image-picker';
 import api, { API_BASE_URL } from '@/services/api';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useAuth } from '@/context/auth-context';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
@@ -13,6 +14,7 @@ const DAYS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', '
 export default function RoutineDetailScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
+  const { user } = useAuth();
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
 
@@ -196,12 +198,22 @@ export default function RoutineDetailScreen() {
       }
       try {
           await api.put(`/routines/objectives/${obj.id}`, {
-              ...obj,
               is_completed: !obj.is_completed
           });
           fetchRoutine();
       } catch (e) {
           Alert.alert('Error', 'No se pudo actualizar el objetivo.');
+      }
+  };
+
+  const handleToggleMedication = async (med: any) => {
+      try {
+          await api.patch(`/routines/medications/${med.id}`, {
+              is_completed: !med.is_completed
+          });
+          fetchRoutine();
+      } catch (e) {
+          Alert.alert('Error', 'No se pudo actualizar la medicación.');
       }
   };
 
@@ -307,7 +319,11 @@ export default function RoutineDetailScreen() {
           {/* OBJETIVOS */}
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>🎯 Objetivos de la Rutina</Text>
-            <TouchableOpacity onPress={() => openModal('objective')}><Text style={{ color: colors.primary, fontWeight: 'bold' }}>+ Añadir</Text></TouchableOpacity>
+            {(!routine.creator_id || routine.creator_id === user?.id) && (
+              <TouchableOpacity onPress={() => openModal('objective')}>
+                <Text style={{ color: colors.primary, fontWeight: 'bold' }}>+ Añadir</Text>
+              </TouchableOpacity>
+            )}
           </View>
           {(!routine.objectives || routine.objectives.length === 0) && <Text style={{ color: colors.icon, marginBottom: 15 }}>Aún no hay objetivos.</Text>}
           {routine.objectives && routine.objectives.map((obj: any) => {
@@ -332,7 +348,7 @@ export default function RoutineDetailScreen() {
                 <View key={`obj-${obj.id}`} style={[styles.cardRow, { backgroundColor: isOverdue ? 'rgba(211, 47, 47, 0.1)' : colors.card, borderColor: isOverdue ? '#D32F2F' : (isCompleted ? '#4CAF50' : colors.border) }]}>
                     <TouchableOpacity
                         onPress={() => handleToggleObjective(obj)}
-                        disabled={isOverdue && !isCompleted}
+                        disabled={(isOverdue && !isCompleted) || routine.user_id !== user?.id}
                         style={{ marginRight: 12, justifyContent: 'center' }}
                     >
                         <Ionicons
@@ -351,9 +367,11 @@ export default function RoutineDetailScreen() {
                           {obj.recommended_date ? `Recomendada: ${new Date(obj.recommended_date).toLocaleDateString()}` : ''}
                         </Text>
                     </View>
-                    <TouchableOpacity onPress={() => handleDeleteItem('objective', obj.id)}>
-                        <Ionicons name="trash-outline" size={24} color="#D32F2F" />
-                    </TouchableOpacity>
+                    {(!routine.creator_id || routine.creator_id === user?.id) && (
+                      <TouchableOpacity onPress={() => handleDeleteItem('objective', obj.id)}>
+                          <Ionicons name="trash-outline" size={24} color="#D32F2F" />
+                      </TouchableOpacity>
+                    )}
                 </View>
               );
           })}
@@ -361,25 +379,49 @@ export default function RoutineDetailScreen() {
           {/* MEDICAMENTOS */}
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>💊 Medicación</Text>
-            <TouchableOpacity onPress={() => openModal('med')}><Text style={{ color: colors.primary, fontWeight: 'bold' }}>+ Añadir</Text></TouchableOpacity>
+            {(!routine.creator_id || routine.creator_id === user?.id) && (
+              <TouchableOpacity onPress={() => openModal('med')}>
+                <Text style={{ color: colors.primary, fontWeight: 'bold' }}>+ Añadir</Text>
+              </TouchableOpacity>
+            )}
           </View>
           {currentDayData.medications.length === 0 && <Text style={{ color: colors.icon, marginBottom: 15 }}>No hay medicación este día.</Text>}
-          {currentDayData.medications.map((m: any) => (
-              <View key={`med-${m.id}`} style={[styles.cardRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                  <View style={{ flex: 1 }}>
-                      <Text style={{ color: colors.text, fontWeight: 'bold', fontSize: 16 }}>{m.name}</Text>
-                      <Text style={{ color: colors.icon }}>Dosis: {m.dose} {m.time_of_day ? `| Hora: ${m.time_of_day}` : ''}</Text>
-                  </View>
-                  <TouchableOpacity onPress={() => handleDeleteItem('medication', m.id)}>
-                      <Ionicons name="trash-outline" size={24} color="#D32F2F" />
-                  </TouchableOpacity>
-              </View>
-          ))}
+          {currentDayData.medications.map((m: any) => {
+              const isCompleted = m.is_completed;
+              return (
+                <View key={`med-${m.id}`} style={[styles.cardRow, { backgroundColor: colors.card, borderColor: isCompleted ? '#4CAF50' : colors.border }]}>
+                    <TouchableOpacity
+                        onPress={() => handleToggleMedication(m)}
+                        disabled={routine.user_id !== user?.id}
+                        style={{ marginRight: 12, justifyContent: 'center' }}
+                    >
+                        <Ionicons
+                            name={isCompleted ? "checkmark-circle" : "ellipse-outline"}
+                            size={28}
+                            color={isCompleted ? "#4CAF50" : colors.icon}
+                        />
+                    </TouchableOpacity>
+                    <View style={{ flex: 1 }}>
+                        <Text style={{ color: isCompleted ? '#4CAF50' : colors.text, fontWeight: 'bold', fontSize: 16, textDecorationLine: isCompleted ? 'line-through' : 'none' }}>{m.name}</Text>
+                        <Text style={{ color: colors.icon }}>Dosis: {m.dose} {m.time_of_day ? `| Hora: ${m.time_of_day}` : ''}</Text>
+                    </View>
+                    {(!routine.creator_id || routine.creator_id === user?.id) && (
+                      <TouchableOpacity onPress={() => handleDeleteItem('medication', m.id)}>
+                          <Ionicons name="trash-outline" size={24} color="#D32F2F" />
+                      </TouchableOpacity>
+                    )}
+                </View>
+              );
+          })}
 
           {/* TABLA DE EJERCICIOS */}
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>🏋️ Tabla de Ejercicios</Text>
-            <TouchableOpacity onPress={() => openModal('exercise')}><Text style={{ color: colors.primary, fontWeight: 'bold' }}>+ Añadir</Text></TouchableOpacity>
+            {(!routine.creator_id || routine.creator_id === user?.id) && (
+              <TouchableOpacity onPress={() => openModal('exercise')}>
+                <Text style={{ color: colors.primary, fontWeight: 'bold' }}>+ Añadir</Text>
+              </TouchableOpacity>
+            )}
           </View>
           {currentDayData.exercises.length === 0 && <Text style={{ color: colors.icon, marginBottom: 15 }}>Aún no hay ejercicios.</Text>}
           {currentDayData.exercises.map((ex: any) => (
@@ -395,16 +437,22 @@ export default function RoutineDetailScreen() {
                       <Text style={{ color: colors.text, fontWeight: 'bold', fontSize: 16 }}>{ex.name}</Text>
                       <Text style={{ color: colors.icon }}>Series: {ex.sets || '-'} | Reps: {ex.reps || '-'}</Text>
                   </View>
-                  <TouchableOpacity onPress={() => handleDeleteItem('exercise', ex.id)}>
-                      <Ionicons name="trash-outline" size={24} color="#D32F2F" />
-                  </TouchableOpacity>
+                  {(!routine.creator_id || routine.creator_id === user?.id) && (
+                    <TouchableOpacity onPress={() => handleDeleteItem('exercise', ex.id)}>
+                        <Ionicons name="trash-outline" size={24} color="#D32F2F" />
+                    </TouchableOpacity>
+                  )}
               </View>
           ))}
 
           {/* DIETAS Y COMIDAS */}
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>🥗 Comidas / Dieta</Text>
-            <TouchableOpacity onPress={() => openModal('diet')}><Text style={{ color: colors.primary, fontWeight: 'bold' }}>+ Añadir</Text></TouchableOpacity>
+            {(!routine.creator_id || routine.creator_id === user?.id) && (
+              <TouchableOpacity onPress={() => openModal('diet')}>
+                <Text style={{ color: colors.primary, fontWeight: 'bold' }}>+ Añadir</Text>
+              </TouchableOpacity>
+            )}
           </View>
           {currentDayData.diet_items.length === 0 && <Text style={{ color: colors.icon, marginBottom: 15 }}>Sin dieta establecida para hoy.</Text>}
           {currentDayData.diet_items.map((d: any) => (
@@ -413,23 +461,27 @@ export default function RoutineDetailScreen() {
                       <Text style={{ color: colors.text, fontWeight: 'bold', fontSize: 16 }}>{d.name}</Text>
                       <Text style={{ color: colors.icon }}>{d.calories ? `${d.calories} kcal` : 'Sin kcal prop.'} {d.time_of_day ? `| Hora: ${d.time_of_day}` : ''}</Text>
                   </View>
-                  <TouchableOpacity onPress={() => handleDeleteItem('diet', d.id)}>
-                      <Ionicons name="trash-outline" size={24} color="#D32F2F" />
-                  </TouchableOpacity>
+                  {(!routine.creator_id || routine.creator_id === user?.id) && (
+                    <TouchableOpacity onPress={() => handleDeleteItem('diet', d.id)}>
+                        <Ionicons name="trash-outline" size={24} color="#D32F2F" />
+                    </TouchableOpacity>
+                  )}
               </View>
           ))}
           
           {/* Sección para copiar a otros días */}
-          <View style={{ marginTop: 32, marginBottom: 20, borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 20 }}>
-            <TouchableOpacity 
-              style={{ backgroundColor: colors.primaryLight, borderRadius: 12, padding: 16, borderWidth: 2, borderColor: colors.primary }}
-              onPress={() => setShowDuplicateModal(true)}
-            >
-              <Text style={{ color: colors.primary, fontWeight: '600', fontSize: 16, textAlign: 'center' }}>
-                📋 Añadir esta rutina para otros días
-              </Text>
-            </TouchableOpacity>
-          </View>
+          {(!routine.creator_id || routine.creator_id === user?.id) && (
+            <View style={{ marginTop: 32, marginBottom: 20, borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 20 }}>
+              <TouchableOpacity 
+                style={{ backgroundColor: colors.primaryLight, borderRadius: 12, padding: 16, borderWidth: 2, borderColor: colors.primary }}
+                onPress={() => setShowDuplicateModal(true)}
+              >
+                <Text style={{ color: colors.primary, fontWeight: '600', fontSize: 16, textAlign: 'center' }}>
+                  📋 Añadir esta rutina para otros días
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
           
           <View style={{ height: 40 }} />
       </ScrollView>

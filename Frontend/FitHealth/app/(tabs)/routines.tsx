@@ -15,11 +15,14 @@ import { useTranslation } from 'react-i18next';
 import api from '@/services/api';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useAuth } from '@/context/auth-context';
 
 type Routine = {
   id: number;
   name: string;
   description: string | null;
+  user_id: number;
+  creator_id: number | null;
   days: {
     id: number;
     day_of_week: number;
@@ -42,6 +45,9 @@ export default function RoutinesScreen() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editingName, setEditingName] = useState('');
   const [editingDescription, setEditingDescription] = useState('');
+  const { user } = useAuth();
+  const [patients, setPatients] = useState<{ id: number; username: string }[]>([]);
+  const [patientId, setPatientId] = useState<number | null>(null);
 
   const fetchRoutines = async () => {
     try {
@@ -57,7 +63,12 @@ export default function RoutinesScreen() {
   useFocusEffect(
     useCallback(() => {
       fetchRoutines();
-    }, [])
+      if (user?.role === 'doctor') {
+        api.get('/relationships/doctor/patients').then((res) => {
+          setPatients(res.data);
+        }).catch(err => console.log('Failed fetching patients', err));
+      }
+    }, [user?.role])
   );
 
   const handleCreate = async () => {
@@ -66,9 +77,14 @@ export default function RoutinesScreen() {
       return;
     }
     try {
-      await api.post('/routines/', { name: name.trim(), description: description.trim() || null });
+      const payload: any = { name: name.trim(), description: description.trim() || null };
+      if (user?.role === 'doctor' && patientId) {
+        payload.patient_id = patientId;
+      }
+      await api.post('/routines/', payload);
       setName('');
       setDescription('');
+      setPatientId(null);
       setShowModal(false);
       fetchRoutines();
     } catch {
@@ -170,21 +186,28 @@ export default function RoutinesScreen() {
                   {r.description && (
                     <Text style={[styles.cardDesc, { color: colors.icon }]} numberOfLines={2}>{r.description}</Text>
                   )}
+                  {user?.role === 'doctor' && r.user_id !== user?.id && (
+                    <Text style={[{ color: colors.primary, fontSize: 12, marginTop: 4, fontWeight: 'bold' }]}>
+                      👤 Paciente asignado: @{patients.find(p => p.id === r.user_id)?.username || r.user_id}
+                    </Text>
+                  )}
                 </View>
-              <View style={styles.actionButtons}>
-                  <TouchableOpacity
-                    onPress={(e) => { e.stopPropagation(); handleEdit(r); }}
-                    activeOpacity={0.6}
-                  >
-                    <Text style={{ fontSize: 18 }}>✏️</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={(e) => { e.stopPropagation(); handleDelete(r.id); }}
-                    activeOpacity={0.6}
-                  >
-                    <Text style={{ fontSize: 18 }}>🗑️</Text>
-                  </TouchableOpacity>
-                </View>
+                {(!r.creator_id || r.creator_id === user?.id) && (
+                  <View style={styles.actionButtons}>
+                    <TouchableOpacity
+                      onPress={(e) => { e.stopPropagation(); handleEdit(r); }}
+                      activeOpacity={0.6}
+                    >
+                      <Text style={{ fontSize: 18 }}>✏️</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={(e) => { e.stopPropagation(); handleDelete(r.id); }}
+                      activeOpacity={0.6}
+                    >
+                      <Text style={{ fontSize: 18 }}>🗑️</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
               </View>
               <View style={styles.cardMeta}>
                 <View style={[styles.badge, { backgroundColor: colors.primaryLight }]}>
@@ -301,6 +324,42 @@ export default function RoutinesScreen() {
               onChangeText={setDescription}
               multiline
             />
+            {user?.role === 'doctor' && patients.length > 0 && (
+              <View style={{ marginBottom: 20 }}>
+                <Text style={{ color: colors.text, marginBottom: 8, fontWeight: '600' }}>Asignar a paciente:</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexDirection: 'row' }}>
+                  <TouchableOpacity
+                    style={{
+                      padding: 10,
+                      marginRight: 10,
+                      borderRadius: 8,
+                      borderWidth: 1,
+                      borderColor: patientId === null ? colors.primary : colors.border,
+                      backgroundColor: patientId === null ? `${colors.primary}20` : 'transparent',
+                    }}
+                    onPress={() => setPatientId(null)}
+                  >
+                    <Text style={{ color: patientId === null ? colors.primary : colors.text }}>Nadie (Para mi)</Text>
+                  </TouchableOpacity>
+                  {patients.map(p => (
+                    <TouchableOpacity
+                      key={p.id}
+                      style={{
+                        padding: 10,
+                        marginRight: 10,
+                        borderRadius: 8,
+                        borderWidth: 1,
+                        borderColor: patientId === p.id ? colors.primary : colors.border,
+                        backgroundColor: patientId === p.id ? `${colors.primary}20` : 'transparent',
+                      }}
+                      onPress={() => setPatientId(p.id)}
+                    >
+                      <Text style={{ color: patientId === p.id ? colors.primary : colors.text }}>{p.username}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
             <View style={styles.modalButtons}>
               <TouchableOpacity style={[styles.modalBtn, { backgroundColor: colors.border }]} onPress={() => setShowModal(false)}>
                 <Text style={{ color: colors.text, fontWeight: '600' }}>Cancelar</Text>
