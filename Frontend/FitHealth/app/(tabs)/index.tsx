@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, ScrollView, Pressable, Modal } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, Pressable, Modal, Image } from 'react-native';
 import { useAuth } from '@/context/auth-context';
 import { Colors } from '@/constants/theme';
 import { useTranslation } from 'react-i18next';
@@ -220,11 +220,17 @@ export default function HomeScreen() {
         <Text style={styles.heroSubtitle}>
           {t('welcomeMsg')}
         </Text>
+        
         <View style={[styles.avatarPlaceholder, { backgroundColor: 'rgba(255, 255, 255, 0.2)' }]}>
-          <Text style={styles.avatarText}>
-            {user?.username?.charAt(0).toUpperCase() || '👤'}
-          </Text>
+          {user?.profile_picture ? (
+             <Image source={{ uri: user.profile_picture }} style={{ width: 48, height: 48, borderRadius: 24 }} />
+          ) : (
+             <Text style={styles.avatarText}>
+               {user?.username?.charAt(0).toUpperCase() || '👤'}
+             </Text>
+          )}
         </View>
+
       </View>
 
       {/* Stats Cards */}

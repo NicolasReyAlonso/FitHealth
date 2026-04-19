@@ -9,6 +9,7 @@ type User = {
   role: string;
   is_active: boolean;
   created_at: string;
+  profile_picture?: string;
 };
 
 type AuthContextType = {
@@ -18,6 +19,7 @@ type AuthContextType = {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, username: string, password: string, role?: string) => Promise<void>;
   logout: () => Promise<void>;
+  setUser: React.Dispatch<React.SetStateAction<User | null>>;
 };
 
 const AuthContext = createContext<AuthContextType>({
@@ -25,6 +27,7 @@ const AuthContext = createContext<AuthContextType>({
   token: null,
   isLoading: true,
   login: async () => {},
+  setUser: () => {},
   register: async () => {},
   logout: async () => {},
 });
@@ -73,7 +76,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, token, isLoading, login, register, logout, setUser }}>
       {children}
     </AuthContext.Provider>
   );

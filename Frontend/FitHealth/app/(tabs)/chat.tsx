@@ -11,6 +11,7 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -26,6 +27,8 @@ type ChatRoom = {
   patient_id: number;
   doctor_username: string;
   patient_username: string;
+  doctor_profile_picture?: string;
+  patient_profile_picture?: string;
 };
 
 type Message = {
@@ -46,7 +49,7 @@ export default function ChatScreen() {
   const [selectedRoom, setSelectedRoom] = useState<ChatRoom | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
-  const [doctors, setDoctors] = useState<{ id: number; username: string }[]>([]);
+  const [doctors, setDoctors] = useState<{ id: number; username: string; profile_picture?: string }[]>([]);
   const wsRef = useRef<WebSocket | null>(null);
   const flatListRef = useRef<FlatList>(null);
 
@@ -156,6 +159,11 @@ export default function ChatScreen() {
       user?.id === selectedRoom.doctor_id
         ? selectedRoom.patient_username
         : selectedRoom.doctor_username;
+    
+    const otherProfilePicture = 
+      user?.id === selectedRoom.doctor_id
+        ? selectedRoom.patient_profile_picture
+        : selectedRoom.doctor_profile_picture;
 
     return (
       <KeyboardAvoidingView
@@ -167,7 +175,12 @@ export default function ChatScreen() {
           <TouchableOpacity onPress={() => setSelectedRoom(null)}>
             <Text style={[styles.backBtn, { color: colors.primary }]}>← Atrás</Text>
           </TouchableOpacity>
-          <Text style={[styles.chatTitle, { color: colors.text }]}>{otherName}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            {otherProfilePicture && (
+              <Image source={{ uri: otherProfilePicture }} style={[styles.roomAvatarImage, { width: 32, height: 32, borderRadius: 16, marginRight: 8 }]} />
+            )}
+            <Text style={[styles.chatTitle, { color: colors.text }]}>{otherName}</Text>
+          </View>
         </View>
 
         <FlatList
@@ -178,21 +191,32 @@ export default function ChatScreen() {
           onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
           renderItem={({ item }) => {
             const isMe = item.sender_id === user?.id;
+            const msgAvatar = isMe ? user?.profile_picture : otherProfilePicture;
+            
             return (
-              <View
-                style={[
-                  styles.messageBubble,
-                  isMe
-                    ? { backgroundColor: colors.primary, alignSelf: 'flex-end' }
-                    : { backgroundColor: colors.card, alignSelf: 'flex-start', borderWidth: 1, borderColor: colors.border },
-                ]}
-              >
-                <Text style={[styles.messageText, { color: isMe ? '#fff' : colors.text }]}>
-                  {item.content}
-                </Text>
-                <Text style={[styles.messageTime, { color: isMe ? 'rgba(255,255,255,0.7)' : colors.icon }]}>
-                  {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </Text>
+              <View style={[styles.messageWrapper, isMe ? { flexDirection: 'row-reverse' } : { flexDirection: 'row' }]}>
+                {msgAvatar ? (
+                  <Image source={{ uri: msgAvatar }} style={[styles.messageAvatar, { marginLeft: isMe ? 8 : 0, marginRight: isMe ? 0 : 8 }]} />
+                ) : (
+                  <View style={[styles.messageAvatarPlaceholder, { marginLeft: isMe ? 8 : 0, marginRight: isMe ? 0 : 8, backgroundColor: colors.primaryLight }]}>
+                     <Text>{isMe ? '👤' : (user?.id === selectedRoom.doctor_id ? '👤' : '🩺')}</Text>
+                  </View>
+                )}
+                <View
+                  style={[
+                    styles.messageBubble,
+                    isMe
+                      ? { backgroundColor: colors.primary, alignSelf: 'flex-end', borderTopRightRadius: 4 }
+                      : { backgroundColor: colors.card, alignSelf: 'flex-start', borderWidth: 1, borderColor: colors.border, borderTopLeftRadius: 4 },
+                  ]}
+                >
+                  <Text style={[styles.messageText, { color: isMe ? '#fff' : colors.text }]}>
+                    {item.content}
+                  </Text>
+                  <Text style={[styles.messageTime, { color: isMe ? 'rgba(255,255,255,0.7)' : colors.icon }]}>
+                    {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </Text>
+                </View>
               </View>
             );
           }}
@@ -238,7 +262,11 @@ export default function ChatScreen() {
                 onPress={() => startChat(d.id)}
                 activeOpacity={0.7}
               >
-                <Text style={[styles.doctorName, { color: colors.primary }]}>🩺</Text>
+                {d.profile_picture ? (
+                  <Image source={{ uri: d.profile_picture }} style={styles.doctorAvatarImage} />
+                ) : (
+                  <Text style={[styles.doctorName, { color: colors.primary }]}>🩺</Text>
+                )}
                 <Text style={[styles.doctorNameText, { color: colors.primary }]}>{d.username.split(' ')[0]}</Text>
               </TouchableOpacity>
             ))}
@@ -255,6 +283,8 @@ export default function ChatScreen() {
           rooms.map((r) => {
             const otherName =
               user?.id === r.doctor_id ? r.patient_username : r.doctor_username;
+            const otherProfilePicture =
+              user?.id === r.doctor_id ? r.patient_profile_picture : r.doctor_profile_picture;
             const roleLabel = user?.id === r.doctor_id ? '👤 Paciente' : '🩺 Doctor';
             return (
               <TouchableOpacity
@@ -263,9 +293,13 @@ export default function ChatScreen() {
                 onPress={() => openRoom(r)}
                 activeOpacity={0.7}
               >
-                <View style={[styles.roomAvatar, { backgroundColor: colors.primaryLight }]}>
-                  <Text>{user?.id === r.doctor_id ? '👤' : '🩺'}</Text>
-                </View>
+                {otherProfilePicture ? (
+                  <Image source={{ uri: otherProfilePicture }} style={styles.roomAvatarImage} />
+                ) : (
+                  <View style={[styles.roomAvatar, { backgroundColor: colors.primaryLight }]}>
+                    <Text>{user?.id === r.doctor_id ? '👤' : '🩺'}</Text>
+                  </View>
+                )}
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.roomName, { color: colors.text }]}>{otherName}</Text>
                   <Text style={[styles.roomRole, { color: colors.icon }]}>{roleLabel}</Text>
@@ -339,6 +373,12 @@ const styles = StyleSheet.create({
     fontSize: 24,
     marginBottom: 8,
   },
+  doctorAvatarImage: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    marginBottom: 8,
+  },
   doctorNameText: {
     fontWeight: '700',
     fontSize: 12,
@@ -377,6 +417,12 @@ const styles = StyleSheet.create({
     marginRight: 14,
     fontSize: 28,
   },
+  roomAvatarImage: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    marginRight: 14,
+  },
   roomName: { 
     fontSize: 16, 
     fontWeight: '700' 
@@ -412,6 +458,22 @@ const styles = StyleSheet.create({
   messageList: { 
     padding: 16, 
     gap: 12 
+  },
+  messageWrapper: {
+    marginBottom: 4,
+    alignItems: 'flex-end',
+  },
+  messageAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+  },
+  messageAvatarPlaceholder: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   messageBubble: { 
     maxWidth: '80%', 

@@ -17,6 +17,7 @@ class User(Base):
     is_active: Mapped[bool] = mapped_column(default=True)
     is_verified: Mapped[bool] = mapped_column(default=False)
     verification_token: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    profile_picture: Mapped[str | None] = mapped_column(String(), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
     workouts: Mapped[list["Workout"]] = relationship("Workout", back_populates="user")  # noqa: F821

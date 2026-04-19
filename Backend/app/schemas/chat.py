@@ -14,6 +14,8 @@ class ChatRoomRead(BaseModel):
     patient_id: int
     doctor_username: str | None = None
     patient_username: str | None = None
+    doctor_profile_picture: str | None = None
+    patient_profile_picture: str | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}

@@ -1,5 +1,7 @@
 import React from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, Alert, Platform } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, Alert, Platform, Image, ActivityIndicator } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import api from '@/services/api';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/context/auth-context';
@@ -10,7 +12,46 @@ export default function ProfileScreen() {
   const { t, i18n } = useTranslation();
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
-  const { user, logout } = useAuth();
+  const { user, logout, setUser } = useAuth();
+  const [uploadingImage, setUploadingImage] = React.useState(false);
+
+  
+  const pickImage = async () => {
+    // Solicita permisos
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Lo sentimos', 'Necesitamos permisos para acceder a tus fotos');
+      return;
+    }
+
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.2, // Baja calidad para no saturar SQLite / base64
+      base64: true, // Obtenemos el render en texto para el guardado directo
+    });
+
+    if (!result.canceled && result.assets[0].base64 && user?.id) {
+      setUploadingImage(true);
+      try {
+        const base64Prefix = `data:image/jpeg;base64,${result.assets[0].base64}`;
+        
+        // Actualizamos usuario en database
+        const res = await api.patch(`/users/${user.id}`, { profile_picture: base64Prefix });
+        
+        // Refrescamos app context
+        setUser({
+          ...user,
+          profile_picture: res.data.profile_picture
+        });
+      } catch (err) {
+         Alert.alert('Error', 'No se pudo subir la foto');
+      } finally {
+        setUploadingImage(false);
+      }
+    }
+  };
 
   const handleLogout = () => {
     if (Platform.OS === 'web') {
@@ -28,11 +69,19 @@ export default function ProfileScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { backgroundColor: colors.primary }]}>
-        <View style={[styles.avatar, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
-          <Text style={styles.avatarText}>
-            {user?.username?.charAt(0).toUpperCase() ?? '?'}
-          </Text>
-        </View>
+        
+        <TouchableOpacity style={[styles.avatar, { backgroundColor: 'rgba(255,255,255,0.2)' }]} onPress={pickImage} activeOpacity={0.8}>
+          {uploadingImage ? (
+             <ActivityIndicator size="large" color="#fff" />
+          ) : user?.profile_picture ? (
+             <Image source={{ uri: user.profile_picture }} style={{ width: 120, height: 120, borderRadius: 60 }} />
+          ) : (
+            <Text style={styles.avatarText}>
+              {user?.username?.charAt(0).toUpperCase() ?? '?'}
+            </Text>
+          )}
+        </TouchableOpacity>
+
         <Text style={styles.username}>{user?.username}</Text>
         <Text style={styles.email}>{user?.email}</Text>
         <View style={[styles.roleBadge, { backgroundColor: 'rgba(255,255,255,0.15)' }]}>

@@ -28,6 +28,8 @@ def list_my_chat_rooms(
                 patient_id=room.patient_id,
                 doctor_username=room.doctor.username,
                 patient_username=room.patient.username,
+                doctor_profile_picture=room.doctor.profile_picture,
+                patient_profile_picture=room.patient.profile_picture,
                 created_at=room.created_at,
             )
         )
@@ -57,6 +59,8 @@ def create_or_get_chat_room(
         patient_id=room.patient_id,
         doctor_username=room.doctor.username,
         patient_username=room.patient.username,
+        doctor_profile_picture=room.doctor.profile_picture,
+        patient_profile_picture=room.patient.profile_picture,
         created_at=room.created_at,
     )
 
@@ -93,7 +97,7 @@ def send_message(
 @router.get("/doctors", response_model=list[dict])
 def list_doctors(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     doctors = crud.user.get_doctors(db)
-    return [{"id": d.id, "username": d.username, "email": d.email} for d in doctors]
+    return [{"id": d.id, "username": d.username, "email": d.email, "profile_picture": d.profile_picture} for d in doctors]
 
 
 # --- WebSocket for real-time chat ---

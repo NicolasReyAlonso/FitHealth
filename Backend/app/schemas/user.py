@@ -18,6 +18,7 @@ class UserRead(BaseModel):
     is_active: bool
     is_verified: bool
     created_at: datetime
+    profile_picture: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -25,6 +26,7 @@ class UserRead(BaseModel):
 class UserUpdate(BaseModel):
     email: EmailStr | None = None
     username: str | None = None
+    profile_picture: str | None = None
 
 
 class Token(BaseModel):
