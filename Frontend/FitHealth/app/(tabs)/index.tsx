@@ -1,12 +1,14 @@
 import { StyleSheet, Text, View, ScrollView, Pressable, Modal } from 'react-native';
 import { useAuth } from '@/context/auth-context';
 import { Colors } from '@/constants/theme';
+import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import api from '@/services/api';
 
 export default function HomeScreen() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const router = useRouter();
   const colorScheme = useColorScheme() ?? 'light';
@@ -180,23 +182,23 @@ export default function HomeScreen() {
   const features = [
     {
       icon: '📊',
-      title: 'Tu Resumen',
-      description: 'Registra tus rutinas, eventos de salud y chatea con tu doctor',
+      title: t('yourSummary'),
+      description: t('summaryDesc'),
     },
     {
       icon: '🏋️',
-      title: 'Rutinas',
-      description: 'Crea rutinas combinando ejercicios y dieta para tus objetivos',
+      title: t('routines'),
+      description: t('routinesDesc'),
     },
     {
       icon: '📅',
-      title: 'Eventos',
-      description: 'Registra datos biométricos, agua, actividad y peso',
+      title: t('events'),
+      description: t('eventsDesc'),
     },
     {
       icon: '💬',
-      title: 'Chat Médico',
-      description: 'Comunícate directamente con tu doctor para resolver dudas',
+      title: t('chat'),
+      description: t('chatDesc'),
     },
   ];
 
@@ -213,10 +215,10 @@ export default function HomeScreen() {
       {/* Header Hero */}
       <View style={[styles.heroSection, { backgroundColor: colors.primary }]}>
         <Text style={styles.heroGreeting}>
-          ¡Hola, {user?.username}! 👋
+          {t('hello')}, {user?.username}! 👋
         </Text>
         <Text style={styles.heroSubtitle}>
-          Bienvenido a tu espacio de salud
+          {t('welcomeMsg')}
         </Text>
         <View style={[styles.avatarPlaceholder, { backgroundColor: 'rgba(255, 255, 255, 0.2)' }]}>
           <Text style={styles.avatarText}>
@@ -235,8 +237,8 @@ export default function HomeScreen() {
             pressed && styles.statBoxPressed,
           ]}>
           <Text style={styles.statNumber}>{routines}</Text>
-          <Text style={[styles.statLabel, { color: colors.primary }]}>Rutinas</Text>
-          <Text style={[styles.statSubtext, { color: colors.primary }]}>activas</Text>
+          <Text style={[styles.statLabel, { color: colors.primary }]}>{t('routines')}</Text>
+          <Text style={[styles.statSubtext, { color: colors.primary }]}>{t('active')}</Text>
         </Pressable>
         <Pressable
           onPress={() => handleStatPress('events')}
@@ -246,8 +248,8 @@ export default function HomeScreen() {
             pressed && styles.statBoxPressed,
           ]}>
           <Text style={styles.statNumber}>{events}</Text>
-          <Text style={[styles.statLabel, { color: colors.secondary }]}>Eventos</Text>
-          <Text style={[styles.statSubtext, { color: colors.secondary }]}>registrados</Text>
+          <Text style={[styles.statLabel, { color: colors.secondary }]}>{t('events')}</Text>
+          <Text style={[styles.statSubtext, { color: colors.secondary }]}>{t('registered')}</Text>
         </Pressable>
         <Pressable
           onPress={() => handleStatPress('events')}
@@ -257,8 +259,8 @@ export default function HomeScreen() {
             pressed && styles.statBoxPressed,
           ]}>
           <Text style={styles.statNumber}>0</Text>
-          <Text style={[styles.statLabel, { color: colors.accent }]}>Kilómetros</Text>
-          <Text style={[styles.statSubtext, { color: colors.accent }]}>esta semana</Text>
+          <Text style={[styles.statLabel, { color: colors.accent }]}>{t('kilometers')}</Text>
+          <Text style={[styles.statSubtext, { color: colors.accent }]}>{t('thisWeek')}</Text>
         </Pressable>
       </View>
 
@@ -267,7 +269,7 @@ export default function HomeScreen() {
 
       {/* Weekly Activity Chart */}
       <View style={[styles.chartCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-        <Text style={[styles.chartTitle, { color: colors.text }]}>📊 Actividad de esta semana</Text>
+        <Text style={[styles.chartTitle, { color: colors.text }]}>📊 {t('activityThisWeek')}</Text>
         <View style={styles.chartContainer}>
           {weekStats.map((value, index) => {
             const dayLabel = dayLabels[index];
@@ -346,16 +348,16 @@ export default function HomeScreen() {
       {/* Health Tips */}
       <View style={styles.sectionContainer}>
         <Text style={[styles.sectionTitle, { color: colors.text }]}>
-          Consejo de salud hoy
+          {t('healthTipToday')}
         </Text>
         <View style={[styles.tipCard, { backgroundColor: colors.primaryLight, borderColor: colors.primary }]}>
           <Text style={[styles.tipIcon, { color: colors.primary }]}>💡</Text>
           <View style={{ flex: 1 }}>
             <Text style={[styles.tipTitle, { color: colors.primary }]}>
-              Hidratación diaria
+              {t('dailyHydration')}
             </Text>
             <Text style={[styles.tipText, { color: colors.text }]}>
-              Bebe al menos 2 litros de agua al día para mantener tu cuerpo hidratado y saludable.
+              {t('hydrationDesc')}
             </Text>
           </View>
         </View>
@@ -364,7 +366,7 @@ export default function HomeScreen() {
       {/* Featured Section */}
       <View style={styles.sectionContainer}>
         <Text style={[styles.sectionTitle, { color: colors.text }]}>
-          Características principales
+          {t('mainFeatures')}
         </Text>
         <View style={styles.featuresContainer}>
           {features.map((feature) => (
@@ -423,7 +425,7 @@ export default function HomeScreen() {
               <>
                 {dayActivityMap[selectedDay].routines > 0 && (
                   <View style={{ marginBottom: 20 }}>
-                    <Text style={[styles.activitySectionTitle, { color: colors.primary }]}>🏋️ Rutinas ({dayActivityMap[selectedDay].routines})</Text>
+                    <Text style={[styles.activitySectionTitle, { color: colors.primary }]}>{t('routines')} ({dayActivityMap[selectedDay].routines})</Text>
                     {routinesData.map((routine: any) => {
                       const year = new Date().getFullYear();
                       const month = new Date().getMonth();
@@ -443,7 +445,7 @@ export default function HomeScreen() {
                 )}
                 {dayActivityMap[selectedDay].events > 0 && (
                   <View style={{ marginBottom: 20 }}>
-                    <Text style={[styles.activitySectionTitle, { color: colors.secondary }]}>📅 Eventos ({dayActivityMap[selectedDay].events})</Text>
+                    <Text style={[styles.activitySectionTitle, { color: colors.secondary }]}>{t('events')} ({dayActivityMap[selectedDay].events})</Text>
                     {eventsData.map((event: any) => {
                       if (event.timestamp) {
                         const eventDate = new Date(event.timestamp);
@@ -466,7 +468,7 @@ export default function HomeScreen() {
               </>
             ) : (
               <Text style={[styles.noEventsText, { color: colors.icon }]}>
-                No hay rutinas ni eventos para este día
+                {t('noEvents')}
               </Text>
             )}
           </ScrollView>
@@ -480,7 +482,7 @@ export default function HomeScreen() {
               { backgroundColor: colors.primary },
               pressed && { opacity: 0.8 },
             ]}>
-            <Text style={styles.modalButtonText}>Agregar evento</Text>
+            <Text style={styles.modalButtonText}>{t('addEvent')}</Text>
           </Pressable>
         </View>
       </View>

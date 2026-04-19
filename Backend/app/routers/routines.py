@@ -10,9 +10,9 @@ from app.models.user import User
 from app.schemas.routine import (
     RoutineCreate, RoutineRead, RoutineUpdate,
     RoutineExerciseCreate, RoutineDietCreate, RoutineMedicationCreate,
-    RoutineExerciseRead, RoutineDietRead, RoutineMedicationRead, RoutineDayRead
+    RoutineExerciseRead, RoutineDietRead, RoutineMedicationRead, RoutineDayRead, RoutineObjectiveCreate, RoutineObjectiveRead, RoutineObjectiveUpdate
 )
-from app.models.routine import RoutineDay, RoutineExercise, RoutineDiet, RoutineMedication
+from app.models.routine import RoutineDay, RoutineExercise, RoutineDiet, RoutineMedication, RoutineObjective
 
 router = APIRouter(prefix="/routines", tags=["routines"])
 
@@ -102,15 +102,24 @@ def delete_routine_item(
     model_map = {
         "exercise": RoutineExercise,
         "diet": RoutineDiet,
-        "medication": RoutineMedication
+        "medication": RoutineMedication,
+        "objective": RoutineObjective
     }
     if item_type not in model_map:
         raise HTTPException(status_code=400, detail="Tipo de ítem inválido")
     
     ItemModel = model_map[item_type]
     db_item = db.query(ItemModel).filter(ItemModel.id == item_id).first()
-    if not db_item or db_item.day.routine.user_id != current_user.id:
+    if not db_item:
         raise HTTPException(status_code=404, detail="Ítem no encontrado")
+        
+    # Check permissions based on relation type
+    if item_type == "objective":
+        if db_item.routine.user_id != current_user.id:
+            raise HTTPException(status_code=404, detail="Ítem no encontrado")
+    else:
+        if db_item.day.routine.user_id != current_user.id:
+            raise HTTPException(status_code=404, detail="Ítem no encontrado")
     
     db.delete(db_item)
     db.commit()
@@ -298,3 +307,37 @@ def delete_routine(
     if not db_routine or db_routine.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Rutina no encontrada")
     crud.routine.delete_routine(db, routine_id)
+
+
+@router.post("/{routine_id}/objectives", response_model=RoutineObjectiveRead)
+def add_objective_to_routine(
+    routine_id: int,
+    objective_data: RoutineObjectiveCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    db_routine = crud.routine.get_routine(db, routine_id)
+    if not db_routine or db_routine.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Rutina no encontrada")
+    
+    return crud.routine.create_routine_objective(db, routine_id, objective_data.model_dump())
+
+@router.put("/objectives/{objective_id}", response_model=RoutineObjectiveRead)
+def update_objective(
+    objective_id: int,
+    objective_data: RoutineObjectiveUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    db_obj = crud.routine.get_routine_objective(db, objective_id)
+    if not db_obj:
+        raise HTTPException(status_code=404, detail="Objetivo no encontrado")
+    
+    db_routine = crud.routine.get_routine(db, db_obj.routine_id)
+    if not db_routine or db_routine.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="No autorizado")
+    
+    updated_obj = crud.routine.update_routine_objective(
+        db, objective_id, objective_data.model_dump(exclude_unset=True)
+    )
+    return updated_obj

@@ -17,6 +17,7 @@ class Routine(Base):
 
     user: Mapped["User"] = relationship("User", back_populates="routines")  # noqa: F821
     days: Mapped[list["RoutineDay"]] = relationship("RoutineDay", back_populates="routine", cascade="all, delete-orphan")
+    objectives: Mapped[list["RoutineObjective"]] = relationship("RoutineObjective", back_populates="routine", cascade="all, delete-orphan")
 
 
 class RoutineDay(Base):
@@ -74,3 +75,21 @@ class RoutineMedication(Base):
     time_of_day: Mapped[time | None] = mapped_column(Time, nullable=True)
 
     day: Mapped["RoutineDay"] = relationship("RoutineDay", back_populates="medications")
+
+
+class RoutineObjective(Base):
+    __tablename__ = "routine_objectives"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    routine_id: Mapped[int] = mapped_column(ForeignKey("routines.id", ondelete="CASCADE"), nullable=False)
+    name: Mapped[str] = mapped_column(String(150), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    type: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    target_value: Mapped[float | None] = mapped_column(Float, nullable=True)
+    current_value: Mapped[float | None] = mapped_column(Float, nullable=True)
+    unit: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    recommended_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    deadline_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    is_completed: Mapped[bool] = mapped_column(default=False)
+
+    routine: Mapped["Routine"] = relationship("Routine", back_populates="objectives")

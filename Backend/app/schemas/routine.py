@@ -88,11 +88,52 @@ class RoutineDayRead(BaseModel):
     model_config = {"from_attributes": True}
 
 
+
+
+# --- Routine Objective ---
+class RoutineObjectiveCreate(BaseModel):
+    name: str
+    description: str | None = None
+    type: str | None = None
+    target_value: float | None = None
+    current_value: float | None = None
+    unit: str | None = None
+    recommended_date: datetime | None = None
+    deadline_date: datetime | None = None
+    is_completed: bool = False
+
+class RoutineObjectiveUpdate(BaseModel):
+    name: str | None = None
+    description: str | None = None
+    type: str | None = None
+    target_value: float | None = None
+    current_value: float | None = None
+    unit: str | None = None
+    recommended_date: datetime | None = None
+    deadline_date: datetime | None = None
+    is_completed: bool | None = None
+
+class RoutineObjectiveRead(BaseModel):
+    id: int
+    routine_id: int
+    name: str
+    description: str | None
+    type: str | None
+    target_value: float | None
+    current_value: float | None
+    unit: str | None
+    recommended_date: datetime | None
+    deadline_date: datetime | None
+    is_completed: bool
+
+    model_config = {"from_attributes": True}
+
 # --- Routine ---
 class RoutineCreate(BaseModel):
     name: str
     description: str | None = None
     days: list[RoutineDayCreate] = []
+    objectives: list[RoutineObjectiveCreate] = []
 
 
 class RoutineRead(BaseModel):
@@ -102,6 +143,7 @@ class RoutineRead(BaseModel):
     description: str | None
     created_at: datetime
     days: list[RoutineDayRead] = []
+    objectives: list[RoutineObjectiveRead] = []
 
     model_config = {"from_attributes": True}
 

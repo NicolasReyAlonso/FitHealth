@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Image, Modal, TextInput, Platform } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import api, { API_BASE_URL } from '@/services/api';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 const DAYS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
@@ -20,7 +21,7 @@ export default function RoutineDetailScreen() {
   const [selectedDay, setSelectedDay] = useState(0); 
   
   const [modalVisible, setModalVisible] = useState(false);
-  const [addingType, setAddingType] = useState<'exercise'|'diet'|'med'|null>(null);
+  const [addingType, setAddingType] = useState<'exercise'|'diet'|'med'|'objective'|null>(null);
   const [savingItem, setSavingItem] = useState(false);
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
   const [selectedDaysForDuplicate, setSelectedDaysForDuplicate] = useState<number[]>([]);
@@ -33,6 +34,19 @@ export default function RoutineDetailScreen() {
   const [itemCalories, setItemCalories] = useState('');
   const [itemDose, setItemDose] = useState('');
   const [itemTime, setItemTime] = useState(''); // e.g. "14:00:00"
+  const [itemType, setItemType] = useState('weight'); // 'weight' or 'biometric'
+  const [itemTargetValue, setItemTargetValue] = useState('');
+  const [itemUnit, setItemUnit] = useState(''); // kg, bpm
+  const [itemRecommendedDate, setItemRecommendedDate] = useState<Date | null>(null);
+  const [itemDeadlineDate, setItemDeadlineDate] = useState<Date | null>(null);
+  const [showRecommendedPicker, setShowRecommendedPicker] = useState(false);
+  const [showDeadlinePicker, setShowDeadlinePicker] = useState(false);
+
+  const formatDate = (date: Date | null) => {
+    if (!date) return '';
+    return date.toISOString().split('T')[0];
+  };
+
 
   const fetchRoutine = useCallback(async () => {
     try {
@@ -130,7 +144,17 @@ export default function RoutineDetailScreen() {
                 calories: itemCalories ? Number.parseInt(itemCalories) : null,
                 time_of_day: formattedTime
             });
-        } else if (addingType === 'med') {
+        
+        } else if (addingType === 'objective') {
+            await api.post(`/routines/${id}/objectives`, {
+                name: itemName,
+                type: itemType || null,
+                target_value: itemTargetValue ? parseFloat(itemTargetValue) : null,
+                unit: itemUnit || null,
+                recommended_date: itemRecommendedDate ? itemRecommendedDate.toISOString() : null,
+                deadline_date: itemDeadlineDate ? itemDeadlineDate.toISOString() : null,
+            });
+} else if (addingType === 'med') {
             await api.post(`/routines/${id}/days/${selectedDay}/medications`, {
                 name: itemName,
                 dose: itemDose || '1 pill',
@@ -156,8 +180,40 @@ export default function RoutineDetailScreen() {
       }
   };
 
-  const openModal = (type: 'exercise'|'diet'|'med') => {
+  const handleToggleObjective = async (obj: any) => {
+      const now = new Date();
+      now.setHours(0, 0, 0, 0);
+      let isOverdue = false;
+      if (obj.deadline_date) {
+        const d = new Date(obj.deadline_date);
+        d.setHours(0, 0, 0, 0);
+        if (now > d) isOverdue = true;
+      }
+      
+      if (isOverdue && !obj.is_completed) {
+          Alert.alert('Plazo expirado', 'Este objetivo ya ha pasado su fecha límite.');
+          return;
+      }
+      try {
+          await api.put(`/routines/objectives/${obj.id}`, {
+              ...obj,
+              is_completed: !obj.is_completed
+          });
+          fetchRoutine();
+      } catch (e) {
+          Alert.alert('Error', 'No se pudo actualizar el objetivo.');
+      }
+  };
+
+  const openModal = (type: 'exercise'|'diet'|'med'|'objective') => {
       setAddingType(type);
+      setItemType('');
+      setItemTargetValue('');
+      setItemUnit('');
+      setItemRecommendedDate(null);
+      setItemDeadlineDate(null);
+      setShowRecommendedPicker(false);
+      setShowDeadlinePicker(false);
       setItemName('');
       setItemSets('');
       setItemReps('');
@@ -205,6 +261,19 @@ export default function RoutineDetailScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <Stack.Screen 
+        options={{
+          headerLeft: () => (
+            <TouchableOpacity onPress={() => { if (router.canGoBack()) { router.back(); } else { router.replace('/(tabs)/routines'); } }} style={{ marginRight: 16, padding: 4 }}>
+              <Ionicons name="arrow-back" size={28} color={colors.text} />
+            </TouchableOpacity>
+          )
+        }}
+      />
+
+      {/* Header bar / Back button */}
+      
+
       {/* Selector de días */}
       <View style={styles.daysNav}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -233,6 +302,61 @@ export default function RoutineDetailScreen() {
       <ScrollView style={{ flex: 1, padding: 16 }}>
           <Text style={{ fontSize: 24, fontWeight: 'bold', color: colors.text, marginBottom: 4 }}>{routine.name}</Text>
           <Text style={{ fontSize: 16, color: colors.icon, marginBottom: 20 }}>Visión del {DAYS[selectedDay]}</Text>
+
+          
+          {/* OBJETIVOS */}
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>🎯 Objetivos de la Rutina</Text>
+            <TouchableOpacity onPress={() => openModal('objective')}><Text style={{ color: colors.primary, fontWeight: 'bold' }}>+ Añadir</Text></TouchableOpacity>
+          </View>
+          {(!routine.objectives || routine.objectives.length === 0) && <Text style={{ color: colors.icon, marginBottom: 15 }}>Aún no hay objetivos.</Text>}
+          {routine.objectives && routine.objectives.map((obj: any) => {
+              const now = new Date();
+              now.setHours(0, 0, 0, 0);
+              
+              const deadline = obj.deadline_date ? new Date(obj.deadline_date) : null;
+              if (deadline) deadline.setHours(0, 0, 0, 0);
+              const recommended = obj.recommended_date ? new Date(obj.recommended_date) : null;
+              if (recommended) recommended.setHours(0, 0, 0, 0);
+
+              const isOverdue = deadline && now > deadline && !obj.is_completed;
+              // Si se hace antes o en la fecha recomendada (y está completado) o simplemente completado:
+              const isCompleted = obj.is_completed;
+              const isRecommendedOk = isCompleted && recommended && now <= recommended;
+              
+              let statusColor = colors.text;
+              if (isOverdue) statusColor = '#D32F2F'; // Rojo si expiró
+              else if (isCompleted) statusColor = '#4CAF50'; // Verde si está completado.
+              
+              return (
+                <View key={`obj-${obj.id}`} style={[styles.cardRow, { backgroundColor: isOverdue ? 'rgba(211, 47, 47, 0.1)' : colors.card, borderColor: isOverdue ? '#D32F2F' : (isCompleted ? '#4CAF50' : colors.border) }]}>
+                    <TouchableOpacity
+                        onPress={() => handleToggleObjective(obj)}
+                        disabled={isOverdue && !isCompleted}
+                        style={{ marginRight: 12, justifyContent: 'center' }}
+                    >
+                        <Ionicons
+                            name={isCompleted ? "checkmark-circle" : "ellipse-outline"}
+                            size={28}
+                            color={isOverdue && !isCompleted ? "#D32F2F" : (isCompleted ? "#4CAF50" : colors.icon)}
+                        />
+                    </TouchableOpacity>
+                    <View style={{ flex: 1, opacity: (isOverdue && !isCompleted) ? 0.6 : 1 }}>
+                        <Text style={{ color: statusColor, fontWeight: 'bold', fontSize: 16, textDecorationLine: isCompleted ? 'line-through' : 'none' }}>{obj.name}</Text>
+                        <Text style={{ color: colors.icon }}>{obj.target_value ? `Meta: ${obj.target_value} ${obj.unit || ''}` : ''}</Text>
+                        <Text style={{ color: isOverdue && !isCompleted ? '#D32F2F' : colors.icon, fontSize: 12 }}>
+                          {obj.deadline_date ? `Límite: ${new Date(obj.deadline_date).toLocaleDateString()}` : ''}
+                        </Text>
+                        <Text style={{ color: isRecommendedOk ? '#4CAF50' : colors.icon, fontSize: 12 }}>
+                          {obj.recommended_date ? `Recomendada: ${new Date(obj.recommended_date).toLocaleDateString()}` : ''}
+                        </Text>
+                    </View>
+                    <TouchableOpacity onPress={() => handleDeleteItem('objective', obj.id)}>
+                        <Ionicons name="trash-outline" size={24} color="#D32F2F" />
+                    </TouchableOpacity>
+                </View>
+              );
+          })}
 
           {/* MEDICAMENTOS */}
           <View style={styles.sectionHeader}>
@@ -315,12 +439,12 @@ export default function RoutineDetailScreen() {
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
           <View style={{ backgroundColor: colors.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24 }}>
             <Text style={{ fontSize: 20, fontWeight: 'bold', color: colors.text, marginBottom: 20 }}>
-                {addingType === 'exercise' ? 'Añadir Ejercicio' : addingType === 'diet' ? 'Añadir Comida' : 'Añadir Medicación'}
+                {addingType === 'exercise' ? 'Añadir Ejercicio' : addingType === 'diet' ? 'Añadir Comida' : addingType === 'objective' ? 'Añadir Objetivo' : 'Añadir Medicación'}
             </Text>
 
             <TextInput
                 style={[styles.input, { color: colors.text, borderColor: colors.border, backgroundColor: colors.background }]}
-                placeholder={addingType === 'med' ? "Nombre píldora (Ej. Ibuprofeno)" : "Nombre"}
+                placeholder={addingType === 'med' ? "Nombre píldora (Ej. Ibuprofeno)" : addingType === 'objective' ? "Nombre (Ej. Llegar a 90 Kg)" : "Nombre"}
                 placeholderTextColor={colors.icon}
                 value={itemName}
                 onChangeText={setItemName}
@@ -340,6 +464,79 @@ export default function RoutineDetailScreen() {
                 </View>
             )}
             
+            
+            {addingType === 'objective' && (
+                <>
+                  <View style={{ flexDirection: 'row', gap: 10 }}>
+                      <TextInput style={[styles.input, { flex: 1, color: colors.text, borderColor: colors.border, backgroundColor: colors.background }]} placeholder="Valor objetivo (ej. 90)" placeholderTextColor={colors.icon} keyboardType="numeric" value={itemTargetValue} onChangeText={setItemTargetValue} />
+                      <TextInput style={[styles.input, { flex: 1, color: colors.text, borderColor: colors.border, backgroundColor: colors.background }]} placeholder="Unidad (ej. kg, bpm)" placeholderTextColor={colors.icon} value={itemUnit} onChangeText={setItemUnit} />
+                  </View>
+                  {Platform.OS === 'web' ? (
+                    <>
+                      <View style={{ flexDirection: 'row', gap: 10, marginBottom: 14 }}>
+                        <Text style={{ color: colors.text, alignSelf: 'center', width: 120 }}>F. Recomendada</Text>
+                        <input
+                          type="date"
+                          style={{ flex: 1, padding: 10, borderRadius: 12, border: `1px solid ${colors.border}`, backgroundColor: colors.background, color: colors.text, fontSize: 16 }}
+                          value={itemRecommendedDate ? formatDate(itemRecommendedDate) : ''}
+                          onChange={(e) => {
+                            if (e.target.value) setItemRecommendedDate(new Date(e.target.value));
+                            else setItemRecommendedDate(null);
+                          }}
+                        />
+                      </View>
+                      <View style={{ flexDirection: 'row', gap: 10, marginBottom: 14 }}>
+                        <Text style={{ color: colors.text, alignSelf: 'center', width: 120 }}>F. Límite</Text>
+                        <input
+                          type="date"
+                          style={{ flex: 1, padding: 10, borderRadius: 12, border: `1px solid ${colors.border}`, backgroundColor: colors.background, color: colors.text, fontSize: 16 }}
+                          value={itemDeadlineDate ? formatDate(itemDeadlineDate) : ''}
+                          onChange={(e) => {
+                            if (e.target.value) setItemDeadlineDate(new Date(e.target.value));
+                            else setItemDeadlineDate(null);
+                          }}
+                        />
+                      </View>
+                    </>
+                  ) : (
+                    <>
+                      <View style={{ flexDirection: 'row', gap: 10 }}>
+                          <TouchableOpacity onPress={() => setShowRecommendedPicker(true)} style={[styles.input, { flex: 1, borderColor: colors.border, backgroundColor: colors.background, justifyContent: 'center' }]}>
+                            <Text style={{ color: itemRecommendedDate ? colors.text : colors.icon }}>{itemRecommendedDate ? formatDate(itemRecommendedDate) : 'F. Recomendada'}</Text>
+                          </TouchableOpacity>
+                      </View>
+                      {showRecommendedPicker && (
+                        <DateTimePicker
+                          value={itemRecommendedDate || new Date()}
+                          mode="date"
+                          display="default"
+                          onChange={(event, selectedDate) => {
+                            setShowRecommendedPicker(Platform.OS === 'ios');
+                            if (selectedDate) setItemRecommendedDate(selectedDate);
+                          }}
+                        />
+                      )}
+                      <View style={{ flexDirection: 'row', gap: 10 }}>
+                          <TouchableOpacity onPress={() => setShowDeadlinePicker(true)} style={[styles.input, { flex: 1, borderColor: colors.border, backgroundColor: colors.background, justifyContent: 'center' }]}>
+                            <Text style={{ color: itemDeadlineDate ? colors.text : colors.icon }}>{itemDeadlineDate ? formatDate(itemDeadlineDate) : 'F. Límite'}</Text>
+                          </TouchableOpacity>
+                      </View>
+                      {showDeadlinePicker && (
+                        <DateTimePicker
+                          value={itemDeadlineDate || new Date()}
+                          mode="date"
+                          display="default"
+                          onChange={(event, selectedDate) => {
+                            setShowDeadlinePicker(Platform.OS === 'ios');
+                            if (selectedDate) setItemDeadlineDate(selectedDate);
+                          }}
+                        />
+                      )}
+                    </>
+                  )}
+                </>
+            )}
+
             {addingType === 'med' && (
                 <View style={{ flexDirection: 'row', gap: 10 }}>
                     <TextInput style={[styles.input, { flex: 1, color: colors.text, borderColor: colors.border, backgroundColor: colors.background }]} placeholder="Dosis (Ej: 1 pastilla)" placeholderTextColor={colors.icon} value={itemDose} onChangeText={setItemDose} />

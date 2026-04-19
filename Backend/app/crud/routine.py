@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 
-from app.models.routine import Routine, RoutineDay, RoutineExercise, RoutineDiet, RoutineMedication
+from app.models.routine import Routine, RoutineDay, RoutineExercise, RoutineDiet, RoutineMedication, RoutineObjective
 from app.schemas.routine import RoutineCreate, RoutineUpdate
 
 
@@ -28,6 +28,10 @@ def create_routine(db: Session, routine_data: RoutineCreate, user_id: int) -> Ro
             db_day.medications.append(RoutineMedication(**med.model_dump()))
         db_routine.days.append(db_day)
 
+    if hasattr(routine_data, "objectives") and routine_data.objectives:
+        for obj_data in routine_data.objectives:
+            db_routine.objectives.append(RoutineObjective(**obj_data.model_dump()))
+
     db.add(db_routine)
     db.commit()
     db.refresh(db_routine)
@@ -50,5 +54,34 @@ def delete_routine(db: Session, routine_id: int) -> bool:
     if not db_routine:
         return False
     db.delete(db_routine)
+    db.commit()
+    return True
+
+
+def create_routine_objective(db: Session, routine_id: int, obj_data: dict) -> RoutineObjective:
+    db_obj = RoutineObjective(routine_id=routine_id, **obj_data)
+    db.add(db_obj)
+    db.commit()
+    db.refresh(db_obj)
+    return db_obj
+
+def get_routine_objective(db: Session, objective_id: int) -> RoutineObjective | None:
+    return db.query(RoutineObjective).filter(RoutineObjective.id == objective_id).first()
+
+def update_routine_objective(db: Session, objective_id: int, obj_data: dict) -> RoutineObjective | None:
+    db_obj = get_routine_objective(db, objective_id)
+    if not db_obj:
+        return None
+    for field, value in obj_data.items():
+        setattr(db_obj, field, value)
+    db.commit()
+    db.refresh(db_obj)
+    return db_obj
+
+def delete_routine_objective(db: Session, objective_id: int) -> bool:
+    db_obj = get_routine_objective(db, objective_id)
+    if not db_obj:
+        return False
+    db.delete(db_obj)
     db.commit()
     return True

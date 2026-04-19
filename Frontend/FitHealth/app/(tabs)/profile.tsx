@@ -3,21 +3,24 @@ import { StyleSheet, Text, View, TouchableOpacity, Alert, Platform } from 'react
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/context/auth-context';
+import { useTranslation } from 'react-i18next';
+
 
 export default function ProfileScreen() {
+  const { t, i18n } = useTranslation();
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
   const { user, logout } = useAuth();
 
   const handleLogout = () => {
     if (Platform.OS === 'web') {
-      if (window.confirm('¿Seguro que quieres cerrar sesión?')) {
+      if (window.confirm(t('sureLogout'))) {
         logout();
       }
     } else {
-      Alert.alert('Cerrar Sesión', '¿Seguro que quieres salir?', [
-        { text: 'Cancelar' },
-        { text: 'Salir', style: 'destructive', onPress: logout },
+      Alert.alert(t('logout'), t('sureLogout'), [
+        { text: t('cancel') },
+        { text: t('exit'), style: 'destructive', onPress: logout },
       ]);
     }
   };
@@ -34,30 +37,54 @@ export default function ProfileScreen() {
         <Text style={styles.email}>{user?.email}</Text>
         <View style={[styles.roleBadge, { backgroundColor: 'rgba(255,255,255,0.15)' }]}>
           <Text style={styles.roleText}>
-            {user?.role === 'doctor' ? '🩺 Doctor' : '🏃 Paciente'}
+            {user?.role === 'doctor' ? `🩺 ${t('doctor')}` : `🏃 ${t('patient')}`}
           </Text>
         </View>
       </View>
 
       <View style={styles.section}>
-        <Text style={[styles.sectionLabel, { color: colors.text }]}>Información</Text>
+        <Text style={[styles.sectionLabel, { color: colors.text }]}>{t('information')}</Text>
         <View style={[styles.infoCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={styles.infoLeft}>
-            <Text style={[styles.infoLabel, { color: colors.icon }]}>Estado</Text>
+            <Text style={[styles.infoLabel, { color: colors.icon }]}>{t('status')}</Text>
             <Text style={[styles.infoValue, { color: colors.text }]}>
-              {user?.is_active ? '✅ Activo' : '❌ Inactivo'}
+              {user?.is_active ? `✅ ${t('activeStatus')}` : `❌ ${t('inactiveStatus')}`}
             </Text>
           </View>
           <Text style={[styles.infoIcon, { color: colors.primary }]}>💚</Text>
         </View>
         <View style={[styles.infoCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={styles.infoLeft}>
-            <Text style={[styles.infoLabel, { color: colors.icon }]}>Miembro desde</Text>
+            <Text style={[styles.infoLabel, { color: colors.icon }]}>{t('memberSince')}</Text>
             <Text style={[styles.infoValue, { color: colors.text }]}>
               {user?.created_at ? new Date(user.created_at).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' }) : '-'}
             </Text>
           </View>
           <Text style={[styles.infoIcon, { color: colors.accent }]}>📅</Text>
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={[styles.sectionLabel, { color: colors.text }]}>{t('language')}</Text>
+        <View style={{ flexDirection: 'row', gap: 10, justifyContent: 'space-between' }}>
+            <TouchableOpacity 
+              style={[styles.langBtn, i18n.language?.startsWith('es') && { backgroundColor: colors.primary, borderColor: colors.primary }]}
+              onPress={() => i18n.changeLanguage('es')}
+            >
+              <Text style={{ color: i18n.language?.startsWith('es') ? '#fff' : colors.text, fontWeight: 'bold' }}>🇪🇸 {t('spanish')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.langBtn, i18n.language?.startsWith('en') && { backgroundColor: colors.primary, borderColor: colors.primary }]}
+              onPress={() => i18n.changeLanguage('en')}
+            >
+              <Text style={{ color: i18n.language?.startsWith('en') ? '#fff' : colors.text, fontWeight: 'bold' }}>🇬🇧 {t('english')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.langBtn, i18n.language?.startsWith('de') && { backgroundColor: colors.primary, borderColor: colors.primary }]}
+              onPress={() => i18n.changeLanguage('de')}
+            >
+              <Text style={{ color: i18n.language?.startsWith('de') ? '#fff' : colors.text, fontWeight: 'bold' }}>🇩🇪 {t('german')}</Text>
+            </TouchableOpacity>
         </View>
       </View>
 
@@ -67,7 +94,7 @@ export default function ProfileScreen() {
         activeOpacity={0.85}
       >
         <Text style={styles.logoutIcon}>🚪</Text>
-        <Text style={styles.logoutText}>Cerrar Sesión</Text>
+        <Text style={styles.logoutText}>{t('logout')}</Text>
       </TouchableOpacity>
 
       <View style={{ height: 30 }} />
@@ -191,4 +218,13 @@ const styles = StyleSheet.create({
     fontSize: 16, 
     fontWeight: '700' 
   },
+  langBtn: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    alignItems: 'center',
+    justifyContent: 'center',
+  }
 });
