@@ -11,6 +11,7 @@ import {
   Modal,
 } from 'react-native';
 import { useFocusEffect } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import api from '@/services/api';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -33,6 +34,7 @@ type EventItem = {
 };
 
 export default function EventsScreen() {
+  const { t } = useTranslation();
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
   const [events, setEvents] = useState<EventItem[]>([]);
@@ -232,8 +234,8 @@ export default function EventsScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { backgroundColor: colors.secondary }]}>
         <View>
-          <Text style={styles.title}>Mis Eventos</Text>
-          <Text style={styles.subtitle}>Registra y controla tu salud</Text>
+          <Text style={styles.title}>{t('myEvents')}</Text>
+          <Text style={styles.subtitle}>{t('registerHealth')}</Text>
         </View>
         <TouchableOpacity 
           style={[styles.addButton, { backgroundColor: 'rgba(255,255,255,0.25)' }]} 

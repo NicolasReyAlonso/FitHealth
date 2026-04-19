@@ -13,6 +13,7 @@ import {
   Platform,
 } from 'react-native';
 import { useFocusEffect } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import api from '@/services/api';
 import { WS_BASE_URL } from '@/services/api';
 import { Colors } from '@/constants/theme';
@@ -36,6 +37,7 @@ type Message = {
 };
 
 export default function ChatScreen() {
+  const { t } = useTranslation();
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
   const { user, token } = useAuth();
@@ -220,8 +222,8 @@ export default function ChatScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { backgroundColor: colors.accent }]}>
         <View>
-          <Text style={styles.title}>💬 Chat</Text>
-          <Text style={styles.subtitle}>Comunícate con tu doctor</Text>
+          <Text style={styles.title}>{t('chatTitle')}</Text>
+          <Text style={styles.subtitle}>{t('commDoctor')}</Text>
         </View>
       </View>
 

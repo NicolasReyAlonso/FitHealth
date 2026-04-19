@@ -11,6 +11,7 @@ import {
   Modal,
 } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import api from '@/services/api';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -27,6 +28,7 @@ type Routine = {
 };
 
 export default function RoutinesScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
@@ -137,8 +139,8 @@ export default function RoutinesScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { backgroundColor: colors.primary }]}>
         <View>
-          <Text style={styles.title}>🏋️ Mis Rutinas</Text>
-          <Text style={styles.subtitle}>Organiza tu entrenamiento</Text>
+          <Text style={styles.title}>{t('myRoutines')}</Text>
+          <Text style={styles.subtitle}>{t('orgTraining')}</Text>
         </View>
         <TouchableOpacity 
           style={[styles.addButton, { backgroundColor: 'rgba(255,255,255,0.25)' }]}
