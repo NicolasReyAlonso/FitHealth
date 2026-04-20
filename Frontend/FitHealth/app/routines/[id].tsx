@@ -64,6 +64,53 @@ export default function RoutineDetailScreen() {
 
   useEffect(() => {
     fetchRoutine();
+    
+    // Connect WebSocket
+    const rawHost = API_BASE_URL.replace(/^http(s?):\/\//, '');
+    const wsScheme = API_BASE_URL.startsWith('https') ? 'wss' : 'ws';
+    const wsUrl = `${wsScheme}://${rawHost}/routines/ws/${id}`;
+    
+    const ws = new WebSocket(wsUrl);
+    
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === 'routine_updated') {
+          fetchRoutine();
+        }
+        else if (data.type === 'objective_updated') {
+          setRoutine((prev: any) => {
+            if (!prev) return prev;
+            const newRoutine = { ...prev };
+            if (newRoutine.objectives) {
+              newRoutine.objectives = newRoutine.objectives.map((obj: any) => 
+                obj.id === data.id ? { ...obj, is_completed: data.is_completed } : obj
+              );
+            }
+            return newRoutine;
+          });
+        }
+        else if (data.type === 'medication_updated') {
+          setRoutine((prev: any) => {
+            if (!prev) return prev;
+            const newRoutine = { ...prev };
+            newRoutine.days = newRoutine.days.map((day: any) => ({
+              ...day,
+              medications: day.medications?.map((med: any) => 
+                med.id === data.id ? { ...med, is_completed: data.is_completed } : med
+              )
+            }));
+            return newRoutine;
+          });
+        }
+      } catch (e) {
+        console.error("Error parsing WS message:", e);
+      }
+    };
+    
+    return () => {
+      ws.close();
+    }
   }, [fetchRoutine]);
 
   const handlePickImage = async (exerciseId: number) => {

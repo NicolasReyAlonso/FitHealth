@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, WebSocket, WebSocketDisconnect
 from sqlalchemy.orm import Session
 import os
 import uuid
@@ -17,9 +17,40 @@ from app.models.routine import RoutineDay, RoutineExercise, RoutineDiet, Routine
 
 router = APIRouter(prefix="/routines", tags=["routines"])
 
+class RoutineConnectionManager:
+    def __init__(self):
+        self.active_connections: dict[int, list[WebSocket]] = {}
+
+    async def connect(self, websocket: WebSocket, routine_id: int):
+        await websocket.accept()
+        if routine_id not in self.active_connections:
+            self.active_connections[routine_id] = []
+        self.active_connections[routine_id].append(websocket)
+
+    def disconnect(self, websocket: WebSocket, routine_id: int):
+        if routine_id in self.active_connections:
+            if websocket in self.active_connections[routine_id]:
+                self.active_connections[routine_id].remove(websocket)
+
+    async def broadcast(self, routine_id: int, message: dict):
+        if routine_id in self.active_connections:
+            for connection in self.active_connections[routine_id]:
+                await connection.send_json(message)
+
+manager = RoutineConnectionManager()
+
+@router.websocket("/ws/{routine_id}")
+async def websocket_endpoint(websocket: WebSocket, routine_id: int):
+    await manager.connect(websocket, routine_id)
+    try:
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        manager.disconnect(websocket, routine_id)
+
 
 @router.post("/{routine_id}/days/{day_of_week}/exercises", response_model=RoutineExerciseRead)
-def add_exercise_to_routine(
+async def add_exercise_to_routine(
     routine_id: int,
     day_of_week: int,
     exercise_data: RoutineExerciseCreate,
@@ -42,10 +73,11 @@ def add_exercise_to_routine(
     db.add(db_ex)
     db.commit()
     db.refresh(db_ex)
+    await manager.broadcast(routine_id, {"type": "routine_updated"})
     return db_ex
 
 @router.post("/{routine_id}/days/{day_of_week}/diets", response_model=RoutineDietRead)
-def add_diet_to_routine(
+async def add_diet_to_routine(
     routine_id: int,
     day_of_week: int,
     diet_data: RoutineDietCreate,
@@ -68,10 +100,11 @@ def add_diet_to_routine(
     db.add(db_diet)
     db.commit()
     db.refresh(db_diet)
+    await manager.broadcast(routine_id, {"type": "routine_updated"})
     return db_diet
 
 @router.post("/{routine_id}/days/{day_of_week}/medications", response_model=RoutineMedicationRead)
-def add_medication_to_routine(
+async def add_medication_to_routine(
     routine_id: int,
     day_of_week: int,
     med_data: RoutineMedicationCreate,
@@ -94,10 +127,11 @@ def add_medication_to_routine(
     db.add(db_med)
     db.commit()
     db.refresh(db_med)
+    await manager.broadcast(routine_id, {"type": "routine_updated"})
     return db_med
 
 @router.delete("/items/{item_type}/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_routine_item(
+async def delete_routine_item(
     item_type: str,
     item_id: int,
     db: Session = Depends(get_db),
@@ -132,6 +166,9 @@ def delete_routine_item(
     
     db.delete(db_item)
     db.commit()
+    
+    routine_id = db_item.routine_id if item_type == "objective" else db_item.day.routine_id
+    await manager.broadcast(routine_id, {"type": "routine_updated"})
 
 @router.post("/exercises/{exercise_id}/image", response_model=dict)
 async def upload_exercise_image(
@@ -165,6 +202,7 @@ async def upload_exercise_image(
     db_ex.image_url = f"/static/exercises/{file_name}"
     db.commit()
     db.refresh(db_ex)
+    await manager.broadcast(db_ex.day.routine_id, {"type": "routine_updated"})
 
     return {"message": "Imagen subida correctamente", "url": db_ex.image_url}
 
@@ -181,7 +219,7 @@ def list_my_routines(
 from app.schemas.routine import RoutineMedicationUpdate
 
 @router.patch("/medications/{medication_id}", response_model=RoutineMedicationRead)
-def update_medication(
+async def update_medication(
     medication_id: int,
     medication_data: RoutineMedicationUpdate,
     db: Session = Depends(get_db),
@@ -209,6 +247,8 @@ def update_medication(
     updated_med = crud.routine.update_routine_medication(
         db, medication_id, medication_data.model_dump(exclude_unset=True)
     )
+    
+    await manager.broadcast(db_routine.id, {"type": "medication_updated", "id": medication_id, "is_completed": updated_med.is_completed})
     return updated_med
 
 @router.post("/", response_model=RoutineRead, status_code=status.HTTP_201_CREATED)
@@ -354,7 +394,7 @@ def get_routine(
 
 
 @router.patch("/{routine_id}", response_model=RoutineRead)
-def update_routine(
+async def update_routine(
     routine_id: int,
     routine_data: RoutineUpdate,
     db: Session = Depends(get_db),
@@ -374,7 +414,9 @@ def update_routine(
     if is_owner and db_routine.creator_id is not None and db_routine.creator_id != current_user.id:
         raise HTTPException(status_code=403, detail="No puedes editar una rutina asignada por un doctor")
         
-    return crud.routine.update_routine(db, routine_id, routine_data)
+    res = crud.routine.update_routine(db, routine_id, routine_data)
+    await manager.broadcast(routine_id, {"type": "routine_updated"})
+    return res
 
 
 @router.delete("/{routine_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -400,7 +442,7 @@ def delete_routine(
 
 
 @router.post("/{routine_id}/objectives", response_model=RoutineObjectiveRead)
-def add_objective_to_routine(
+async def add_objective_to_routine(
     routine_id: int,
     objective_data: RoutineObjectiveCreate,
     db: Session = Depends(get_db),
@@ -411,10 +453,12 @@ def add_objective_to_routine(
     if db_routine.user_id != current_user.id and db_routine.creator_id != current_user.id: raise HTTPException(status_code=403, detail="No autorizado")
     if db_routine.user_id == current_user.id and db_routine.creator_id is not None and db_routine.creator_id != current_user.id: raise HTTPException(status_code=403, detail="No puedes modificar esta rutina de doctor")
     
-    return crud.routine.create_routine_objective(db, routine_id, objective_data.model_dump())
+    obj = crud.routine.create_routine_objective(db, routine_id, objective_data.model_dump())
+    await manager.broadcast(routine_id, {"type": "routine_updated"})
+    return obj
 
 @router.put("/objectives/{objective_id}", response_model=RoutineObjectiveRead)
-def update_objective(
+async def update_objective(
     objective_id: int,
     objective_data: RoutineObjectiveUpdate,
     db: Session = Depends(get_db),
@@ -442,4 +486,6 @@ def update_objective(
     updated_obj = crud.routine.update_routine_objective(
         db, objective_id, objective_data.model_dump(exclude_unset=True)
     )
+    
+    await manager.broadcast(db_routine.id, {"type": "objective_updated", "id": objective_id, "is_completed": updated_obj.is_completed})
     return updated_obj

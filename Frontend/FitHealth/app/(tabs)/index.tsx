@@ -261,7 +261,7 @@ export default function HomeScreen() {
           onPress={() => handleStatPress('events')}
           style={({ pressed }) => [
             styles.statBox,
-            { backgroundColor: `${colors.accent}15` },
+            { backgroundColor: colors.accentLight },
             pressed && styles.statBoxPressed,
           ]}>
           <Text style={styles.statNumber}>0</Text>
