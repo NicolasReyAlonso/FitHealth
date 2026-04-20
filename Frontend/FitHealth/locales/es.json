@@ -3,5 +3,12 @@
   "birthday": "Fecha de nacimiento",
   "not_provided": "No proporcionado",
   "greeting": "¡Hola",
-  "welcome": "Bienvenido a FitHealth"
+  "welcome": "Bienvenido a FitHealth",
+  "first_name": "Nombre",
+  "last_name": "Apellido",
+  "second_last_name": "Secondo apellido",
+  "notes": "Notas",
+  "save": "Guardar",
+  "edit_profile": "Editar perfil"
+
 }

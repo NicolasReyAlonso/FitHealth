@@ -73,7 +73,7 @@ export default function ProfileScreen() {
         </View>
 
         <View style={[styles.infoCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[styles.infoLabel, { color: colors.icon }]}>{t('note')}</Text>
+          <Text style={[styles.infoLabel, { color: colors.icon }]}>{t('notes')}</Text>
           <Text style={[styles.infoValue, { color: colors.text }]}>
               {user?.notes}
           </Text>

@@ -44,21 +44,21 @@ export default function EditProfileScreen() {
     <View style={[styles.section, { backgroundColor: colors.background }]}>
       <View style={[styles.infoCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <TextInput style={[styles.infoValue, { color: colors.text }]}
-          placeholder="First name"
+          placeholder={t('first_name')}
           placeholderTextColor={colors.placeholder}
           value={firstName}
           onChangeText={setFirstName}
         />
 
         <TextInput style={[styles.infoValue, { color: colors.text }]}
-          placeholder="Last name"
+          placeholder={t('last_name')}
           placeholderTextColor={colors.placeholder}
           value={lastName}
           onChangeText={setLastName}
         />
 
           <TextInput style={[styles.infoValue, { color: colors.text }]}
-          placeholder="Second last name"
+          placeholder={t('second_last_name')}
           placeholderTextColor={colors.placeholder}
           value={secondLastName}
           onChangeText={setSecondLastName}
@@ -122,13 +122,13 @@ export default function EditProfileScreen() {
  
        <View style={[styles.infoCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <TextInput style={[styles.infoValue, { color: colors.text }]}
-          placeholder={t('note')}
+          placeholder={t('notes')}
           placeholderTextColor={colors.placeholder}
           value={notes}
           onChangeText={setNotes}
         />
       </View>
-      <Button title="Save" onPress={save} />
+      <Button title={t('save')} onPress={save} />
     </View>
   );
 }

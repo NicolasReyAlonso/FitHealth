@@ -3,5 +3,11 @@
   "birthday": "Birthday",
   "not_provided": "Not provided",
   "greeting": "Hello",
-  "welcome": "Welcome to FitHealth"
+  "welcome": "Welcome to FitHealth",
+  "first_name": "First name",
+  "last_name": "Last name",
+  "second_last_name": "Second last name",
+  "notes": "Notes",
+  "save": "Save",
+  "edit_profile": "Edit profile"
 }

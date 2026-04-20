@@ -3,6 +3,13 @@
   "birthday": "Datum narození",
   "not_provided": "Nevyplněno",
   "greeting": "Ahoj",
-  "welcome": "Vítej ve FitHealth"
+  "welcome": "Vítej ve FitHealth",
+  "first_name": "Jméno",
+  "last_name": "Příjmení",
+  "second_last_name": "Druhé příjmení",
+  "notes": "Poznámky",
+  "save": "Uložit",
+  "edit_profile": "Upravit profil"
+
 }
 
