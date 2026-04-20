@@ -55,7 +55,7 @@ export default function EventsScreen() {
   // Undo functionality
   const [lastDeletedEventId, setLastDeletedEventId] = useState<number | null>(null);
   const [showUndoToast, setShowUndoToast] = useState(false);
-  const undoTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const undoTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [editingNotes, setEditingNotes] = useState('');
   const [editingDate, setEditingDate] = useState(new Date());
   const [editingType, setEditingType] = useState('custom');
@@ -579,7 +579,7 @@ export default function EventsScreen() {
                     setEditingDate(new Date());
                     setEditingType('custom');
                     setEditingRoutineId('');
-                    setShowEditDatePicker(false);
+                    setShowDatePicker(false);
                   }}
                 >
                   <Text style={{ color: colors.text, fontWeight: '600', fontSize: 14 }}>Cancelar</Text>

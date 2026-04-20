@@ -275,8 +275,8 @@ export default function ChatScreen() {
                           <Text style={[styles.chartTitle, { color: isMe ? '#fff' : colors.text }]}>Evolución BPM</Text>
                           <LineChart
                             data={{
-                              labels: item.report_data!.graphs.bpm_over_time.map(d => new Date(d.date).getDate().toString()),
-                              datasets: [{ data: item.report_data!.graphs.bpm_over_time.map(d => d.value) }]
+                              labels: item.report_data!.graphs.bpm_over_time.map((d: any) => new Date(d.date).getDate().toString()),
+                              datasets: [{ data: item.report_data!.graphs.bpm_over_time.map((d: any) => d.value) }]
                             }}
                             width={Dimensions.get('window').width * 0.7}
                             height={150}
@@ -299,8 +299,8 @@ export default function ChatScreen() {
                           <Text style={[styles.chartTitle, { color: isMe ? '#fff' : colors.text }]}>Evolución Pasos</Text>
                           <LineChart
                             data={{
-                              labels: item.report_data!.graphs.steps_over_time.map(d => new Date(d.date).getDate().toString()),
-                              datasets: [{ data: item.report_data!.graphs.steps_over_time.map(d => d.value) }]
+                              labels: item.report_data!.graphs.steps_over_time.map((d: any) => new Date(d.date).getDate().toString()),
+                              datasets: [{ data: item.report_data!.graphs.steps_over_time.map((d: any) => d.value) }]
                             }}
                             width={Dimensions.get('window').width * 0.7}
                             height={150}
@@ -322,8 +322,8 @@ export default function ChatScreen() {
                           <Text style={[styles.chartTitle, { color: isMe ? '#fff' : colors.text }]}>Evolución Peso</Text>
                           <LineChart
                             data={{
-                              labels: item.report_data!.graphs.weight_over_time.map(d => new Date(d.date).getDate().toString()),
-                              datasets: [{ data: item.report_data!.graphs.weight_over_time.map(d => d.value) }]
+                              labels: item.report_data!.graphs.weight_over_time.map((d: any) => new Date(d.date).getDate().toString()),
+                              datasets: [{ data: item.report_data!.graphs.weight_over_time.map((d: any) => d.value) }]
                             }}
                             width={Dimensions.get('window').width * 0.7}
                             height={150}
