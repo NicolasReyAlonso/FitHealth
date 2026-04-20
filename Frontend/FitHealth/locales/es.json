@@ -5,7 +5,9 @@
   },
   "common": {
     "not_provided": "No proporcionado",
-    "save": "Guardar"
+    "save": "Guardar",
+    "es": "🇪🇸 Español"
+
   },
   "home": {
     "greeting": "¡Hola",

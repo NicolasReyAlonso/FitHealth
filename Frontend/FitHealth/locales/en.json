@@ -5,8 +5,8 @@
   },
   "common": {
     "not_provided": "Not provided",
-    "save": "Save"
-
+    "save": "Save",
+    "en": "🇬🇧 English"
   },
   "home": {
     "greeting": "Hello",

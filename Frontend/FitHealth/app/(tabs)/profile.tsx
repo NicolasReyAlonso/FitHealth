@@ -79,6 +79,13 @@ export default function ProfileScreen() {
           </Text>
         </View>
 
+        <View style={[styles.infoCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Text style={[styles.infoLabel, { color: colors.icon }]}>{t('profile.preferred_language')}</Text>
+          <Text style={[styles.infoValue, { color: colors.text }]}>
+            {t(`common.${user?.preferred_language}`)}
+          </Text>
+        </View>
+
 
         <TouchableOpacity style={[styles.infoCard, { backgroundColor: colors.edit, borderColor: colors.border }]}
             onPress={() => router.push('/edit_profile')}>
