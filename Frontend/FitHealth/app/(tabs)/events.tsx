@@ -17,6 +17,8 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 const EVENT_TYPES = [
+  { key: 'walking', label: '🚶 Caminar' },
+  { key: 'running', label: '🏃 Correr' },
   { key: 'biometric', label: '❤️ Biométrico' },
   { key: 'water', label: '💧 Agua' },
   { key: 'activity', label: '🏃 Actividad' },
@@ -65,6 +67,9 @@ export default function EventsScreen() {
   const [hrMax, setHrMax] = useState('');
   const [hrMin, setHrMin] = useState('');
   const [bloodSugar, setBloodSugar] = useState('');
+  
+  const [steps, setSteps] = useState('');
+  const [distanceKm, setDistanceKm] = useState('');
   
   // Date picker state
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -123,6 +128,23 @@ export default function EventsScreen() {
         payload.biometric = biometricData;
       }
     }
+    if (eventType === 'walking' || eventType === 'running') {
+      const biometricData: Record<string, unknown> = {};
+      if (hrAvg) biometricData.heart_rate_avg = Number.parseInt(hrAvg, 10);
+      if (hrMax) biometricData.heart_rate_max = Number.parseInt(hrMax, 10);
+      if (hrMin) biometricData.heart_rate_min = Number.parseInt(hrMin, 10);
+      
+      if (Object.keys(biometricData).length > 0) {
+        payload.biometric = biometricData;
+      }
+      
+      const activityData: Record<string, unknown> = {
+        activity_type: eventType === 'walking' ? 'Caminar' : 'Correr',
+      };
+      if (steps) activityData.steps = Number.parseInt(steps, 10);
+      if (distanceKm) activityData.distance_km = parseFloat(distanceKm);
+      payload.activity_log = activityData;
+    }
     if (eventType === 'water' && waterMl) {
       payload.water_log = { amount_ml: Number.parseInt(waterMl, 10) };
     }
@@ -148,6 +170,8 @@ export default function EventsScreen() {
       setHrMax('');
       setHrMin('');
       setBloodSugar('');
+      setSteps('');
+      setDistanceKm('');
       setSelectedDate(new Date());
       setShowModal(false);
       fetchEvents();
@@ -292,6 +316,15 @@ export default function EventsScreen() {
                 <View style={{ marginTop: 10 }}>
                   {(e as any).biometric.heart_rate_avg && <Text style={[styles.cardNotes, { color: colors.text }]}>❤️ BPM Medio: {(e as any).biometric.heart_rate_avg}</Text>}
                   {(e as any).biometric.blood_sugar && <Text style={[styles.cardNotes, { color: colors.text }]}>🍬 Azúcar: {(e as any).biometric.blood_sugar} mg/dL</Text>}
+                </View>
+              )}
+              {(e.event_type === 'walking' || e.event_type === 'running') && (
+                <View style={{ marginTop: 10 }}>
+                  {(e as any).activity_log?.steps && <Text style={[styles.cardNotes, { color: colors.text }]}>👣 Pasos: {(e as any).activity_log.steps}</Text>}
+                  {(e as any).activity_log?.distance_km && <Text style={[styles.cardNotes, { color: colors.text }]}>📏 Distancia: {(e as any).activity_log.distance_km} km</Text>}
+                  {(e as any).biometric?.heart_rate_avg && <Text style={[styles.cardNotes, { color: colors.text }]}>❤️ BPM Medio: {(e as any).biometric.heart_rate_avg}</Text>}
+                  {(e as any).biometric?.heart_rate_max && <Text style={[styles.cardNotes, { color: colors.text }]}>❤️ BPM Pico: {(e as any).biometric.heart_rate_max}</Text>}
+                  {(e as any).biometric?.heart_rate_min && <Text style={[styles.cardNotes, { color: colors.text }]}>❤️ BPM Mínimo: {(e as any).biometric.heart_rate_min}</Text>}
                 </View>
               )}
             </View>
@@ -719,6 +752,50 @@ export default function EventsScreen() {
                   value={foodName}
                   onChangeText={setFoodName}
                 />
+              )}
+              {(eventType === 'walking' || eventType === 'running') && (
+                <>
+                  <TextInput
+                    style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text }]}
+                    placeholder="BPM Medio (opcional)"
+                    placeholderTextColor={colors.icon}
+                    value={hrAvg}
+                    onChangeText={setHrAvg}
+                    keyboardType="numeric"
+                  />
+                  <TextInput
+                    style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text }]}
+                    placeholder="BPM Pico (opcional)"
+                    placeholderTextColor={colors.icon}
+                    value={hrMax}
+                    onChangeText={setHrMax}
+                    keyboardType="numeric"
+                  />
+                  <TextInput
+                    style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text }]}
+                    placeholder="BPM Mínimo (opcional)"
+                    placeholderTextColor={colors.icon}
+                    value={hrMin}
+                    onChangeText={setHrMin}
+                    keyboardType="numeric"
+                  />
+                  <TextInput
+                    style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text }]}
+                    placeholder="Pasos (opcional)"
+                    placeholderTextColor={colors.icon}
+                    value={steps}
+                    onChangeText={setSteps}
+                    keyboardType="numeric"
+                  />
+                  <TextInput
+                    style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text }]}
+                    placeholder="Distancia en km (opcional)"
+                    placeholderTextColor={colors.icon}
+                    value={distanceKm}
+                    onChangeText={setDistanceKm}
+                    keyboardType="decimal-pad"
+                  />
+                </>
               )}
               {eventType === 'biometric' && (
                 <>

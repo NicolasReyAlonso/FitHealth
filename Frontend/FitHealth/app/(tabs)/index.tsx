@@ -21,6 +21,8 @@ export default function HomeScreen() {
   const [routinesData, setRoutinesData] = useState<any[]>([]);
   const [eventsData, setEventsData] = useState<any[]>([]);
   const [dayActivityMap, setDayActivityMap] = useState<{ [key: number]: { routines: number; events: number } }>({});
+  const [monthlyDistance, setMonthlyDistance] = useState(0);
+  const [monthlySteps, setMonthlySteps] = useState(0);
 
   useFocusEffect(
     useCallback(() => {
@@ -68,7 +70,10 @@ export default function HomeScreen() {
         }
       });
       
-      // Contar eventos que caen en esta semana
+      let tempDistance = 0;
+      let tempSteps = 0;
+
+      // Contar eventos que caen en esta semana y sumar datos mensuales
       eventsDataFetch.forEach((event: any) => {
         if (event.timestamp) {
           const eventDate = new Date(event.timestamp);
@@ -78,8 +83,18 @@ export default function HomeScreen() {
             const dayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
             weekData[dayIndex]++;
           }
+
+          if (eventDate.getMonth() === today.getMonth() && eventDate.getFullYear() === today.getFullYear()) {
+            if (event.activity_log) {
+               tempDistance += event.activity_log.distance_km || 0;
+               tempSteps += event.activity_log.steps || 0;
+            }
+          }
         }
       });
+
+      setMonthlyDistance(tempDistance);
+      setMonthlySteps(tempSteps);
       
       // Mapear actividad por día del mes
       const year = today.getFullYear();
@@ -234,12 +249,12 @@ export default function HomeScreen() {
       </View>
 
       {/* Stats Cards */}
-      <View style={styles.statsContainer}>
+      <View style={[styles.statsContainer, { flexWrap: 'wrap' }]}>
         <Pressable
           onPress={() => handleStatPress('routines')}
           style={({ pressed }) => [
             styles.statBox,
-            { backgroundColor: colors.primaryLight },
+            { backgroundColor: colors.primaryLight, minWidth: '45%' },
             pressed && styles.statBoxPressed,
           ]}>
           <Text style={styles.statNumber}>{routines}</Text>
@@ -250,7 +265,7 @@ export default function HomeScreen() {
           onPress={() => handleStatPress('events')}
           style={({ pressed }) => [
             styles.statBox,
-            { backgroundColor: colors.secondaryLight },
+            { backgroundColor: colors.secondaryLight, minWidth: '45%' },
             pressed && styles.statBoxPressed,
           ]}>
           <Text style={styles.statNumber}>{events}</Text>
@@ -261,12 +276,23 @@ export default function HomeScreen() {
           onPress={() => handleStatPress('events')}
           style={({ pressed }) => [
             styles.statBox,
-            { backgroundColor: colors.accentLight },
+            { backgroundColor: colors.accentLight, minWidth: '45%' },
             pressed && styles.statBoxPressed,
           ]}>
-          <Text style={styles.statNumber}>0</Text>
-          <Text style={[styles.statLabel, { color: colors.accent }]}>{t('kilometers')}</Text>
-          <Text style={[styles.statSubtext, { color: colors.accent }]}>{t('thisWeek')}</Text>
+          <Text style={styles.statNumber}>{monthlyDistance.toFixed(1)}</Text>
+          <Text style={[styles.statLabel, { color: colors.accent }]}>Km</Text>
+          <Text style={[styles.statSubtext, { color: colors.accent }]}>este mes</Text>
+        </Pressable>
+        <Pressable
+          onPress={() => handleStatPress('events')}
+          style={({ pressed }) => [
+            styles.statBox,
+            { backgroundColor: colors.accentLight, minWidth: '45%' },
+            pressed && styles.statBoxPressed,
+          ]}>
+          <Text style={styles.statNumber}>{monthlySteps}</Text>
+          <Text style={[styles.statLabel, { color: colors.accent }]}>Pasos</Text>
+          <Text style={[styles.statSubtext, { color: colors.accent }]}>este mes</Text>
         </Pressable>
       </View>
 
