@@ -8,6 +8,7 @@ import '@/services/i18n';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider, useAuth } from '@/context/auth-context';
+import { ToastProvider } from '@/context/toast-context';
 
 function RootNavigator() {
   const { user, isLoading } = useAuth();
@@ -80,7 +81,9 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={colorScheme === 'dark' ? customDarkTheme : customLightTheme}>
       <AuthProvider>
-        <RootNavigator />
+        <ToastProvider>
+          <RootNavigator />
+        </ToastProvider>
       </AuthProvider>
     </ThemeProvider>
   );

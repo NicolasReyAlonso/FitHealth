@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useRef } from 'react';
 import {
   StyleSheet,
   Text,
@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Alert,
   ActivityIndicator,
   Modal,
 } from 'react-native';
@@ -15,6 +14,9 @@ import { useTranslation } from 'react-i18next';
 import api from '@/services/api';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useToast } from '@/context/toast-context';
+import { useClosureOverlay } from '@/hooks/use-closure-overlay';
+import { UndoToast } from '@/components/undo-toast';
 
 const EVENT_TYPES = [
   { key: 'walking', label: '🚶 Caminar' },
@@ -39,6 +41,8 @@ export default function EventsScreen() {
   const { t } = useTranslation();
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
+  const toast = useToast();
+  const { component: closureOverlay, show: showClosure } = useClosureOverlay();
   const [events, setEvents] = useState<EventItem[]>([]);
   const [routines, setRoutines] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,6 +51,11 @@ export default function EventsScreen() {
   const [deleting, setDeleting] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editingName, setEditingName] = useState('');
+  
+  // Undo functionality
+  const [lastDeletedEventId, setLastDeletedEventId] = useState<number | null>(null);
+  const [showUndoToast, setShowUndoToast] = useState(false);
+  const undoTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [editingNotes, setEditingNotes] = useState('');
   const [editingDate, setEditingDate] = useState(new Date());
   const [editingType, setEditingType] = useState('custom');
@@ -79,8 +88,9 @@ export default function EventsScreen() {
     try {
       const res = await api.get('/events/');
       setEvents(res.data);
-    } catch {
-      Alert.alert('Error', 'No se pudieron cargar los eventos');
+    } catch (error: any) {
+      console.error('❌ Error al cargar eventos:', error);
+      toast.error('No se pudieron cargar los eventos');
     } finally {
       setLoading(false);
     }
@@ -105,7 +115,7 @@ export default function EventsScreen() {
   // NOSONAR
   const handleCreate = async () => {
     if (!name.trim()) {
-      Alert.alert('Error', 'El nombre es requerido');
+      toast.warning('El nombre es requerido');
       return;
     }
     const payload: Record<string, unknown> = {
@@ -159,6 +169,14 @@ export default function EventsScreen() {
     }
     try {
       await api.post('/events/', payload);
+      
+      // Mostrar confirmación de cierre
+      const eventTypeLabel = EVENT_TYPES.find(et => et.key === eventType)?.label || eventType;
+      showClosure(
+        `¡Evento registrado!`,
+        `"${name.trim()}" - ${eventTypeLabel}`
+      );
+      
       setName('');
       setNotes('');
       setWaterMl('');
@@ -176,7 +194,7 @@ export default function EventsScreen() {
       setShowModal(false);
       fetchEvents();
     } catch {
-      Alert.alert('Error', 'No se pudo crear el evento');
+      toast.error('No se pudo crear el evento');
     }
   };
 
@@ -192,14 +210,49 @@ export default function EventsScreen() {
       console.log('📡 Eliminando evento:', deleteId);
       await api.delete(`/events/${deleteId}`);
       console.log('✅ Evento eliminado exitosamente');
+      
+      // Guardar ID para undo
+      setLastDeletedEventId(deleteId);
+      setShowUndoToast(true);
+      
+      // Limpiar timeout anterior si existe
+      if (undoTimeoutRef.current) {
+        clearTimeout(undoTimeoutRef.current);
+      }
+      
+      // Auto-dismiss después de 5 segundos
+      undoTimeoutRef.current = setTimeout(() => {
+        setShowUndoToast(false);
+        setLastDeletedEventId(null);
+      }, 5000);
+      
       setDeleteId(null);
       await fetchEvents();
-      Alert.alert('Éxito', 'Evento eliminado correctamente');
     } catch (error: any) {
       console.error('❌ Error al eliminar:', error);
-      Alert.alert('Error', error.message || 'No se pudo eliminar el evento');
+      toast.error(error.message || 'No se pudo eliminar el evento');
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const handleUndo = async () => {
+    if (!lastDeletedEventId) return;
+    
+    try {
+      console.log('↶ Deshaciendo eliminación de evento:', lastDeletedEventId);
+      await api.post(`/events/${lastDeletedEventId}/restore`);
+      toast.success('↶ Evento restaurado');
+      await fetchEvents();
+    } catch (error: any) {
+      console.error('❌ Error al restaurar:', error);
+      toast.error('No se pudo restaurar el evento');
+    } finally {
+      setShowUndoToast(false);
+      setLastDeletedEventId(null);
+      if (undoTimeoutRef.current) {
+        clearTimeout(undoTimeoutRef.current);
+      }
     }
   };
 
@@ -230,6 +283,14 @@ export default function EventsScreen() {
       }
       await api.patch(`/events/${editingId}`, payload);
       console.log('✅ Evento actualizado exitosamente');
+      
+      // Mostrar confirmación de cierre
+      const eventTypeLabel = EVENT_TYPES.find(et => et.key === editingType)?.label || editingType;
+      showClosure(
+        `¡Evento actualizado!`,
+        `"${editingName.trim()}" - ${eventTypeLabel}`
+      );
+      
       setEditingId(null);
       setEditingName('');
       setEditingNotes('');
@@ -237,10 +298,9 @@ export default function EventsScreen() {
       setEditingType('custom');
       setEditingRoutineId('');
       await fetchEvents();
-      Alert.alert('Éxito', 'Evento actualizado correctamente');
     } catch (error: any) {
       console.error('❌ Error al actualizar:', error);
-      Alert.alert('Error', error.message || 'No se pudo actualizar el evento');
+      toast.error(error.message || 'No se pudo actualizar el evento');
     }
   };
 
@@ -882,6 +942,26 @@ export default function EventsScreen() {
           </ScrollView>
         </View>
       </Modal>
+
+      {/* Closure Overlay */}
+      {closureOverlay}
+
+      {/* Undo Toast */}
+      {showUndoToast && lastDeletedEventId && (
+        <UndoToast
+          message="Evento eliminado"
+          onUndo={handleUndo}
+          onDismiss={() => {
+            setShowUndoToast(false);
+            setLastDeletedEventId(null);
+            if (undoTimeoutRef.current) {
+              clearTimeout(undoTimeoutRef.current);
+            }
+          }}
+          duration={5000}
+          colorScheme={colorScheme}
+        />
+      )}
     </View>
   );
 }

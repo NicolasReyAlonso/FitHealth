@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useRef } from 'react';
 import {
   StyleSheet,
   Text,
@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Alert,
   ActivityIndicator,
   Modal,
 } from 'react-native';
@@ -16,6 +15,9 @@ import api from '@/services/api';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/context/auth-context';
+import { useToast } from '@/context/toast-context';
+import { UndoToast } from '@/components/undo-toast';
+import { useClosureOverlay } from '@/hooks/use-closure-overlay';
 
 type Routine = {
   id: number;
@@ -35,6 +37,8 @@ export default function RoutinesScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
+  const toast = useToast();
+  const { component: closureOverlay, show: showClosure } = useClosureOverlay();
   const [routines, setRoutines] = useState<Routine[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -48,13 +52,18 @@ export default function RoutinesScreen() {
   const { user } = useAuth();
   const [patients, setPatients] = useState<{ id: number; username: string }[]>([]);
   const [patientId, setPatientId] = useState<number | null>(null);
+  
+  // Undo functionality
+  const [lastDeletedRoutineId, setLastDeletedRoutineId] = useState<number | null>(null);
+  const [showUndoToast, setShowUndoToast] = useState(false);
+  const undoTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchRoutines = async () => {
     try {
       const res = await api.get('/routines/');
       setRoutines(res.data);
     } catch {
-      Alert.alert('Error', 'No se pudieron cargar las rutinas');
+      toast.error('No se pudieron cargar las rutinas');
     } finally {
       setLoading(false);
     }
@@ -73,7 +82,7 @@ export default function RoutinesScreen() {
 
   const handleCreate = async () => {
     if (!name.trim()) {
-      Alert.alert('Error', 'El nombre es requerido');
+      toast.warning('El nombre es requerido');
       return;
     }
     try {
@@ -86,9 +95,19 @@ export default function RoutinesScreen() {
       setDescription('');
       setPatientId(null);
       setShowModal(false);
+      
+      // Mostrar confirmación de cierre
+      const patientName = patientId 
+        ? patients.find(p => p.id === patientId)?.username 
+        : 'Personal';
+      showClosure(
+        `¡Rutina creada!`,
+        `"${name.trim()}" para ${patientName}`
+      );
+      
       fetchRoutines();
     } catch {
-      Alert.alert('Error', 'No se pudo crear la rutina');
+      toast.error('No se pudo crear la rutina');
     }
   };
 
@@ -104,14 +123,55 @@ export default function RoutinesScreen() {
       console.log('📡 Eliminando rutina:', deleteId);
       await api.delete(`/routines/${deleteId}`);
       console.log('✅ Rutina eliminada exitosamente');
+      
+      // Guardar ID para undo
+      setLastDeletedRoutineId(deleteId);
+      setShowUndoToast(true);
+      
+      // Limpiar timeout anterior si existe
+      if (undoTimeoutRef.current) {
+        clearTimeout(undoTimeoutRef.current);
+      }
+      
+      // Auto-dismiss después de 5 segundos
+      undoTimeoutRef.current = setTimeout(() => {
+        setShowUndoToast(false);
+        setLastDeletedRoutineId(null);
+      }, 5000);
+      
       setDeleteId(null);
       await fetchRoutines();
-      Alert.alert('Éxito', 'Rutina eliminada correctamente');
     } catch (error: any) {
       console.error('❌ Error al eliminar:', error);
-      Alert.alert('Error', error.message || 'No se pudo eliminar la rutina');
+      toast.error(error.message || 'No se pudo eliminar la rutina');
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const handleUndo = async () => {
+    if (!lastDeletedRoutineId) return;
+    
+    try {
+      console.log('↶ Deshaciendo eliminación de rutina:', lastDeletedRoutineId);
+      const res = await api.post(`/routines/${lastDeletedRoutineId}/restore`);
+      
+      // Mostrar confirmación de cierre
+      showClosure(
+        `¡Rutina restaurada!`,
+        `"${res.data.name}" está de vuelta`
+      );
+      
+      await fetchRoutines();
+    } catch (error: any) {
+      console.error('❌ Error al restaurar:', error);
+      toast.error('No se pudo restaurar la rutina');
+    } finally {
+      setShowUndoToast(false);
+      setLastDeletedRoutineId(null);
+      if (undoTimeoutRef.current) {
+        clearTimeout(undoTimeoutRef.current);
+      }
     }
   };
 
@@ -132,14 +192,20 @@ export default function RoutinesScreen() {
         description: editingDescription || null,
       });
       console.log('✅ Rutina actualizada exitosamente');
+      
+      // Mostrar confirmación de cierre
+      showClosure(
+        `¡Rutina actualizada!`,
+        `"${editingName.trim()}"`
+      );
+      
       setEditingId(null);
       setEditingName('');
       setEditingDescription('');
       await fetchRoutines();
-      Alert.alert('Éxito', 'Rutina actualizada correctamente');
     } catch (error: any) {
       console.error('❌ Error al actualizar:', error);
-      Alert.alert('Error', error.message || 'No se pudo actualizar la rutina');
+      toast.error(error.message || 'No se pudo actualizar la rutina');
     }
   };
 
@@ -371,6 +437,26 @@ export default function RoutinesScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Undo Toast */}
+      {showUndoToast && lastDeletedRoutineId && (
+        <UndoToast
+          message="Rutina eliminada"
+          onUndo={handleUndo}
+          onDismiss={() => {
+            setShowUndoToast(false);
+            setLastDeletedRoutineId(null);
+            if (undoTimeoutRef.current) {
+              clearTimeout(undoTimeoutRef.current);
+            }
+          }}
+          duration={5000}
+          colorScheme={colorScheme}
+        />
+      )}
+
+      {/* Closure Overlay */}
+      {closureOverlay}
     </View>
   );
 }

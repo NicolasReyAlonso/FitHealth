@@ -13,7 +13,7 @@ from app.schemas.routine import (
     RoutineExerciseCreate, RoutineDietCreate, RoutineMedicationCreate,
     RoutineExerciseRead, RoutineDietRead, RoutineMedicationRead, RoutineDayRead, RoutineObjectiveCreate, RoutineObjectiveRead, RoutineObjectiveUpdate
 )
-from app.models.routine import RoutineDay, RoutineExercise, RoutineDiet, RoutineMedication, RoutineObjective
+from app.models.routine import Routine, RoutineDay, RoutineExercise, RoutineDiet, RoutineMedication, RoutineObjective
 
 router = APIRouter(prefix="/routines", tags=["routines"])
 
@@ -438,7 +438,31 @@ def delete_routine(
     if is_owner and db_routine.creator_id is not None and db_routine.creator_id != current_user.id:
         raise HTTPException(status_code=403, detail="No puedes eliminar una rutina asignada por un doctor")
         
-    crud.routine.delete_routine(db, routine_id)
+    crud.routine.soft_delete_routine(db, routine_id)
+
+
+@router.post("/{routine_id}/restore", response_model=RoutineRead)
+def restore_routine(
+    routine_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Restaura una rutina eliminada (solo en los últimos 30 días)"""
+    db_routine = db.query(Routine).filter(Routine.id == routine_id).first()
+    if not db_routine:
+        raise HTTPException(status_code=404, detail="Rutina no encontrada")
+        
+    if db_routine.deleted_at is None:
+        raise HTTPException(status_code=400, detail="La rutina no está eliminada")
+    
+    is_owner = db_routine.user_id == current_user.id
+    is_creator = db_routine.creator_id == current_user.id
+    
+    if not is_owner and not is_creator:
+        raise HTTPException(status_code=403, detail="No tienes acceso a esta rutina")
+    
+    restored = crud.routine.restore_routine(db, routine_id)
+    return restored
 
 
 @router.post("/{routine_id}/objectives", response_model=RoutineObjectiveRead)
