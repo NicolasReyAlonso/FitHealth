@@ -1,14 +1,30 @@
 {
-  "edit_profile": "Editar perfil",
-  "birthday": "Fecha de nacimiento",
-  "not_provided": "No proporcionado",
-  "greeting": "¡Hola",
-  "welcome": "Bienvenido a FitHealth",
-  "first_name": "Nombre",
-  "last_name": "Apellido",
-  "second_last_name": "Secondo apellido",
-  "notes": "Notas",
-  "save": "Guardar",
-  "edit_profile": "Editar perfil"
+  "settings": {
+    "preferred_language": "Idioma preferido"
 
+  },
+  "common": {
+    "not_provided": "No proporcionado",
+    "save": "Guardar"
+  },
+  "home": {
+    "greeting": "¡Hola",
+    "welcome": "Bienvenido a FitHealth"
+  },
+  "profile": {
+    "edit_profile": "Editar perfil",
+    "birthday": "Fecha de nacimiento",
+    "set_birthday": "Establecer cumpleaños",
+    "first_name": "Nombre",
+    "last_name": "Apellido",
+    "second_last_name": "Secondo apellido",
+    "name": "Nombre",
+    "notes": "Notas",
+    "member_since": "Miembro desde",
+    "status": "Estado",
+    "doctor": "Doctor",
+    "patient": "Paciente",
+    "active": "Activo",
+    "inactive": "Inactivo"
+  }
 }

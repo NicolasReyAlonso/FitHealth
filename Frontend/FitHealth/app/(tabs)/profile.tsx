@@ -40,40 +40,40 @@ export default function ProfileScreen() {
         <Text style={[styles.email, { color: colors.icon }]}>{user?.email}</Text>
         <View style={[styles.roleBadge, { backgroundColor: colors.primaryLight }]}>
           <Text style={[styles.roleText, { color: colors.primary }]}>
-            {user?.role === 'doctor' ? '🩺 Doctor' : '🏃 Paciente'}
+            {user?.role === 'doctor' ? `🩺 ${t('profile.doctor')}` : `🏃 ${t('profile.patient')}`}
           </Text>
         </View>
       </View>
 
       <View style={styles.section}>
         <View style={[styles.infoCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[styles.infoLabel, { color: colors.icon }]}>Estado</Text>
+          <Text style={[styles.infoLabel, { color: colors.icon }]}>{t('profile.status')}</Text>
           <Text style={[styles.infoValue, { color: colors.text }]}>
-            {user?.is_active ? '✅ Activo' : '❌ Inactivo'}
+            {user?.is_active ? '✅ ' + t('profile.active') : '❌ ' + t('profile.inactive')}
           </Text>
         </View>
         <View style={[styles.infoCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[styles.infoLabel, { color: colors.icon }]}>Miembro desde</Text>
+          <Text style={[styles.infoLabel, { color: colors.icon }]}>{t('profile.member_since')}</Text>
           <Text style={[styles.infoValue, { color: colors.text }]}>
             {user?.created_at ? new Date(user.created_at).toLocaleDateString() : '-'}
           </Text>
         </View>
         <View style={[styles.infoCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[styles.infoLabel, { color: colors.icon }]}>Nombre</Text>
+          <Text style={[styles.infoLabel, { color: colors.icon }]}>{t('profile.name')}</Text>
           <Text style={[styles.infoValue, { color: colors.text }]}>
             {/* {user?.created_at ? new Date(user.created_at).toLocaleDateString() : '-'} */}
               {user?.first_name} {user?.last_name} {user?.second_last_name}
           </Text>
         </View>
         <View style={[styles.infoCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[styles.infoLabel, { color: colors.icon }]}>{t('birthday')}</Text>
+          <Text style={[styles.infoLabel, { color: colors.icon }]}>{t('profile.birthday')}</Text>
           <Text style={[styles.infoValue, { color: colors.text }]}>
-            {user?.birthday ? new Date(user.birthday).toLocaleDateString() : t('not_provided')}
+            {user?.birthday ? new Date(user.birthday).toLocaleDateString() : t('common.not_provided')}
           </Text>
         </View>
 
         <View style={[styles.infoCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[styles.infoLabel, { color: colors.icon }]}>{t('notes')}</Text>
+          <Text style={[styles.infoLabel, { color: colors.icon }]}>{t('profile.notes')}</Text>
           <Text style={[styles.infoValue, { color: colors.text }]}>
               {user?.notes}
           </Text>
@@ -82,7 +82,7 @@ export default function ProfileScreen() {
 
         <TouchableOpacity style={[styles.infoCard, { backgroundColor: colors.edit, borderColor: colors.border }]}
             onPress={() => router.push('/edit_profile')}>
-          <Text style={[styles.infoLabel, { color: colors.icon }]}>✏️ {t('edit_profile')}</Text>
+          <Text style={[styles.infoLabel, { color: colors.icon }]}>✏️ {t('profile.edit_profile')}</Text>
         </TouchableOpacity>
 
       </View>
