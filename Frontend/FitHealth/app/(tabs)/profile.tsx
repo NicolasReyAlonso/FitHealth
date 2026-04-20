@@ -1,17 +1,21 @@
 import React from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert, Platform, Image, ActivityIndicator } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Platform, Image, ActivityIndicator } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import api from '@/services/api';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/context/auth-context';
 import { useTranslation } from 'react-i18next';
+import { useToast } from '@/context/toast-context';
+import { useClosureOverlay } from '@/hooks/use-closure-overlay';
 
 
 export default function ProfileScreen() {
   const { t, i18n } = useTranslation();
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
+  const toast = useToast();
+  const { component: closureOverlay, show: showClosure } = useClosureOverlay();
   const { user, logout, setUser } = useAuth();
   const [uploadingImage, setUploadingImage] = React.useState(false);
 
@@ -20,7 +24,7 @@ export default function ProfileScreen() {
     // Solicita permisos
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Lo sentimos', 'Necesitamos permisos para acceder a tus fotos');
+      toast.error('Necesitamos permisos para acceder a tus fotos');
       return;
     }
 
@@ -45,8 +49,14 @@ export default function ProfileScreen() {
           ...user,
           profile_picture: res.data.profile_picture
         });
+        
+        // Mostrar confirmación de cierre
+        showClosure(
+          `¡Foto actualizada!`,
+          `Tu perfil se ve genial`
+        );
       } catch (err) {
-         Alert.alert('Error', 'No se pudo subir la foto');
+         toast.error('No se pudo subir la foto');
       } finally {
         setUploadingImage(false);
       }
@@ -151,6 +161,9 @@ export default function ProfileScreen() {
       </TouchableOpacity>
 
       <View style={{ height: 30 }} />
+
+      {/* Closure Overlay */}
+      {closureOverlay}
     </ScrollView>
   );
 }

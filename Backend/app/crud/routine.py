@@ -1,18 +1,20 @@
 from sqlalchemy.orm import Session
+from datetime import datetime
 
 from app.models.routine import Routine, RoutineDay, RoutineExercise, RoutineDiet, RoutineMedication, RoutineObjective
 from app.schemas.routine import RoutineCreate, RoutineUpdate
 
 
 def get_routine(db: Session, routine_id: int) -> Routine | None:
-    return db.query(Routine).filter(Routine.id == routine_id).first()
+    return db.query(Routine).filter(Routine.id == routine_id, Routine.deleted_at == None).first()
 
 
 from sqlalchemy import or_
 
 def get_routines_by_user(db: Session, user_id: int, skip: int = 0, limit: int = 100) -> list[Routine]:
     return db.query(Routine).filter(
-        or_(Routine.user_id == user_id, Routine.creator_id == user_id)
+        or_(Routine.user_id == user_id, Routine.creator_id == user_id),
+        Routine.deleted_at == None
     ).offset(skip).limit(limit).all()
 
 
@@ -54,8 +56,32 @@ def update_routine(db: Session, routine_id: int, routine_data: RoutineUpdate) ->
     return db_routine
 
 
-def delete_routine(db: Session, routine_id: int) -> bool:
+def soft_delete_routine(db: Session, routine_id: int) -> Routine | None:
+    """Soft delete: marca la rutina como eliminada sin borrar los datos"""
     db_routine = get_routine(db, routine_id)
+    if not db_routine:
+        return None
+    db_routine.deleted_at = datetime.utcnow()
+    db.commit()
+    db.refresh(db_routine)
+    return db_routine
+
+
+def restore_routine(db: Session, routine_id: int) -> Routine | None:
+    """Restaura una rutina eliminada"""
+    # Usar query sin el filtro de deleted_at para obtener la rutina eliminada
+    db_routine = db.query(Routine).filter(Routine.id == routine_id).first()
+    if not db_routine or db_routine.deleted_at is None:
+        return None
+    db_routine.deleted_at = None
+    db.commit()
+    db.refresh(db_routine)
+    return db_routine
+
+
+def delete_routine(db: Session, routine_id: int) -> bool:
+    """Hard delete: elimina completamente la rutina (después de cierto tiempo)"""
+    db_routine = db.query(Routine).filter(Routine.id == routine_id).first()
     if not db_routine:
         return False
     db.delete(db_routine)
