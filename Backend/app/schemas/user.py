@@ -23,6 +23,7 @@ class UserRead(BaseModel):
     second_last_name: str | None = None
     birthday: datetime | None = None
     notes: str | None = None
+    preferred_language: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -35,6 +36,7 @@ class UserUpdate(BaseModel):
     second_last_name: str | None = None
     birthday: datetime | None = None
     notes: str | None = None
+    preferred_language: str | None = None
 
 
 class Token(BaseModel):
@@ -45,3 +47,4 @@ class Token(BaseModel):
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
+    preferred_language: str | None = None

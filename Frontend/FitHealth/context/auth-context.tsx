@@ -16,6 +16,8 @@ type User = {
   birthday?: string;
   notes?: string;
 
+  preferred_language?: string;
+
 };
 
 type AuthContextType = {

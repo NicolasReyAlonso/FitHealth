@@ -23,6 +23,7 @@ class User(Base):
     second_last_name: Mapped[str | None] = mapped_column(String(50), nullable=True)
     birthday: Mapped[date | None] = mapped_column(Date, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    preferred_language: Mapped[str | None] = mapped_column(String(5))  # "es" | "en" | "cs"
 
 
     workouts: Mapped[list["Workout"]] = relationship("Workout", back_populates="user")  # noqa: F821
