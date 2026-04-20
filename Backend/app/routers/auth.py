@@ -60,9 +60,22 @@ def verify_email(token: str, db: Session = Depends(get_db)):
     if not user:
         return f"""
         <html>
-            <body style="font-family: Arial, sans-serif; text-align: center; margin-top: 50px;">
-                <h1 style="color: red;">Enlace Inválido o Expirado ❌</h1>
-                <p>El enlace de verificación no es válido. Puede que ya hayas verificado tu cuenta o que el enlace esté incompleto.</p>
+            <head>
+                <meta name="viewport" content="width=device-width, initial-scale=1">
+                <style>
+                    body {{ font-family: system-ui, -apple-system, sans-serif; text-align: center; margin: 0; padding: 40px 20px; background-color: #FFFFFF; color: #0F172A; }}
+                    .container {{ max-width: 500px; margin: 0 auto; background: #FFFFFF; padding: 40px 20px; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); border: 1px solid #E2E8F0; }}
+                    h1 {{ color: #EF4444; font-size: 24px; margin-bottom: 16px; }}
+                    p {{ font-size: 16px; line-height: 1.5; color: #64748B; }}
+                    .icon {{ font-size: 56px; margin-bottom: 16px; display: block; }}
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <span class="icon">❌</span>
+                    <h1>Enlace Inválido o Expirado</h1>
+                    <p>El enlace de verificación no es válido. Puede que ya hayas verificado tu cuenta o que el enlace esté incompleto.</p>
+                </div>
             </body>
         </html>
         """
@@ -73,10 +86,24 @@ def verify_email(token: str, db: Session = Depends(get_db)):
     
     return f"""
     <html>
-        <body style="font-family: Arial, sans-serif; text-align: center; margin-top: 50px; background-color: #f0fdf4;">
-            <h1 style="color: #16a34a;">¡Cuenta Verificada Exitosamente! ✅</h1>
-            <p>Tu correo <b>{user.email}</b> ha sido verificado.</p>
-            <p>Ya puedes volver a la aplicación e iniciar sesión.</p>
+        <head>
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <style>
+                body {{ font-family: system-ui, -apple-system, sans-serif; text-align: center; margin: 0; padding: 40px 20px; background-color: #EEF2FF; color: #0F172A; }}
+                .container {{ max-width: 500px; margin: 0 auto; background: #FFFFFF; padding: 40px 20px; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); border: 1px solid #E2E8F0; }}
+                h1 {{ color: #6366F1; font-size: 24px; margin-bottom: 16px; }}
+                p {{ font-size: 16px; line-height: 1.5; color: #64748B; }}
+                b {{ color: #0F172A; }}
+                .icon {{ font-size: 56px; margin-bottom: 16px; display: block; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <span class="icon">✅</span>
+                <h1>¡Cuenta Verificada Exitosamente!</h1>
+                <p>Tu correo <b>{user.email}</b> ha sido verificado.</p>
+                <p>Ya puedes volver a la aplicación e iniciar sesión.</p>
+            </div>
         </body>
     </html>
     """

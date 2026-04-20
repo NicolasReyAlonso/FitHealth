@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, Alert, Platform, Image, ActivityIndicator } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert, Platform, Image, ActivityIndicator } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import api from '@/services/api';
 import { Colors } from '@/constants/theme';
@@ -67,7 +67,11 @@ export default function ProfileScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <ScrollView 
+      style={[styles.container, { backgroundColor: colors.background }]}
+      contentContainerStyle={{ paddingBottom: 40 }}
+      showsVerticalScrollIndicator={false}
+    >
       <View style={[styles.header, { backgroundColor: colors.primary }]}>
         
         <TouchableOpacity style={[styles.avatar, { backgroundColor: 'rgba(255,255,255,0.2)' }]} onPress={pickImage} activeOpacity={0.8}>
@@ -147,7 +151,7 @@ export default function ProfileScreen() {
       </TouchableOpacity>
 
       <View style={{ height: 30 }} />
-    </View>
+    </ScrollView>
   );
 }
 
