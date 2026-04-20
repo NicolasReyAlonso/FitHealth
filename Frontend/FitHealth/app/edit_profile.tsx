@@ -23,6 +23,8 @@ export default function EditProfileScreen() {
   const [birthday, setBirthday] = useState<Date | null>(
     user?.birthday ? new Date(user.birthday) : null
   );
+  const [notes, setNotes] = useState(user?.notes || '');
+
   const save = async () => {
   
     if (!user) return;
@@ -69,7 +71,7 @@ export default function EditProfileScreen() {
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'space-between',
-        }]}>
+          }]}>
           <Text style={[styles.infoLabel, { color: colors.icon }]}>{t('birthday')}</Text>
           <Text style={[styles.infoValue, { color: colors.text }]}>
             {birthday ? birthday.toLocaleDateString() : t('not_provided')}
@@ -77,7 +79,6 @@ export default function EditProfileScreen() {
           <Pressable style={[styles.infoCard, { backgroundColor: colors.edit, borderColor: colors.border, padding: 5, margin: 0 }]} onPress={() => setShowPicker(prev => !prev)}>
             <Text style={[styles.infoLabel, { color: colors.icon }]}>✏️ {t('pick_birthday')}</Text>
           </Pressable>
-
         </View>
 
 
@@ -117,9 +118,17 @@ export default function EditProfileScreen() {
             />
           )
         )}
-        <Button title="Save" onPress={save} />
-
       </View>
+ 
+       <View style={[styles.infoCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <TextInput style={[styles.infoValue, { color: colors.text }]}
+          placeholder={t('note')}
+          placeholderTextColor={colors.placeholder}
+          value={notes}
+          onChangeText={setNotes}
+        />
+      </View>
+      <Button title="Save" onPress={save} />
     </View>
   );
 }
