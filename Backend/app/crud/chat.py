@@ -37,8 +37,14 @@ def get_messages(db: Session, chat_room_id: int, skip: int = 0, limit: int = 100
     )
 
 
-def create_message(db: Session, chat_room_id: int, sender_id: int, content: str) -> ChatMessage:
-    msg = ChatMessage(chat_room_id=chat_room_id, sender_id=sender_id, content=content)
+def create_message(db: Session, chat_room_id: int, sender_id: int, content: str, type: str = "text", report_data: dict | None = None) -> ChatMessage:
+    msg = ChatMessage(
+        chat_room_id=chat_room_id, 
+        sender_id=sender_id, 
+        content=content, 
+        type=type, 
+        report_data=report_data
+    )
     db.add(msg)
     db.commit()
     db.refresh(msg)

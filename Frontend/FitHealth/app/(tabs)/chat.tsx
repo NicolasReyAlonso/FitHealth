@@ -12,7 +12,10 @@ import {
   KeyboardAvoidingView,
   Platform,
   Image,
+  Dimensions,
+  Modal,
 } from 'react-native';
+import { LineChart } from 'react-native-chart-kit';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import api from '@/services/api';
@@ -37,6 +40,8 @@ type Message = {
   content: string;
   timestamp: string;
   is_read: boolean;
+  type?: string;
+  report_data?: any;
 };
 
 export default function ChatScreen() {
@@ -51,6 +56,9 @@ export default function ChatScreen() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [doctors, setDoctors] = useState<{ id: number; username: string; profile_picture?: string }[]>([]);
+  const [reportModalVisible, setReportModalVisible] = useState(false);
+  const [routines, setRoutines] = useState<any[]>([]);
+  const [loadingRoutines, setLoadingRoutines] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
   const flatListRef = useRef<FlatList>(null);
 
@@ -148,6 +156,33 @@ export default function ChatScreen() {
     }
   };
 
+  const openReportModal = async () => {
+    if (!selectedRoom) return;
+    setReportModalVisible(true);
+    setLoadingRoutines(true);
+    try {
+      const res = await api.get('/routines/');
+      const myRoutines = res.data.filter((r: any) => r.creator_id === selectedRoom.doctor_id);
+      setRoutines(myRoutines);
+    } catch {
+      Alert.alert('Error', 'No se pudieron cargar las rutinas');
+    } finally {
+      setLoadingRoutines(false);
+    }
+  };
+
+  const generateReport = async (routineId: number) => {
+    if (!selectedRoom) return;
+    setReportModalVisible(false);
+    try {
+      const res = await api.post(`/chat/rooms/${selectedRoom.id}/report`, { routine_id: routineId });
+      setMessages((prev) => [...prev, res.data]);
+      setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+    } catch (e: any) {
+      Alert.alert('Error', e.response?.data?.detail || 'No se pudo generar el reporte');
+    }
+  };
+
   if (loading) {
     return (
       <View style={[styles.center, { backgroundColor: colors.background }]}>
@@ -178,12 +213,17 @@ export default function ChatScreen() {
           <TouchableOpacity onPress={() => setSelectedRoom(null)}>
             <Text style={[styles.backBtn, { color: colors.primary }]}>← Atrás</Text>
           </TouchableOpacity>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
             {otherProfilePicture && (
               <Image source={{ uri: otherProfilePicture }} style={[styles.roomAvatarImage, { width: 32, height: 32, borderRadius: 16, marginRight: 8 }]} />
             )}
-            <Text style={[styles.chatTitle, { color: colors.text }]}>{otherName}</Text>
+            <Text style={[styles.chatTitle, { color: colors.text }]} numberOfLines={1}>{otherName}</Text>
           </View>
+          {user?.role === 'patient' && (
+            <TouchableOpacity style={[styles.reportBtn, { backgroundColor: colors.primary }]} onPress={openReportModal}>
+              <Text style={styles.reportBtnText}>Generar Reporte</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         <FlatList
@@ -196,6 +236,8 @@ export default function ChatScreen() {
             const isMe = item.sender_id === user?.id;
             const msgAvatar = isMe ? user?.profile_picture : otherProfilePicture;
             
+            const isReport = item.type === 'report' && item.report_data;
+
             return (
               <View style={[styles.messageWrapper, isMe ? { flexDirection: 'row-reverse' } : { flexDirection: 'row' }]}>
                 {msgAvatar ? (
@@ -211,11 +253,92 @@ export default function ChatScreen() {
                     isMe
                       ? { backgroundColor: colors.primary, alignSelf: 'flex-end', borderTopRightRadius: 4 }
                       : { backgroundColor: colors.card, alignSelf: 'flex-start', borderWidth: 1, borderColor: colors.border, borderTopLeftRadius: 4 },
+                    isReport ? { maxWidth: '90%' } : {},
                   ]}
                 >
-                  <Text style={[styles.messageText, { color: isMe ? '#fff' : colors.text }]}>
+                  <Text style={[styles.messageText, { color: isMe ? '#fff' : colors.text }, isReport ? { fontWeight: 'bold', marginBottom: 8 } : {}]}>
                     {item.content}
                   </Text>
+
+                  {isReport && (
+                    <View style={styles.reportContainer}>
+                      <Text style={[styles.reportStat, { color: isMe ? '#fff' : colors.text }]}>Inicio: {new Date(item.report_data!.routine_start).toLocaleDateString()}</Text>
+                      <Text style={[styles.reportStat, { color: isMe ? '#fff' : colors.text }]}>Total actividades: {item.report_data!.stats.total_activities}</Text>
+                      <Text style={[styles.reportStat, { color: isMe ? '#fff' : colors.text }]}>Distancia (km): {item.report_data!.stats.total_distance_km.toFixed(2)}</Text>
+                      <Text style={[styles.reportStat, { color: isMe ? '#fff' : colors.text }]}>Pasos: {item.report_data!.stats.total_steps}</Text>
+                      
+                      {item.report_data!.graphs.bpm_over_time?.length > 0 && (
+                        <View style={styles.chartWrapper}>
+                          <Text style={[styles.chartTitle, { color: isMe ? '#fff' : colors.text }]}>Evolución BPM</Text>
+                          <LineChart
+                            data={{
+                              labels: item.report_data!.graphs.bpm_over_time.map(d => new Date(d.date).getDate().toString()),
+                              datasets: [{ data: item.report_data!.graphs.bpm_over_time.map(d => d.value) }]
+                            }}
+                            width={Dimensions.get('window').width * 0.7}
+                            height={150}
+                            chartConfig={{
+                              backgroundColor: 'transparent',
+                              backgroundGradientFrom: isMe ? colors.primary : colors.card,
+                              backgroundGradientTo: isMe ? colors.primary : colors.card,
+                              color: (opacity = 1) => isMe ? `rgba(255, 255, 255, ${opacity})` : colors.primary,
+                              labelColor: (opacity = 1) => isMe ? `rgba(255, 255, 255, ${opacity})` : colors.text,
+                              propsForDots: { r: "3", strokeWidth: "1" }
+                            }}
+                            bezier
+                            style={styles.chartStyle}
+                          />
+                        </View>
+                      )}
+
+                      {item.report_data!.graphs.steps_over_time?.length > 0 && (
+                        <View style={styles.chartWrapper}>
+                          <Text style={[styles.chartTitle, { color: isMe ? '#fff' : colors.text }]}>Evolución Pasos</Text>
+                          <LineChart
+                            data={{
+                              labels: item.report_data!.graphs.steps_over_time.map(d => new Date(d.date).getDate().toString()),
+                              datasets: [{ data: item.report_data!.graphs.steps_over_time.map(d => d.value) }]
+                            }}
+                            width={Dimensions.get('window').width * 0.7}
+                            height={150}
+                            chartConfig={{
+                              backgroundColor: 'transparent',
+                              backgroundGradientFrom: isMe ? colors.primary : colors.card,
+                              backgroundGradientTo: isMe ? colors.primary : colors.card,
+                              color: (opacity = 1) => isMe ? `rgba(255, 255, 255, ${opacity})` : colors.primary,
+                              labelColor: (opacity = 1) => isMe ? `rgba(255, 255, 255, ${opacity})` : colors.text,
+                            }}
+                            bezier
+                            style={styles.chartStyle}
+                          />
+                        </View>
+                      )}
+                      
+                      {item.report_data!.graphs.weight_over_time?.length > 0 && (
+                        <View style={styles.chartWrapper}>
+                          <Text style={[styles.chartTitle, { color: isMe ? '#fff' : colors.text }]}>Evolución Peso</Text>
+                          <LineChart
+                            data={{
+                              labels: item.report_data!.graphs.weight_over_time.map(d => new Date(d.date).getDate().toString()),
+                              datasets: [{ data: item.report_data!.graphs.weight_over_time.map(d => d.value) }]
+                            }}
+                            width={Dimensions.get('window').width * 0.7}
+                            height={150}
+                            chartConfig={{
+                              backgroundColor: 'transparent',
+                              backgroundGradientFrom: isMe ? colors.primary : colors.card,
+                              backgroundGradientTo: isMe ? colors.primary : colors.card,
+                              color: (opacity = 1) => isMe ? `rgba(255, 255, 255, ${opacity})` : colors.primary,
+                              labelColor: (opacity = 1) => isMe ? `rgba(255, 255, 255, ${opacity})` : colors.text,
+                            }}
+                            bezier
+                            style={styles.chartStyle}
+                          />
+                        </View>
+                      )}
+                    </View>
+                  )}
+
                   <Text style={[styles.messageTime, { color: isMe ? 'rgba(255,255,255,0.7)' : colors.icon }]}>
                     {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </Text>
@@ -240,6 +363,33 @@ export default function ChatScreen() {
             <Text style={styles.sendBtnText}>Enviar</Text>
           </TouchableOpacity>
         </View>
+
+        <Modal visible={reportModalVisible} transparent animationType="slide" onRequestClose={() => setReportModalVisible(false)}>
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+            <View style={{ backgroundColor: colors.background, padding: 20, borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '80%' }}>
+              <Text style={{ color: colors.text, fontSize: 18, fontWeight: '700', marginBottom: 16 }}>Selecciona una rutina para el reporte</Text>
+              
+              {loadingRoutines ? (
+                <ActivityIndicator size="large" color={colors.primary} />
+              ) : routines.length === 0 ? (
+                <Text style={{ color: colors.text, textAlign: 'center', marginVertical: 20 }}>No hay rutinas creadas por este doctor.</Text>
+              ) : (
+                <ScrollView>
+                  {routines.map(r => (
+                    <TouchableOpacity key={r.id} style={{ padding: 16, borderBottomWidth: 1, borderBottomColor: colors.border }} onPress={() => generateReport(r.id)}>
+                      <Text style={{ color: colors.text, fontSize: 16, fontWeight: '500' }}>{r.name}</Text>
+                      <Text style={{ fontSize: 12, color: colors.icon }}>Desde: {new Date(r.created_at).toLocaleDateString()}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              )}
+              
+              <TouchableOpacity onPress={() => setReportModalVisible(false)} style={{ marginTop: 20, padding: 16, backgroundColor: colors.card, borderRadius: 12, alignItems: 'center' }}>
+                <Text style={{ color: colors.text, fontWeight: '700' }}>Cancelar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </KeyboardAvoidingView>
     );
   }
@@ -461,6 +611,17 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     flex: 1,
   },
+  reportBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    marginLeft: 10,
+  },
+  reportBtnText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '700',
+  },
   messageList: { 
     padding: 16, 
     gap: 12 
@@ -530,5 +691,32 @@ const styles = StyleSheet.create({
   sendBtnText: { 
     color: '#fff', 
     fontWeight: '700' 
+  },
+  reportContainer: {
+    marginTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.2)',
+    paddingTop: 8,
+  },
+  reportStat: {
+    fontSize: 13,
+    marginBottom: 4,
+    fontWeight: '500',
+  },
+  chartWrapper: {
+    marginTop: 12,
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.03)',
+    borderRadius: 8,
+    padding: 8,
+  },
+  chartTitle: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  chartStyle: {
+    borderRadius: 8,
   },
 });

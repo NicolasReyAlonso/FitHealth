@@ -103,8 +103,98 @@ def send_message(
     rooms = crud.chat.get_chat_rooms_for_user(db, current_user.id)
     if not any(r.id == room_id for r in rooms):
         raise HTTPException(status_code=403, detail="No tienes acceso a esta sala")
-    return crud.chat.create_message(db, room_id, sender_id=current_user.id, content=message_data.content)
+    return crud.chat.create_message(
+        db, 
+        room_id, 
+        sender_id=current_user.id, 
+        content=message_data.content, 
+        type=message_data.type, 
+        report_data=message_data.report_data
+    )
 
+
+from datetime import datetime, timedelta, timezone
+from app.models.routine import Routine
+from app.models.event import Event
+
+from pydantic import BaseModel
+
+class ReportRequest(BaseModel):
+    routine_id: int
+
+from sqlalchemy import or_
+
+@router.post("/rooms/{room_id}/report", response_model=ChatMessageRead, status_code=status.HTTP_201_CREATED)
+def generate_report(
+    room_id: int,
+    request: ReportRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    rooms = crud.chat.get_chat_rooms_for_user(db, current_user.id)
+    room = next((r for r in rooms if r.id == room_id), None)
+    if not room:
+        raise HTTPException(status_code=403, detail="No tienes acceso a esta sala")
+    
+    patient_id = room.patient_id
+
+    recent_routine = db.query(Routine).filter(Routine.id == request.routine_id, Routine.user_id == patient_id).first()
+    
+    if not recent_routine:
+        raise HTTPException(status_code=404, detail="Rutina no encontrada o no pertenece a este paciente")
+        
+    start_date = recent_routine.created_at
+    
+    # Gather events for the patient since start_date or explicitly linked to this routine
+    events = db.query(Event).filter(
+        Event.user_id == patient_id,
+        or_(Event.timestamp >= start_date, Event.routine_id == request.routine_id)
+    ).order_by(Event.timestamp.asc()).all()
+    
+    total_activities = 0
+    total_distance = 0.0
+    total_steps = 0
+    
+    bpm_data = []
+    steps_data = []
+    weight_data = []
+    
+    for e in events:
+        date_str = e.timestamp.strftime("%Y-%m-%d")
+        if e.event_type in ["activity", "walking", "running", "Caminar", "Correr"] and e.activity_log:
+            total_activities += 1
+            if e.activity_log.distance_km:
+                total_distance += e.activity_log.distance_km
+            if e.activity_log.steps:
+                total_steps += e.activity_log.steps
+                steps_data.append({"date": date_str, "value": e.activity_log.steps})
+        elif e.event_type == "biometric" and e.biometric and e.biometric.heart_rate_avg:
+            bpm_data.append({"date": date_str, "value": e.biometric.heart_rate_avg})
+        elif e.event_type == "weight" and e.weight_log and e.weight_log.weight_kg:
+            weight_data.append({"date": date_str, "value": e.weight_log.weight_kg})
+
+    report_data = {
+        "routine_start": start_date.isoformat(),
+        "stats": {
+            "total_activities": total_activities,
+            "total_distance_km": round(total_distance, 2),
+            "total_steps": total_steps
+        },
+        "graphs": {
+            "bpm_over_time": bpm_data,
+            "steps_over_time": steps_data,
+            "weight_over_time": weight_data
+        }
+    }
+
+    return crud.chat.create_message(
+        db, 
+        room_id, 
+        sender_id=current_user.id, 
+        content="Reporte de progreso generado", 
+        type="report", 
+        report_data=report_data
+    )
 
 @router.get("/doctors", response_model=list[dict])
 def list_doctors(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
