@@ -56,7 +56,7 @@ export default function RoutinesScreen() {
   // Undo functionality
   const [lastDeletedRoutineId, setLastDeletedRoutineId] = useState<number | null>(null);
   const [showUndoToast, setShowUndoToast] = useState(false);
-  const undoTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const undoTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchRoutines = async () => {
     try {

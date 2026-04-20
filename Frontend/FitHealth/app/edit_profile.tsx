@@ -155,7 +155,7 @@ export default function EditProfileScreen() {
 
         <Picker
           selectedValue={language}
-          onValueChange={(value) => setLanguage(value)}
+          onValueChange={(value: string) => setLanguage(value)}
           style={{ color: 'black', width: 150 }}
         >
           <Picker.Item label="🇪🇸 Español" value="es" />

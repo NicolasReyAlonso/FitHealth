@@ -5,10 +5,12 @@ import { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import 'react-native-reanimated';
 import '@/services/i18n';
+import { useTranslation } from 'react-i18next';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider, useAuth } from '@/context/auth-context';
 import { ToastProvider } from '@/context/toast-context';
+import i18n from '@/services/i18n';
 
 function RootNavigator() {
   const { user, isLoading } = useAuth();

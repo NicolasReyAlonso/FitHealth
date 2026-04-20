@@ -58,6 +58,7 @@ export const Colors = {
     gray100: '#0F172A',
     gray200: '#1E293B',
     gray300: '#334155',
+    edit: '#3b82f6',
   },
 };
 

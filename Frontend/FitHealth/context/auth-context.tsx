@@ -29,7 +29,6 @@ type AuthContextType = {
   register: (email: string, username: string, password: string, role?: string) => Promise<void>;
   logout: () => Promise<void>;
   setUser: React.Dispatch<React.SetStateAction<User | null>>;
-  setUser: (user: User) => void;
 };
 
 const AuthContext = createContext<AuthContextType>({
@@ -37,11 +36,9 @@ const AuthContext = createContext<AuthContextType>({
   token: null,
   isLoading: true,
   login: async () => {},
-  setUser: () => {},
   register: async () => {},
   logout: async () => {},
-  setUser: (user: User) => {},
-
+  setUser: () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {

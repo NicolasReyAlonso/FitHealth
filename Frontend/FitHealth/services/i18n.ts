@@ -156,7 +156,7 @@ const resources = {
 const STORE_LANGUAGE_KEY = 'settings.lang';
 
 const languageDetectorPlugin = {
-  type: 'languageDetector',
+  type: 'languageDetector' as const,
   async: true,
   init: () => {},
   detect: async function (callback: (lang: string) => void) {
@@ -165,7 +165,7 @@ const languageDetectorPlugin = {
         if (language) {
           return callback(language);
         } else {
-          return callback(Localization.locale.split('-')[0] || 'en');
+          return callback(Localization.getLocales()[0]?.languageTag.split('-')[0] || 'en');
         }
       });
     } catch (error) {
@@ -187,7 +187,7 @@ i18n
   .init({
     resources,
     fallbackLng: 'es',
-    compatibilityJSON: 'v3',
+    compatibilityJSON: 'v4',
     react: {
       useSuspense: false
     }
