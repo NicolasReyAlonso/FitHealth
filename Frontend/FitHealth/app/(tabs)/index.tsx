@@ -145,7 +145,11 @@ export default function HomeScreen() {
     const today = new Date();
     const year = today.getFullYear();
     const month = today.getMonth();
-    const firstDay = new Date(year, month, 1).getDay();
+    
+    // JS getDay() pone el Domingo como 0. Ajustamos para empezar en Lunes (0)
+    let firstDay = new Date(year, month, 1).getDay();
+    firstDay = firstDay === 0 ? 6 : firstDay - 1;
+    
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const days = [];
     
@@ -155,6 +159,15 @@ export default function HomeScreen() {
     for (let i = 1; i <= daysInMonth; i++) {
       days.push(i);
     }
+    
+    // Rellenamos el final de la matriz para asegurar múltiplos de 7 celdas
+    const remainder = days.length % 7;
+    if (remainder !== 0) {
+      for (let i = 0; i < 7 - remainder; i++) {
+        days.push(null);
+      }
+    }
+    
     return days;
   };
 
@@ -660,10 +673,11 @@ const styles = StyleSheet.create({
   calendarGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
+    justifyContent: 'space-between',
+    rowGap: 6,
   },
   weekDay: {
-    width: '14.28%',
+    width: '13%',
     aspectRatio: 1,
     textAlign: 'center',
     fontWeight: '700',
@@ -671,7 +685,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   dayCell: {
-    width: '14.28%',
+    width: '13%',
     aspectRatio: 1,
     borderRadius: 10,
     justifyContent: 'center',
