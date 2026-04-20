@@ -2,18 +2,21 @@ import React from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Platform, Image, ActivityIndicator } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import api from '@/services/api';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/context/auth-context';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '@/context/toast-context';
 import { useClosureOverlay } from '@/hooks/use-closure-overlay';
 
+import { useNavigation } from '@react-navigation/native';
+import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
+import { profileStyles as styles } from '@/styles/profile-styles';
+import { useColors } from '@/hooks/use-colors';
 
 export default function ProfileScreen() {
   const { t, i18n } = useTranslation();
-  const colorScheme = useColorScheme() ?? 'light';
-  const colors = Colors[colorScheme];
+  const navigation = useNavigation();
+  const colors = useColors();
   const toast = useToast();
   const { component: closureOverlay, show: showClosure } = useClosureOverlay();
   const { user, logout, setUser } = useAuth();
@@ -62,6 +65,7 @@ export default function ProfileScreen() {
       }
     }
   };
+  const { t } = useTranslation(); // translation
 
   const handleLogout = () => {
     if (Platform.OS === 'web') {
@@ -149,6 +153,40 @@ export default function ProfileScreen() {
               <Text style={{ color: i18n.language?.startsWith('de') ? '#fff' : colors.text, fontWeight: 'bold' }}>🇩🇪 {t('german')}</Text>
             </TouchableOpacity>
         </View>
+        <View style={[styles.infoCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Text style={[styles.infoLabel, { color: colors.icon }]}>{t('profile.name')}</Text>
+          <Text style={[styles.infoValue, { color: colors.text }]}>
+            {/* {user?.created_at ? new Date(user.created_at).toLocaleDateString() : '-'} */}
+              {user?.first_name} {user?.last_name} {user?.second_last_name}
+          </Text>
+        </View>
+        <View style={[styles.infoCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Text style={[styles.infoLabel, { color: colors.icon }]}>{t('profile.birthday')}</Text>
+          <Text style={[styles.infoValue, { color: colors.text }]}>
+            {user?.birthday ? new Date(user.birthday).toLocaleDateString() : t('common.not_provided')}
+          </Text>
+        </View>
+
+        <View style={[styles.infoCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Text style={[styles.infoLabel, { color: colors.icon }]}>{t('profile.notes')}</Text>
+          <Text style={[styles.infoValue, { color: colors.text }]}>
+              {user?.notes}
+          </Text>
+        </View>
+
+        <View style={[styles.infoCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Text style={[styles.infoLabel, { color: colors.icon }]}>{t('settings.preferred_language')}</Text>
+          <Text style={[styles.infoValue, { color: colors.text }]}>
+            {t(`common.${user?.preferred_language}`)}
+          </Text>
+        </View>
+
+
+        <TouchableOpacity style={[styles.infoCard, { backgroundColor: colors.edit, borderColor: colors.border }]}
+            onPress={() => router.push('/edit_profile')}>
+          <Text style={[styles.infoLabel, { color: colors.icon }]}>✏️ {t('profile.edit_profile')}</Text>
+        </TouchableOpacity>
+
       </View>
 
       <TouchableOpacity 

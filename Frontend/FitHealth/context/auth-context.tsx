@@ -10,6 +10,15 @@ type User = {
   is_active: boolean;
   created_at: string;
   profile_picture?: string;
+
+  first_name?: string;
+  last_name?: string;
+  second_last_name?: string;
+  birthday?: string;
+  notes?: string;
+
+  preferred_language?: string;
+
 };
 
 type AuthContextType = {
@@ -20,6 +29,7 @@ type AuthContextType = {
   register: (email: string, username: string, password: string, role?: string) => Promise<void>;
   logout: () => Promise<void>;
   setUser: React.Dispatch<React.SetStateAction<User | null>>;
+  setUser: (user: User) => void;
 };
 
 const AuthContext = createContext<AuthContextType>({
@@ -30,6 +40,8 @@ const AuthContext = createContext<AuthContextType>({
   setUser: () => {},
   register: async () => {},
   logout: async () => {},
+  setUser: (user: User) => {},
+
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {

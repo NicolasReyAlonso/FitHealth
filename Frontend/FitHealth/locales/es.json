@@ -1,0 +1,32 @@
+{
+  "settings": {
+    "preferred_language": "Idioma preferido"
+
+  },
+  "common": {
+    "not_provided": "No proporcionado",
+    "save": "Guardar",
+    "es": "🇪🇸 Español"
+
+  },
+  "home": {
+    "greeting": "¡Hola",
+    "welcome": "Bienvenido a FitHealth"
+  },
+  "profile": {
+    "edit_profile": "Editar perfil",
+    "birthday": "Fecha de nacimiento",
+    "set_birthday": "Establecer cumpleaños",
+    "first_name": "Nombre",
+    "last_name": "Apellido",
+    "second_last_name": "Secondo apellido",
+    "name": "Nombre",
+    "notes": "Notas",
+    "member_since": "Miembro desde",
+    "status": "Estado",
+    "doctor": "Doctor",
+    "patient": "Paciente",
+    "active": "Activo",
+    "inactive": "Inactivo"
+  }
+}

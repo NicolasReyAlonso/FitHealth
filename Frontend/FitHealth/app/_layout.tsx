@@ -27,6 +27,13 @@ function RootNavigator() {
     }
   }, [user, isLoading, segments]);
 
+  useEffect(() => {
+    if (!user) return;
+
+    const lang = user.preferred_language ?? 'es';
+    i18n.changeLanguage(lang);
+  }, [user]);
+
   if (isLoading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#E8F5E9' }}>
@@ -36,7 +43,7 @@ function RootNavigator() {
   }
 
   return (
-    <>
+    <>  {/* so we have one parent */}
       <Stack>
         <Stack.Screen name="login" options={{ headerShown: false }} />
         <Stack.Screen name="register" options={{ headerShown: false }} />

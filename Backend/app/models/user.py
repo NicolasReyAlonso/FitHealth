@@ -1,6 +1,6 @@
-from datetime import datetime
+from datetime import date, datetime
 
-from sqlalchemy import String, DateTime, func
+from sqlalchemy import String, DateTime, Date, func, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -19,6 +19,13 @@ class User(Base):
     verification_token: Mapped[str | None] = mapped_column(String(255), nullable=True)
     profile_picture: Mapped[str | None] = mapped_column(String(), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    first_name: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    last_name: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    second_last_name: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    birthday: Mapped[date | None] = mapped_column(Date, nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    preferred_language: Mapped[str | None] = mapped_column(String(5))  # "es" | "en" | "cs"
+
 
     workouts: Mapped[list["Workout"]] = relationship("Workout", back_populates="user")  # noqa: F821
     routines: Mapped[list["Routine"]] = relationship("Routine", foreign_keys="[Routine.user_id]", back_populates="user")  # noqa: F821

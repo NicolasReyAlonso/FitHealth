@@ -6,6 +6,8 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import api from '@/services/api';
+import { useTranslation } from 'react-i18next';
+
 
 export default function HomeScreen() {
   const { t } = useTranslation();
@@ -232,6 +234,8 @@ export default function HomeScreen() {
 
   const maxStat = Math.max(...weekStats);
   const dayLabels = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sab', 'Dom'];
+  const { t } = useTranslation(); // translation
+  
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
