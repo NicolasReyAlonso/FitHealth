@@ -176,7 +176,10 @@ export default function ChatScreen() {
     setReportModalVisible(false);
     try {
       const res = await api.post(`/chat/rooms/${selectedRoom.id}/report`, { routine_id: routineId });
-      setMessages((prev) => [...prev, res.data]);
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === res.data.id)) return prev;
+        return [...prev, res.data];
+      });
       setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
     } catch (e: any) {
       Alert.alert('Error', e.response?.data?.detail || 'No se pudo generar el reporte');

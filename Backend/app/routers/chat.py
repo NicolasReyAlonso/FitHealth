@@ -10,6 +10,27 @@ from app.schemas.chat import ChatRoomRead, ChatMessageCreate, ChatMessageRead
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: dict[int, list[WebSocket]] = {}
+
+    async def connect(self, websocket: WebSocket, room_id: int):
+        await websocket.accept()
+        if room_id not in self.active_connections:
+            self.active_connections[room_id] = []
+        self.active_connections[room_id].append(websocket)
+
+    def disconnect(self, websocket: WebSocket, room_id: int):
+        if room_id in self.active_connections:
+            self.active_connections[room_id].remove(websocket)
+
+    async def broadcast(self, room_id: int, message: dict):
+        if room_id in self.active_connections:
+            for connection in self.active_connections[room_id]:
+                await connection.send_json(message)
+
+manager = ConnectionManager()
+
 # --- REST endpoints ---
 
 
@@ -94,7 +115,7 @@ def list_messages(
 
 
 @router.post("/rooms/{room_id}/messages", response_model=ChatMessageRead, status_code=status.HTTP_201_CREATED)
-def send_message(
+async def send_message(
     room_id: int,
     message_data: ChatMessageCreate,
     db: Session = Depends(get_db),
@@ -103,7 +124,8 @@ def send_message(
     rooms = crud.chat.get_chat_rooms_for_user(db, current_user.id)
     if not any(r.id == room_id for r in rooms):
         raise HTTPException(status_code=403, detail="No tienes acceso a esta sala")
-    return crud.chat.create_message(
+    
+    msg = crud.chat.create_message(
         db, 
         room_id, 
         sender_id=current_user.id, 
@@ -111,6 +133,20 @@ def send_message(
         type=message_data.type, 
         report_data=message_data.report_data
     )
+    
+    broadcast_data = {
+        "id": msg.id,
+        "chat_room_id": msg.chat_room_id,
+        "sender_id": msg.sender_id,
+        "content": msg.content,
+        "is_read": msg.is_read,
+        "timestamp": msg.timestamp.isoformat(),
+        "type": msg.type,
+        "report_data": msg.report_data,
+    }
+    await manager.broadcast(room_id, broadcast_data)
+    
+    return msg
 
 
 from datetime import datetime, timedelta, timezone
@@ -125,7 +161,7 @@ class ReportRequest(BaseModel):
 from sqlalchemy import or_
 
 @router.post("/rooms/{room_id}/report", response_model=ChatMessageRead, status_code=status.HTTP_201_CREATED)
-def generate_report(
+async def generate_report(
     room_id: int,
     request: ReportRequest,
     db: Session = Depends(get_db),
@@ -187,7 +223,7 @@ def generate_report(
         }
     }
 
-    return crud.chat.create_message(
+    msg = crud.chat.create_message(
         db, 
         room_id, 
         sender_id=current_user.id, 
@@ -195,6 +231,20 @@ def generate_report(
         type="report", 
         report_data=report_data
     )
+    
+    broadcast_data = {
+        "id": msg.id,
+        "chat_room_id": msg.chat_room_id,
+        "sender_id": msg.sender_id,
+        "content": msg.content,
+        "is_read": msg.is_read,
+        "timestamp": msg.timestamp.isoformat(),
+        "type": msg.type,
+        "report_data": msg.report_data,
+    }
+    await manager.broadcast(room_id, broadcast_data)
+    
+    return msg
 
 @router.get("/doctors", response_model=list[dict])
 def list_doctors(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
@@ -203,29 +253,6 @@ def list_doctors(db: Session = Depends(get_db), current_user: User = Depends(get
 
 
 # --- WebSocket for real-time chat ---
-
-class ConnectionManager:
-    def __init__(self):
-        self.active_connections: dict[int, list[WebSocket]] = {}
-
-    async def connect(self, websocket: WebSocket, room_id: int):
-        await websocket.accept()
-        if room_id not in self.active_connections:
-            self.active_connections[room_id] = []
-        self.active_connections[room_id].append(websocket)
-
-    def disconnect(self, websocket: WebSocket, room_id: int):
-        if room_id in self.active_connections:
-            self.active_connections[room_id].remove(websocket)
-
-    async def broadcast(self, room_id: int, message: dict):
-        if room_id in self.active_connections:
-            for connection in self.active_connections[room_id]:
-                await connection.send_json(message)
-
-
-manager = ConnectionManager()
-
 
 def _get_user_from_token(token: str, db: Session) -> User | None:
     """Validate a JWT token and return the user, or None."""
