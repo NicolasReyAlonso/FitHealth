@@ -472,23 +472,29 @@ export default function RoutineDetailScreen() {
           </View>
           {currentDayData.exercises.length === 0 && <Text style={{ color: colors.icon, marginBottom: 15 }}>Aún no hay ejercicios.</Text>}
           {currentDayData.exercises.map((ex: any) => (
-              <View key={`ex-${ex.id}`} style={[styles.cardRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                  {ex.image_url ? (
-                      <Image source={{ uri: API_BASE_URL + ex.image_url }} style={styles.exImage} />
-                  ) : (
-                      <TouchableOpacity style={[styles.exImagePlaceholder, { backgroundColor: colors.border }]} onPress={() => handlePickImage(ex.id)}>
-                          <Ionicons name="camera-outline" size={24} color={colors.icon} />
-                      </TouchableOpacity>
-                  )}
-                  <View style={{ flex: 1 }}>
-                      <Text style={{ color: colors.text, fontWeight: 'bold', fontSize: 16 }}>{ex.name}</Text>
-                      <Text style={{ color: colors.icon }}>Series: {ex.sets || '-'} | Reps: {ex.reps || '-'}</Text>
+              <View key={`ex-${ex.id}`} style={[styles.cardColumn, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                  <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12 }}>
+                      <View style={{ flex: 1 }}>
+                          <Text style={{ color: colors.text, fontWeight: 'bold', fontSize: 18 }}>{ex.name}</Text>
+                          <Text style={{ color: colors.icon, marginTop: 4 }}>Series: {ex.sets || '-'} | Reps: {ex.reps || '-'}</Text>
+                      </View>
+                      {(!routine.creator_id || routine.creator_id === user?.id) && (
+                        <TouchableOpacity onPress={() => handleDeleteItem('exercise', ex.id)} style={{ marginLeft: 12 }}>
+                            <Ionicons name="trash-outline" size={24} color="#D32F2F" />
+                        </TouchableOpacity>
+                      )}
                   </View>
-                  {(!routine.creator_id || routine.creator_id === user?.id) && (
-                    <TouchableOpacity onPress={() => handleDeleteItem('exercise', ex.id)}>
-                        <Ionicons name="trash-outline" size={24} color="#D32F2F" />
-                    </TouchableOpacity>
-                  )}
+                  
+                  <View style={{ alignItems: 'center' }}>
+                      {ex.image_url ? (
+                          <Image source={{ uri: API_BASE_URL + ex.image_url }} style={styles.exImageLarge} />
+                      ) : (
+                          <TouchableOpacity style={[styles.exImagePlaceholderLarge, { backgroundColor: colors.border }]} onPress={() => handlePickImage(ex.id)}>
+                              <Ionicons name="camera-outline" size={40} color={colors.icon} />
+                              <Text style={{ color: colors.icon, marginTop: 8, fontSize: 12 }}>Añadir foto</Text>
+                          </TouchableOpacity>
+                      )}
+                  </View>
               </View>
           ))}
 
@@ -757,9 +763,12 @@ const styles = StyleSheet.create({
   dayTab: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: '#ccc', marginHorizontal: 4 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 24, marginBottom: 12 },
   sectionTitle: { fontSize: 18, fontWeight: 'bold' },
+  cardColumn: { padding: 16, borderRadius: 12, borderWidth: 1, marginBottom: 12 },
   cardRow: { flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 12, borderWidth: 1, marginBottom: 8 },
   exImage: { width: 50, height: 50, borderRadius: 8, marginRight: 12 },
+  exImageLarge: { width: '100%', height: 200, borderRadius: 12, resizeMode: 'contain' },
   exImagePlaceholder: { width: 50, height: 50, borderRadius: 8, marginRight: 12, justifyContent: 'center', alignItems: 'center' },
+  exImagePlaceholderLarge: { width: '100%', height: 200, borderRadius: 12, justifyContent: 'center', alignItems: 'center', borderStyle: 'dashed', borderWidth: 1 },
   input: { borderWidth: 1, borderRadius: 12, padding: 14, fontSize: 16, marginBottom: 14 },
   btn: { padding: 16, borderRadius: 12 },
 });
