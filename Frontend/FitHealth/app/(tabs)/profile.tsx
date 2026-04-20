@@ -4,7 +4,6 @@ import { useAuth } from '@/context/auth-context';
 import { useNavigation } from '@react-navigation/native';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import LanguageSwitcher from '@/components/language-switcher';
 import { profileStyles as styles } from '@/styles/profile-styles';
 import { useColors } from '@/hooks/use-colors';
 
@@ -30,7 +29,6 @@ export default function ProfileScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
-        <LanguageSwitcher />
         <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
           <Text style={styles.avatarText}>
             {user?.username?.charAt(0).toUpperCase() ?? '?'}
