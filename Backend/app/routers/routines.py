@@ -14,6 +14,7 @@ from app.schemas.routine import (
     RoutineExerciseRead, RoutineDietRead, RoutineMedicationRead, RoutineDayRead, RoutineObjectiveCreate, RoutineObjectiveRead, RoutineObjectiveUpdate
 )
 from app.models.routine import RoutineDay, RoutineExercise, RoutineDiet, RoutineMedication, RoutineObjective
+from app.routers.notifications import notification_manager
 
 router = APIRouter(prefix="/routines", tags=["routines"])
 
@@ -38,6 +39,36 @@ class RoutineConnectionManager:
                 await connection.send_json(message)
 
 manager = RoutineConnectionManager()
+
+class RoutineListConnectionManager:
+    def __init__(self):
+        self.active_connections: dict[int, list[WebSocket]] = {}
+
+    async def connect(self, websocket: WebSocket, user_id: int):
+        await websocket.accept()
+        if user_id not in self.active_connections:
+            self.active_connections[user_id] = []
+        self.active_connections[user_id].append(websocket)
+
+    def disconnect(self, websocket: WebSocket, user_id: int):
+        if user_id in self.active_connections and websocket in self.active_connections[user_id]:
+            self.active_connections[user_id].remove(websocket)
+
+    async def broadcast(self, user_id: int, message: dict):
+        if user_id in self.active_connections:
+            for connection in self.active_connections[user_id]:
+                await connection.send_json(message)
+
+list_manager = RoutineListConnectionManager()
+
+@router.websocket("/ws/user/{user_id}")
+async def user_routines_websocket(websocket: WebSocket, user_id: int):
+    await list_manager.connect(websocket, user_id)
+    try:
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        list_manager.disconnect(websocket, user_id)
 
 @router.websocket("/ws/{routine_id}")
 async def websocket_endpoint(websocket: WebSocket, routine_id: int):
@@ -74,6 +105,13 @@ async def add_exercise_to_routine(
     db.commit()
     db.refresh(db_ex)
     await manager.broadcast(routine_id, {"type": "routine_updated"})
+    
+    if current_user.id != db_routine.user_id:
+        await notification_manager.send_personal_message(
+            {"type": "routine_updated", "message": f"{current_user.username} ha modificado tu rutina: {db_routine.name}"},
+            db_routine.user_id
+        )
+
     return db_ex
 
 @router.post("/{routine_id}/days/{day_of_week}/diets", response_model=RoutineDietRead)
@@ -101,6 +139,13 @@ async def add_diet_to_routine(
     db.commit()
     db.refresh(db_diet)
     await manager.broadcast(routine_id, {"type": "routine_updated"})
+
+    if current_user.id != db_routine.user_id:
+        await notification_manager.send_personal_message(
+            {"type": "routine_updated", "message": f"{current_user.username} ha modificado tu rutina: {db_routine.name}"},
+            db_routine.user_id
+        )
+
     return db_diet
 
 @router.post("/{routine_id}/days/{day_of_week}/medications", response_model=RoutineMedicationRead)
@@ -128,6 +173,13 @@ async def add_medication_to_routine(
     db.commit()
     db.refresh(db_med)
     await manager.broadcast(routine_id, {"type": "routine_updated"})
+
+    if current_user.id != db_routine.user_id:
+        await notification_manager.send_personal_message(
+            {"type": "routine_updated", "message": f"{current_user.username} ha modificado tu rutina: {db_routine.name}"},
+            db_routine.user_id
+        )
+
     return db_med
 
 @router.delete("/items/{item_type}/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -252,7 +304,7 @@ async def update_medication(
     return updated_med
 
 @router.post("/", response_model=RoutineRead, status_code=status.HTTP_201_CREATED)
-def create_routine(
+async def create_routine(
     routine_data: RoutineCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -272,7 +324,18 @@ def create_routine(
         target_user_id = routine_data.patient_id
         creator_id = current_user.id
         
-    return crud.routine.create_routine(db, routine_data, user_id=target_user_id, creator_id=creator_id)
+    routine = crud.routine.create_routine(db, routine_data, user_id=target_user_id, creator_id=creator_id)
+    await list_manager.broadcast(target_user_id, {"type": "routine_added"})
+    
+    if current_user.id != target_user_id:
+        await notification_manager.send_personal_message(
+            {"type": "new_routine", "message": f"{current_user.username} te ha asignado una nueva rutina: {routine.name}"},
+            target_user_id
+        )
+
+    if creator_id:
+        await list_manager.broadcast(creator_id, {"type": "routine_added"})
+    return routine
 
 
 @router.post("/{routine_id}/days", response_model=RoutineRead)

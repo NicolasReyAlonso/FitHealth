@@ -50,6 +50,8 @@ function RootNavigator() {
   );
 }
 
+import { NotificationProvider } from '@/context/notification-context';
+
 export default function RootLayout() {
   const colorScheme = useColorScheme();
 
@@ -80,7 +82,9 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={colorScheme === 'dark' ? customDarkTheme : customLightTheme}>
       <AuthProvider>
-        <RootNavigator />
+        <NotificationProvider>
+          <RootNavigator />
+        </NotificationProvider>
       </AuthProvider>
     </ThemeProvider>
   );

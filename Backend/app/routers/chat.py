@@ -114,6 +114,8 @@ def list_messages(
     return crud.chat.get_messages(db, room_id, skip=skip, limit=limit)
 
 
+from app.routers.notifications import notification_manager
+
 @router.post("/rooms/{room_id}/messages", response_model=ChatMessageRead, status_code=status.HTTP_201_CREATED)
 async def send_message(
     room_id: int,
@@ -122,7 +124,8 @@ async def send_message(
     current_user: User = Depends(get_current_user),
 ):
     rooms = crud.chat.get_chat_rooms_for_user(db, current_user.id)
-    if not any(r.id == room_id for r in rooms):
+    room = next((r for r in rooms if r.id == room_id), None)
+    if not room:
         raise HTTPException(status_code=403, detail="No tienes acceso a esta sala")
     
     msg = crud.chat.create_message(
@@ -145,6 +148,13 @@ async def send_message(
         "report_data": msg.report_data,
     }
     await manager.broadcast(room_id, broadcast_data)
+
+    # Enviar notificación al otro usuario
+    target_user_id = room.doctor_id if current_user.id == room.patient_id else room.patient_id
+    await notification_manager.send_personal_message(
+        {"type": "new_message", "message": f"Nuevo mensaje de {current_user.username}", "room_id": room_id},
+        target_user_id
+    )
     
     return msg
 
@@ -243,6 +253,13 @@ async def generate_report(
         "report_data": msg.report_data,
     }
     await manager.broadcast(room_id, broadcast_data)
+
+    # Enviar notificación al otro usuario
+    target_user_id = room.doctor_id if current_user.id == room.patient_id else room.patient_id
+    await notification_manager.send_personal_message(
+        {"type": "new_report", "message": f"Nuevo reporte de progreso generado por {current_user.username}", "room_id": room_id},
+        target_user_id
+    )
     
     return msg
 

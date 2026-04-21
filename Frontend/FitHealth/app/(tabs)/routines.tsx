@@ -68,7 +68,24 @@ export default function RoutinesScreen() {
           setPatients(res.data);
         }).catch(err => console.log('Failed fetching patients', err));
       }
-    }, [user?.role])
+
+      if (user) {
+        let wsUrl = api.defaults.baseURL?.replace('http', 'ws');
+        if (wsUrl?.endsWith('/')) {
+          wsUrl = wsUrl.slice(0, -1);
+        }
+        const ws = new WebSocket(`${wsUrl}/routines/ws/user/${user.id}`);
+        
+        ws.onmessage = (event) => {
+          const data = JSON.parse(event.data);
+          if (data.type === 'routine_added') {
+            fetchRoutines();
+          }
+        };
+
+        return () => ws.close();
+      }
+    }, [user])
   );
 
   const handleCreate = async () => {
