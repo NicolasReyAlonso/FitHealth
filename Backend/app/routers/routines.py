@@ -307,6 +307,12 @@ async def update_medication(
     )
     
     await manager.broadcast(db_routine.id, {"type": "medication_updated", "id": medication_id, "is_completed": updated_med.is_completed})
+    target_user_id = db_routine.creator_id if current_user.id == db_routine.user_id else db_routine.user_id
+    if target_user_id:
+        await notification_manager.send_personal_message(
+            {"type": "routine_updated", "message": f"{current_user.username} ha actualizado el estado de una medicación en la rutina: {db_routine.name}"},
+            target_user_id
+        )
     return updated_med
 
 @router.post("/", response_model=RoutineRead, status_code=status.HTTP_201_CREATED)
@@ -485,6 +491,13 @@ async def update_routine(
         
     res = crud.routine.update_routine(db, routine_id, routine_data)
     await manager.broadcast(routine_id, {"type": "routine_updated"})
+    
+    target_user_id = db_routine.creator_id if current_user.id == db_routine.user_id else db_routine.user_id
+    if target_user_id:
+        await notification_manager.send_personal_message(
+            {"type": "routine_updated", "message": f"{current_user.username} ha modificado los detalles de la rutina: {db_routine.name}"},
+            target_user_id
+        )
     return res
 
 
@@ -534,6 +547,14 @@ async def add_objective_to_routine(
     
     obj = crud.routine.create_routine_objective(db, routine_id, objective_data.model_dump())
     await manager.broadcast(routine_id, {"type": "routine_updated"})
+    
+    target_user_id = db_routine.creator_id if current_user.id == db_routine.user_id else db_routine.user_id
+    if target_user_id:
+        await notification_manager.send_personal_message(
+            {"type": "routine_updated", "message": f"{current_user.username} ha añadido o actualizado un objetivo en la rutina: {db_routine.name}"},
+            target_user_id
+        )
+        
     return obj
 
 @router.put("/objectives/{objective_id}", response_model=RoutineObjectiveRead)
@@ -567,4 +588,13 @@ async def update_objective(
     )
     
     await manager.broadcast(db_routine.id, {"type": "objective_updated", "id": objective_id, "is_completed": updated_obj.is_completed})
+    
+    target_user_id = db_routine.creator_id if current_user.id == db_routine.user_id else db_routine.user_id
+    if target_user_id:
+        msg_text = "ha completado un" if updated_obj.is_completed else "ha modificado el estado de un"
+        await notification_manager.send_personal_message(
+            {"type": "routine_updated", "message": f"{current_user.username} {msg_text} objetivo en la rutina: {db_routine.name}"},
+            target_user_id
+        )
+        
     return updated_obj
