@@ -158,3 +158,4 @@ class RoutineRead(BaseModel):
 class RoutineUpdate(BaseModel):
     name: str | None = None
     description: str | None = None
+    user_id: int | None = None

@@ -10,6 +10,7 @@ export const useNotifications = () => useContext(NotificationContext);
 export const NotificationProvider = ({ children }: { children: React.ReactNode }) => {
   const { user } = useAuth();
   const [notification, setNotification] = useState<{ message: string; type: string } | null>(null);
+  const [lastEvent, setLastEvent] = useState<{ id: string; type: string; data: any } | null>(null); // NEW: Track raw events
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(-50)).current;
   const [activeRoomId, setActiveRoomId] = useState<number | null>(null);
@@ -52,8 +53,12 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
         console.log('🔔 Notificación recibida:', event.data);
         try {
           const data = JSON.parse(event.data);
+          
+          // Siempre actualizamos el último evento para que las vistas puedan reaccionar
+          setLastEvent({ id: Date.now().toString() + Math.random(), type: data.type, data });
+
           if (data.message) {
-            // No mostrar la notificación de chat si ya estamos dentro de esa sala
+            // No mostrar la notificación visual de chat si ya estamos dentro de esa sala
             if (data.type === 'new_message' && data.room_id && data.room_id === activeRoomIdRef.current) {
               console.log('🔇 Notificación silenciada (estás en la misma sala de chat)');
               return;
@@ -122,7 +127,7 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
   };
 
   return (
-    <NotificationContext.Provider value={{ showNotification, activeRoomId, setActiveRoomId }}>
+    <NotificationContext.Provider value={{ showNotification, activeRoomId, setActiveRoomId, lastEvent }}>
       {children}
       {notification && (
         <Animated.View style={[styles.notification, { opacity, transform: [{ translateY }] }]}>

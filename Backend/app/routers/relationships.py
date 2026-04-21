@@ -17,8 +17,10 @@ from app.crud.relationship import (
 
 router = APIRouter(prefix="/relationships", tags=["relationships"])
 
+from app.routers.notifications import notification_manager
+
 @router.post("/request", response_model=RelationshipRead, status_code=status.HTTP_201_CREATED)
-def send_relationship_request(
+async def send_relationship_request(
     patient_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -32,6 +34,12 @@ def send_relationship_request(
         
     rel = create_relationship(db, doctor_id=current_user.id, patient_id=patient_id)
     
+    # Notificar al paciente de la solicitud de conexión
+    await notification_manager.send_personal_message(
+        {"type": "contact_request", "message": f"Tienes una nueva solicitud de {current_user.username}"},
+        patient_id
+    )
+
     return RelationshipRead(
         id=rel.id,
         doctor_id=rel.doctor_id,
@@ -46,7 +54,7 @@ def send_relationship_request(
     )
 
 @router.patch("/{relationship_id}/status", response_model=RelationshipRead)
-def update_request_status(
+async def update_request_status(
     relationship_id: int,
     status: str,
     db: Session = Depends(get_db),
@@ -59,11 +67,17 @@ def update_request_status(
     if not rel:
         raise HTTPException(status_code=404, detail="Relationship not found")
         
-    # Only patients can accept/reject
     if current_user.id != rel.patient_id:
         raise HTTPException(status_code=403, detail="Only the patient can update the request status")
         
     rel = update_relationship_status(db, relationship_id, status)
+    
+    # Notificar al doctor que su solicitud fue aceptada
+    if status == "accepted":
+        await notification_manager.send_personal_message(
+            {"type": "contact_accepted", "message": f"{current_user.username} ha aceptado tu solicitud"},
+            rel.doctor_id
+        )
     
     return RelationshipRead(
         id=rel.id,
@@ -151,7 +165,7 @@ def get_my_doctors(
     return [{"id": rel.doctor.id, "username": rel.doctor.username, "email": rel.doctor.email, "profile_picture": rel.doctor.profile_picture, "relationship_id": rel.id} for rel in rels]
 
 @router.delete("/{relationship_id}", status_code=status.HTTP_204_NO_CONTENT)
-def remove_relationship(
+async def remove_relationship(
     relationship_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -160,9 +174,16 @@ def remove_relationship(
     if not rel:
         raise HTTPException(status_code=404, detail="Relationship not found")
         
-    # Check permissions: doctor or patient in the relationship can delete it
     if current_user.id not in [rel.doctor_id, rel.patient_id]:
         raise HTTPException(status_code=403, detail="Not authorized to delete this relationship")
         
     delete_relationship(db, relationship_id)
+    
+    # Notificar al otro usuario
+    other_user_id = rel.patient_id if current_user.id == rel.doctor_id else rel.doctor_id
+    await notification_manager.send_personal_message(
+        {"type": "contact_deleted", "message": f"{current_user.username} ya no está en tus contactos"},
+        other_user_id
+    )
+    
     return None

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, Alert, Image, ActivityIndicator, Platform } from 'react-native';
 import { useAuth } from '@/context/auth-context';
+import { useNotifications } from '@/context/notification-context';
 import api from '@/services/api';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -28,6 +29,7 @@ type UserSearch = {
 
 export default function ContactsScreen() {
   const { user } = useAuth();
+  const { lastEvent } = useNotifications();
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
 
@@ -70,6 +72,17 @@ export default function ContactsScreen() {
   useEffect(() => {
     fetchContacts();
   }, [user]);
+
+  // Escuchar eventos en tiempo real para recargar contactos
+  useEffect(() => {
+    if (lastEvent) {
+      const relevantTypes = ['contact_request', 'contact_accepted', 'contact_deleted'];
+      if (relevantTypes.includes(lastEvent.type)) {
+        console.log('Recargando contactos debido a evento web socket:', lastEvent.type);
+        fetchContacts();
+      }
+    }
+  }, [lastEvent]);
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;

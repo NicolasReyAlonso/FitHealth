@@ -489,6 +489,21 @@ async def update_routine(
     if is_owner and db_routine.creator_id is not None and db_routine.creator_id != current_user.id:
         raise HTTPException(status_code=403, detail="No puedes editar una rutina asignada por un doctor")
         
+    # Check if a doctor is re-assigning it to another patient
+    if routine_data.user_id is not None:
+        if current_user.role != "doctor":
+            raise HTTPException(status_code=403, detail="Solo los doctores pueden reasignar rutinas")
+        # Ensure the patient is a valid accepted relationship
+        from app.models.relationship import DoctorPatient
+        rel = db.query(DoctorPatient).filter(
+            DoctorPatient.doctor_id == current_user.id, 
+            DoctorPatient.patient_id == routine_data.user_id,
+            DoctorPatient.status == "accepted"
+        ).first()
+        if not rel and routine_data.user_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Paciente no válido")
+        
+    old_user_id = db_routine.user_id
     res = crud.routine.update_routine(db, routine_id, routine_data)
     await manager.broadcast(routine_id, {"type": "routine_updated"})
     
@@ -498,6 +513,12 @@ async def update_routine(
             {"type": "routine_updated", "message": f"{current_user.username} ha modificado los detalles de la rutina: {db_routine.name}"},
             target_user_id
         )
+    if routine_data.user_id is not None and routine_data.user_id != old_user_id:
+        await notification_manager.send_personal_message(
+            {"type": "routine_assigned", "message": f"{current_user.username} te ha asignado una nueva rutina: {db_routine.name}"},
+            routine_data.user_id
+        )
+
     return res
 
 

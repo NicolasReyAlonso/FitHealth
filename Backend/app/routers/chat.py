@@ -99,7 +99,7 @@ def create_or_get_chat_room(
 
 
 @router.delete("/rooms/{room_id}", status_code=status.HTTP_204_NO_CONTENT)
-def remove_chat_room(
+async def remove_chat_room(
     room_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -110,6 +110,15 @@ def remove_chat_room(
         raise HTTPException(status_code=404, detail="Sala de chat no encontrada o no tienes acceso")
         
     crud.chat.delete_chat_room(db, room_id)
+    
+    # Notificar al otro usuario que el chat fue borrado
+    from app.routers.notifications import notification_manager
+    other_user_id = room.patient_id if current_user.id == room.doctor_id else room.doctor_id
+    await notification_manager.send_personal_message(
+        {"type": "chat_deleted", "room_id": room_id, "message": f"{current_user.username} ha borrado el chat"},
+        other_user_id
+    )
+    
     return None
 
 @router.get("/rooms/{room_id}/messages", response_model=list[ChatMessageRead])

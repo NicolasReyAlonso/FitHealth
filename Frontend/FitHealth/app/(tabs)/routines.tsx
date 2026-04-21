@@ -45,6 +45,7 @@ export default function RoutinesScreen() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editingName, setEditingName] = useState('');
   const [editingDescription, setEditingDescription] = useState('');
+  const [editingPatientId, setEditingPatientId] = useState<number | null>(null);
   const { user } = useAuth();
   const [patients, setPatients] = useState<{ id: number; username: string }[]>([]);
   const [patientId, setPatientId] = useState<number | null>(null);
@@ -137,21 +138,33 @@ export default function RoutinesScreen() {
     setEditingId(routine.id);
     setEditingName(routine.name);
     setEditingDescription(routine.description || '');
+    if (routine.user_id !== routine.creator_id) {
+      setEditingPatientId(routine.user_id);
+    } else {
+      setEditingPatientId(null);
+    }
   };
 
 
   const confirmEdit = async () => {
-    if (!editingId) return;
+    if (!editingId || !user) return;
     try {
       console.log('📡 Actualizando rutina:', editingId);
-      await api.patch(`/routines/${editingId}`, {
+      const payload: any = {
         name: editingName,
         description: editingDescription || null,
-      });
+      };
+      if (user.role === 'doctor') {
+        payload.user_id = editingPatientId || user.id;
+      }
+      
+      await api.patch(`/routines/${editingId}`, payload);
+      
       console.log('✅ Rutina actualizada exitosamente');
       setEditingId(null);
       setEditingName('');
       setEditingDescription('');
+      setEditingPatientId(null);
       await fetchRoutines();
       Alert.alert('Éxito', 'Rutina actualizada correctamente');
     } catch (error: any) {
@@ -300,6 +313,43 @@ export default function RoutinesScreen() {
               numberOfLines={3}
             />
             
+            {user?.role === 'doctor' && patients.length > 0 && (
+              <View style={{ marginBottom: 20 }}>
+                <Text style={{ color: colors.text, marginBottom: 8, fontWeight: '600' }}>Reasignar paciente:</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexDirection: 'row' }}>
+                  <TouchableOpacity
+                    style={{
+                      padding: 10,
+                      marginRight: 10,
+                      borderRadius: 8,
+                      borderWidth: 1,
+                      borderColor: editingPatientId === null || editingPatientId === user.id ? colors.primary : colors.border,
+                      backgroundColor: editingPatientId === null || editingPatientId === user.id ? `${colors.primary}20` : 'transparent',
+                    }}
+                    onPress={() => setEditingPatientId(user.id)}
+                  >
+                    <Text style={{ color: editingPatientId === null || editingPatientId === user.id ? colors.primary : colors.text }}>Nadie (Para mi)</Text>
+                  </TouchableOpacity>
+                  {patients.map(p => (
+                    <TouchableOpacity
+                      key={p.id}
+                      style={{
+                        padding: 10,
+                        marginRight: 10,
+                        borderRadius: 8,
+                        borderWidth: 1,
+                        borderColor: editingPatientId === p.id ? colors.primary : colors.border,
+                        backgroundColor: editingPatientId === p.id ? `${colors.primary}20` : 'transparent',
+                      }}
+                      onPress={() => setEditingPatientId(p.id)}
+                    >
+                      <Text style={{ color: editingPatientId === p.id ? colors.primary : colors.text }}>{p.username}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+            
             <View style={{ flexDirection: 'row', gap: 12 }}>
               <TouchableOpacity
                 style={{ flex: 1, backgroundColor: colors.border, borderRadius: 12, padding: 14, alignItems: 'center' }}
@@ -307,6 +357,7 @@ export default function RoutinesScreen() {
                   setEditingId(null);
                   setEditingName('');
                   setEditingDescription('');
+                  setEditingPatientId(null);
                 }}
               >
                 <Text style={{ color: colors.text, fontWeight: '600' }}>Cancelar</Text>

@@ -62,7 +62,7 @@ export default function ChatScreen() {
   const [loadingRoutines, setLoadingRoutines] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
   const flatListRef = useRef<FlatList>(null);
-  const { setActiveRoomId } = useNotifications();
+  const { setActiveRoomId, lastEvent, showNotification } = useNotifications();
 
   const fetchRooms = async () => {
     try {
@@ -92,6 +92,38 @@ export default function ChatScreen() {
       fetchUsersToChat();
     }, [user?.role])
   );
+
+  // Reference to manually hold the active room when interpreting global events
+  const currentRoomRef = useRef<ChatRoom | null>(null);
+  useEffect(() => {
+    currentRoomRef.current = selectedRoom;
+  }, [selectedRoom]);
+
+  // Escucha de eventos WebSocket globales para recargar listas y manejar eliminación de chats en tiempo real
+  useEffect(() => {
+    if (!lastEvent) return;
+
+    if (lastEvent.type === 'chat_deleted') {
+      const deletedRoomId = lastEvent.data.room_id;
+      // Si el chat borrado es el que tenemos abierto
+      if (currentRoomRef.current?.id === deletedRoomId) {
+        setSelectedRoom(null);
+        if (Platform.OS === 'web') {
+          window.alert(lastEvent.data.message || 'El otro usuario ha borrado este chat.');
+        } else {
+          Alert.alert('Chat eliminado', lastEvent.data.message || 'El otro usuario ha borrado este chat.');
+        }
+      }
+      fetchRooms();
+    } 
+    else if (lastEvent.type === 'contact_accepted' || lastEvent.type === 'contact_deleted') {
+      fetchUsersToChat();
+      fetchRooms();
+    }
+    else if (lastEvent.type === 'new_message') {
+      fetchRooms();
+    }
+  }, [lastEvent]);
 
   // Connect / disconnect WebSocket when selectedRoom changes
   useEffect(() => {
