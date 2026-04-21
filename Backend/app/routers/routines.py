@@ -221,6 +221,12 @@ async def delete_routine_item(
     
     routine_id = db_item.routine_id if item_type == "objective" else db_item.day.routine_id
     await manager.broadcast(routine_id, {"type": "routine_updated"})
+    
+    if current_user.id != owner_id:
+        await notification_manager.send_personal_message(
+            {"type": "routine_updated", "message": f"{current_user.username} ha eliminado un elemento de tu rutina"},
+            owner_id
+        )
 
 @router.post("/exercises/{exercise_id}/image", response_model=dict)
 async def upload_exercise_image(
@@ -483,7 +489,7 @@ async def update_routine(
 
 
 @router.delete("/{routine_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_routine(
+async def delete_routine(
     routine_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -502,6 +508,16 @@ def delete_routine(
         raise HTTPException(status_code=403, detail="No puedes eliminar una rutina asignada por un doctor")
         
     crud.routine.delete_routine(db, routine_id)
+    
+    await list_manager.broadcast(db_routine.user_id, {"type": "routine_deleted"})
+    if db_routine.creator_id:
+        await list_manager.broadcast(db_routine.creator_id, {"type": "routine_deleted"})
+        
+    if current_user.id != db_routine.user_id:
+        await notification_manager.send_personal_message(
+            {"type": "routine_deleted", "message": f"{current_user.username} ha eliminado la rutina: {db_routine.name}"},
+            db_routine.user_id
+        )
 
 
 @router.post("/{routine_id}/objectives", response_model=RoutineObjectiveRead)

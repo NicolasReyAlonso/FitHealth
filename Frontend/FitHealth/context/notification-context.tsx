@@ -32,46 +32,70 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
   useEffect(() => {
     if (!user) return;
 
-    let wsUrl = WS_BASE_URL;
-    if (wsUrl?.endsWith('/')) {
-      wsUrl = wsUrl.slice(0, -1);
-    }
-    const ws = new WebSocket(`${wsUrl}/notifications/ws/${user.id}`);
+    let isMounted = true;
+    let ws: WebSocket | null = null;
+    let reconnectTimeout: NodeJS.Timeout;
 
-    ws.onopen = () => {
-      console.log('✅ Conectado a notificaciones WebSocket');
-    };
-
-    ws.onmessage = (event) => {
-      console.log('🔔 Notificación recibida:', event.data);
-      try {
-        const data = JSON.parse(event.data);
-        if (data.message) {
-          // No mostrar la notificación de chat si ya estamos dentro de esa sala
-          if (data.type === 'new_message' && data.room_id && data.room_id === activeRoomIdRef.current) {
-            console.log('🔇 Notificación silenciada (estás en la misma sala de chat)');
-            return;
-          }
-
-          showNotification(data.message, data.type);
-          
-          // Disparar la notificación del navegador en Web
-          if (Platform.OS === 'web' && 'Notification' in window && Notification.permission === 'granted') {
-            new Notification('FitHealth', { body: data.message });
-          }
-        }
-      } catch (err) {
-        console.error('Error parseando notificación:', err);
+    const connectWebSocket = () => {
+      let wsUrl = WS_BASE_URL;
+      if (wsUrl?.endsWith('/')) {
+        wsUrl = wsUrl.slice(0, -1);
       }
+      
+      ws = new WebSocket(`${wsUrl}/notifications/ws/${user.id}`);
+
+      ws.onopen = () => {
+        console.log('✅ Conectado a notificaciones WebSocket');
+      };
+
+      ws.onmessage = (event) => {
+        console.log('🔔 Notificación recibida:', event.data);
+        try {
+          const data = JSON.parse(event.data);
+          if (data.message) {
+            // No mostrar la notificación de chat si ya estamos dentro de esa sala
+            if (data.type === 'new_message' && data.room_id && data.room_id === activeRoomIdRef.current) {
+              console.log('🔇 Notificación silenciada (estás en la misma sala de chat)');
+              return;
+            }
+
+            showNotification(data.message, data.type);
+            
+            // Disparar la notificación del navegador en Web
+            if (Platform.OS === 'web' && 'Notification' in window && Notification.permission === 'granted') {
+              new Notification('FitHealth', { body: data.message });
+            }
+          }
+        } catch (err) {
+          console.error('Error parseando notificación:', err);
+        }
+      };
+
+      ws.onerror = (e) => {
+        console.error('❌ Error en WebSocket de notificaciones', e);
+      };
+
+      ws.onclose = () => {
+        console.log('🔌 WebSocket cerrado. Intentando reconectar...');
+        if (isMounted) {
+          reconnectTimeout = setTimeout(() => {
+            connectWebSocket();
+          }, 3000); // Reintentar a los 3 segundos
+        }
+      };
     };
 
-    ws.onerror = (e) => {
-      console.error('❌ Error en WebSocket de notificaciones', e);
-    };
+    connectWebSocket();
 
     return () => {
-      console.log('🔌 Desconectando socket de notificaciones');
-      ws.close();
+      isMounted = false;
+      clearTimeout(reconnectTimeout);
+      if (ws) {
+        // Prevenir loop de reconexión intencional en cleanup
+        ws.onclose = null;
+        console.log('🔌 Desconectando socket de notificaciones (Cleanup)');
+        ws.close();
+      }
     };
   }, [user]);
 

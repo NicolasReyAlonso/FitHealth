@@ -78,7 +78,7 @@ export default function RoutinesScreen() {
         
         ws.onmessage = (event) => {
           const data = JSON.parse(event.data);
-          if (data.type === 'routine_added') {
+          if (data.type === 'routine_added' || data.type === 'routine_deleted') {
             fetchRoutines();
           }
         };
