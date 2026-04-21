@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, Alert, Image, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, Alert, Image, ActivityIndicator, Platform } from 'react-native';
 import { useAuth } from '@/context/auth-context';
 import api from '@/services/api';
 import { Colors } from '@/constants/theme';
@@ -106,25 +106,44 @@ export default function ContactsScreen() {
   };
 
   const unlinkContact = (relId: number) => {
-    Alert.alert(
-      "Confirmar",
-      "¿Estás seguro de que quieres desligarte de este usuario?",
-      [
-        { text: "Cancelar", style: "cancel" },
-        { 
-          text: "Desligarse", 
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await api.delete(`/relationships/${relId}`);
-              fetchContacts();
-            } catch (e) {
-              Alert.alert('Error', 'No se pudo desligar la cuenta');
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm("¿Estás seguro de que quieres desligarte de este usuario? Se perderán todos los datos asociados.");
+      if (!confirmed) return;
+
+      // Ejecutar la acción en el navegador web
+      api.delete(`/relationships/${relId}`)
+        .then(() => {
+          console.log('Contacto desvinculado exitosamente');
+          fetchContacts();
+        })
+        .catch((e: any) => {
+          console.error("Error al desligar contacto:", e);
+          alert(`No se pudo desligar la cuenta. Detalle: ${e.response?.data?.detail || 'Verifique su conexión o permisos.'}`);
+        });
+
+    } else {
+      // Lógica para móvil (React Native)
+      Alert.alert(
+        "Confirmar",
+        "¿Estás seguro de que quieres desligarte de este usuario? Se perderán todos los datos asociados.",
+        [
+          { text: "Cancelar", style: "cancel" },
+          { 
+            text: "Desligarse", 
+            style: "destructive",
+            onPress: async () => {
+              try {
+                await api.delete(`/relationships/${relId}`);
+                fetchContacts();
+              } catch (e: any) {
+                console.error("Error al desligar contacto:", e);
+                Alert.alert('Error', `No se pudo desligar la cuenta. Detalle: ${e.response?.data?.detail || 'Verifique su conexión o permisos.'}`);
+              }
             }
           }
-        }
-      ]
-    );
+        ]
+      );
+    }
   };
 
   if (!user) return null;

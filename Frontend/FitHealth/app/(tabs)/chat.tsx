@@ -137,37 +137,67 @@ export default function ChatScreen() {
 
   const deleteCurrentRoom = async () => {
     if (!selectedRoom) return;
-    Alert.alert('Confirmar', '¿Estás seguro de que quieres borrar este chat? Se perderán todos los mensajes.', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Borrar', style: 'destructive', onPress: async () => {
-          try {
-            await api.delete(`/chat/rooms/${selectedRoom.id}`);
-            setSelectedRoom(null);
-            fetchRooms();
-          } catch (e) {
-            Alert.alert('Error', 'No se pudo borrar el chat');
-          }
+
+    const performDelete = async () => {
+      try {
+        console.log(`Attempting to delete room ${selectedRoom.id}...`);
+        await api.delete(`/chat/rooms/${selectedRoom.id}`);
+        console.log('Room deleted successfully');
+        setSelectedRoom(null);
+        fetchRooms();
+      } catch (e: any) {
+        console.error("Error deleting room:", e);
+        const errorMessage = e.response?.data?.detail || e.message || 'Ocurrió un error desconocido al intentar borrar el chat.';
+        if (Platform.OS === 'web') {
+          window.alert(`No se pudo borrar el chat. Detalle: ${errorMessage}`);
+        } else {
+          Alert.alert('Error', `No se pudo borrar el chat. Detalle: ${errorMessage}`);
         }
       }
-    ]);
+    };
+
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm('¿Estás seguro de que quieres borrar este chat? Se perderán todos los mensajes.');
+      if (confirmed) {
+        performDelete();
+      }
+    } else {
+      Alert.alert('Confirmar', '¿Estás seguro de que quieres borrar este chat? Se perderán todos los mensajes.', [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Borrar', style: 'destructive', onPress: performDelete }
+      ]);
+    }
   };
 
   const sendMessage = async () => {
-    if (!newMessage.trim() || !selectedRoom) return;
-    const content = newMessage.trim();
-    setNewMessage('');
+    if (!newMessage.trim() || !selectedRoom) {
+      console.warn('Cannot send message: Message content is empty or no room selected.'); // <-- Added warning log
+      return;
+    }
 
-    // Send via WebSocket if connected
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ content }));
-    } else {
-      // Fallback to REST
-      try {
-        const res = await api.post(`/chat/rooms/${selectedRoom.id}/messages`, { content });
-        setMessages((prev) => [...prev, res.data]);
-      } catch {
-        Alert.alert('Error', 'No se pudo enviar el mensaje');
-      }
+    const content = newMessage.trim();
+    setNewMessage(''); // Clear input immediately to provide visual feedback
+
+    try {
+        // Send via WebSocket if connected
+        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+          console.log('Attempting to send message via WebSocket:', content);
+          wsRef.current.send(JSON.stringify({ content }));
+        } else {
+          // Fallback to REST
+          console.warn('WebSocket not open. Falling back to REST API.'); // <-- Added warning log
+          try {
+            const res = await api.post(`/chat/rooms/${selectedRoom.id}/messages`, { content });
+            console.log('Message sent successfully via REST API:', res.data);
+            setMessages((prev) => [...prev, res.data]);
+          } catch (e: any) {
+            console.error('Error sending message via REST API:', e); // <-- Added error log
+            Alert.alert('Error', `No se pudo enviar el mensaje. Detalle: ${e.response?.data?.detail || 'Verifique la conexión o los permisos.'}`);
+          }
+        }
+    } catch (outerError) {
+      console.error('Critical error during message sending process:', outerError); // <-- Added critical error log
+      Alert.alert('Error Crítico', 'Ocurrió un error inesperado al intentar enviar el mensaje.');
     }
   };
 
