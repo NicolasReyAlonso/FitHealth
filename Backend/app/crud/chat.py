@@ -37,6 +37,17 @@ def get_messages(db: Session, chat_room_id: int, skip: int = 0, limit: int = 100
     )
 
 
+def get_chat_room(db: Session, room_id: int) -> ChatRoom | None:
+    return db.query(ChatRoom).filter(ChatRoom.id == room_id).first()
+
+def delete_chat_room(db: Session, room_id: int) -> bool:
+    room = get_chat_room(db, room_id)
+    if room:
+        db.delete(room)
+        db.commit()
+        return True
+    return False
+
 def create_message(db: Session, chat_room_id: int, sender_id: int, content: str, type: str = "text", report_data: dict | None = None) -> ChatMessage:
     msg = ChatMessage(
         chat_room_id=chat_room_id, 

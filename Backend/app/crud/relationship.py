@@ -50,3 +50,11 @@ def get_relationship_between(db: Session, doctor_id: int, patient_id: int):
         DoctorPatient.doctor_id == doctor_id,
         DoctorPatient.patient_id == patient_id
     ).first()
+
+def delete_relationship(db: Session, relationship_id: int) -> bool:
+    rel = get_relationship(db, relationship_id)
+    if rel:
+        db.delete(rel)
+        db.commit()
+        return True
+    return False

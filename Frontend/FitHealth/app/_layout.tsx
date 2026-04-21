@@ -2,9 +2,19 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, View, LogBox } from 'react-native';
 import 'react-native-reanimated';
 import '@/services/i18n';
+
+LogBox.ignoreLogs([
+  'Invalid DOM property `transform-origin`',
+  'Unknown event handler property `onStartShouldSetResponder`',
+  'Unknown event handler property `onResponderTerminationRequest`',
+  'Unknown event handler property `onResponderGrant`',
+  'Unknown event handler property `onResponderMove`',
+  'Unknown event handler property `onResponderRelease`',
+  'Unknown event handler property `onResponderTerminate`'
+]);
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider, useAuth } from '@/context/auth-context';

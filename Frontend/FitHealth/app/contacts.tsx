@@ -105,6 +105,28 @@ export default function ContactsScreen() {
     }
   };
 
+  const unlinkContact = (relId: number) => {
+    Alert.alert(
+      "Confirmar",
+      "¿Estás seguro de que quieres desligarte de este usuario?",
+      [
+        { text: "Cancelar", style: "cancel" },
+        { 
+          text: "Desligarse", 
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await api.delete(`/relationships/${relId}`);
+              fetchContacts();
+            } catch (e) {
+              Alert.alert('Error', 'No se pudo desligar la cuenta');
+            }
+          }
+        }
+      ]
+    );
+  };
+
   if (!user) return null;
 
   const isDoctor = user.role === 'doctor';
@@ -215,6 +237,9 @@ export default function ContactsScreen() {
                     <Text style={[styles.contactName, { color: colors.text }]}>{c.username}</Text>
                     <Text style={[styles.contactEmail, { color: colors.icon }]}>{c.email}</Text>
                   </View>
+                  <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#FF3B30' }]} onPress={() => unlinkContact(c.relationship_id)}>
+                     <Text style={styles.actionText}>Desligar</Text>
+                  </TouchableOpacity>
                 </View>
               ))}
             </View>

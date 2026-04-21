@@ -135,6 +135,23 @@ export default function ChatScreen() {
     }
   };
 
+  const deleteCurrentRoom = async () => {
+    if (!selectedRoom) return;
+    Alert.alert('Confirmar', '¿Estás seguro de que quieres borrar este chat? Se perderán todos los mensajes.', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Borrar', style: 'destructive', onPress: async () => {
+          try {
+            await api.delete(`/chat/rooms/${selectedRoom.id}`);
+            setSelectedRoom(null);
+            fetchRooms();
+          } catch (e) {
+            Alert.alert('Error', 'No se pudo borrar el chat');
+          }
+        }
+      }
+    ]);
+  };
+
   const sendMessage = async () => {
     if (!newMessage.trim() || !selectedRoom) return;
     const content = newMessage.trim();
@@ -235,6 +252,9 @@ export default function ChatScreen() {
               <Text style={styles.reportBtnText}>Generar Reporte</Text>
             </TouchableOpacity>
           )}
+          <TouchableOpacity style={[styles.reportBtn, { backgroundColor: '#FF3B30', marginLeft: 8 }]} onPress={deleteCurrentRoom}>
+            <Text style={styles.reportBtnText}>Borrar</Text>
+          </TouchableOpacity>
         </View>
 
         <FlatList
@@ -248,6 +268,17 @@ export default function ChatScreen() {
             const msgAvatar = isMe ? user?.profile_picture : otherProfilePicture;
             
             const isReport = item.type === 'report' && item.report_data;
+
+            const prepareChartData = (records: any[] | undefined) => {
+              if (!records || records.length === 0) return null;
+              const labels = records.map(d => new Date(d.date).getDate().toString());
+              const data = records.map(d => d.value);
+              if (data.length === 1) {
+                labels.push(labels[0]);
+                data.push(data[0]);
+              }
+              return { labels, datasets: [{ data }] };
+            };
 
             return (
               <View style={[styles.messageWrapper, isMe ? { flexDirection: 'row-reverse' } : { flexDirection: 'row' }]}>
@@ -278,16 +309,14 @@ export default function ChatScreen() {
                       <Text style={[styles.reportStat, { color: isMe ? '#fff' : colors.text }]}>Distancia (km): {item.report_data!.stats.total_distance_km.toFixed(2)}</Text>
                       <Text style={[styles.reportStat, { color: isMe ? '#fff' : colors.text }]}>Pasos: {item.report_data!.stats.total_steps}</Text>
                       
-                      {item.report_data!.graphs.bpm_over_time?.length > 0 && (
+                      {prepareChartData(item.report_data!.graphs.bpm_over_time) && (
                         <View style={styles.chartWrapper}>
                           <Text style={[styles.chartTitle, { color: isMe ? '#fff' : colors.text }]}>Evolución BPM</Text>
                           <LineChart
-                            data={{
-                              labels: item.report_data!.graphs.bpm_over_time.map(d => new Date(d.date).getDate().toString()),
-                              datasets: [{ data: item.report_data!.graphs.bpm_over_time.map(d => d.value) }]
-                            }}
+                            data={prepareChartData(item.report_data!.graphs.bpm_over_time)!}
                             width={Dimensions.get('window').width * 0.7}
                             height={150}
+                            fromZero={true}
                             chartConfig={{
                               backgroundColor: 'transparent',
                               backgroundGradientFrom: isMe ? colors.primary : colors.card,
@@ -302,16 +331,14 @@ export default function ChatScreen() {
                         </View>
                       )}
 
-                      {item.report_data!.graphs.steps_over_time?.length > 0 && (
+                      {prepareChartData(item.report_data!.graphs.steps_over_time) && (
                         <View style={styles.chartWrapper}>
                           <Text style={[styles.chartTitle, { color: isMe ? '#fff' : colors.text }]}>Evolución Pasos</Text>
                           <LineChart
-                            data={{
-                              labels: item.report_data!.graphs.steps_over_time.map(d => new Date(d.date).getDate().toString()),
-                              datasets: [{ data: item.report_data!.graphs.steps_over_time.map(d => d.value) }]
-                            }}
+                            data={prepareChartData(item.report_data!.graphs.steps_over_time)!}
                             width={Dimensions.get('window').width * 0.7}
                             height={150}
+                            fromZero={true}
                             chartConfig={{
                               backgroundColor: 'transparent',
                               backgroundGradientFrom: isMe ? colors.primary : colors.card,
@@ -325,16 +352,14 @@ export default function ChatScreen() {
                         </View>
                       )}
                       
-                      {item.report_data!.graphs.weight_over_time?.length > 0 && (
+                      {prepareChartData(item.report_data!.graphs.weight_over_time) && (
                         <View style={styles.chartWrapper}>
                           <Text style={[styles.chartTitle, { color: isMe ? '#fff' : colors.text }]}>Evolución Peso</Text>
                           <LineChart
-                            data={{
-                              labels: item.report_data!.graphs.weight_over_time.map(d => new Date(d.date).getDate().toString()),
-                              datasets: [{ data: item.report_data!.graphs.weight_over_time.map(d => d.value) }]
-                            }}
+                            data={prepareChartData(item.report_data!.graphs.weight_over_time)!}
                             width={Dimensions.get('window').width * 0.7}
                             height={150}
+                            fromZero={true}
                             chartConfig={{
                               backgroundColor: 'transparent',
                               backgroundGradientFrom: isMe ? colors.primary : colors.card,

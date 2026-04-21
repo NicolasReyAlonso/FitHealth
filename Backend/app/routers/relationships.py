@@ -12,6 +12,7 @@ from app.crud.relationship import (
     get_doctor_patients,
     get_patient_doctors,
     get_relationship,
+    delete_relationship,
 )
 
 router = APIRouter(prefix="/relationships", tags=["relationships"])
@@ -87,7 +88,7 @@ def get_my_patients(
         
     # Get all patients for this doctor based on accepted relationship
     rels = get_doctor_patients(db, doctor_id=current_user.id, status="accepted")
-    return [{"id": rel.patient.id, "username": rel.patient.username, "email": rel.patient.email, "profile_picture": rel.patient.profile_picture} for rel in rels]
+    return [{"id": rel.patient.id, "username": rel.patient.username, "email": rel.patient.email, "profile_picture": rel.patient.profile_picture, "relationship_id": rel.id} for rel in rels]
 
 @router.get("/doctor/pending", response_model=list[RelationshipRead])
 def get_doctor_pending_requests(
@@ -147,4 +148,21 @@ def get_my_doctors(
         raise HTTPException(status_code=403, detail="Only patients can view their doctors")
         
     rels = get_patient_doctors(db, patient_id=current_user.id, status="accepted")
-    return [{"id": rel.doctor.id, "username": rel.doctor.username, "email": rel.doctor.email, "profile_picture": rel.doctor.profile_picture} for rel in rels]
+    return [{"id": rel.doctor.id, "username": rel.doctor.username, "email": rel.doctor.email, "profile_picture": rel.doctor.profile_picture, "relationship_id": rel.id} for rel in rels]
+
+@router.delete("/{relationship_id}", status_code=status.HTTP_204_NO_CONTENT)
+def remove_relationship(
+    relationship_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    rel = get_relationship(db, relationship_id)
+    if not rel:
+        raise HTTPException(status_code=404, detail="Relationship not found")
+        
+    # Check permissions: doctor or patient in the relationship can delete it
+    if current_user.id not in [rel.doctor_id, rel.patient_id]:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this relationship")
+        
+    delete_relationship(db, relationship_id)
+    return None

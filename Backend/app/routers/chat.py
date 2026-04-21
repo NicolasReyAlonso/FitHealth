@@ -98,6 +98,20 @@ def create_or_get_chat_room(
     )
 
 
+@router.delete("/rooms/{room_id}", status_code=status.HTTP_204_NO_CONTENT)
+def remove_chat_room(
+    room_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    rooms = crud.chat.get_chat_rooms_for_user(db, current_user.id)
+    room = next((r for r in rooms if r.id == room_id), None)
+    if not room:
+        raise HTTPException(status_code=404, detail="Sala de chat no encontrada o no tienes acceso")
+        
+    crud.chat.delete_chat_room(db, room_id)
+    return None
+
 @router.get("/rooms/{room_id}/messages", response_model=list[ChatMessageRead])
 def list_messages(
     room_id: int,
