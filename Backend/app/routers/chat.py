@@ -298,12 +298,18 @@ async def websocket_chat(websocket: WebSocket, room_id: int):
         if not user:
             await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
             return
+            
+        username = user.username
+        user_id = user.id
 
         # Verify the user belongs to this room
         rooms = crud.chat.get_chat_rooms_for_user(db, user.id)
-        if not any(r.id == room_id for r in rooms):
+        room = next((r for r in rooms if r.id == room_id), None)
+        if not room:
             await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
             return
+            
+        target_user_id = room.doctor_id if user_id == room.patient_id else room.patient_id
     finally:
         db.close()
 
@@ -317,7 +323,8 @@ async def websocket_chat(websocket: WebSocket, room_id: int):
 
             db = SessionLocal()
             try:
-                msg = crud.chat.create_message(db, room_id, sender_id=user.id, content=content)
+                msg = crud.chat.create_message(db, room_id, sender_id=user_id, content=content)
+                
                 message_data = {
                     "id": msg.id,
                     "chat_room_id": msg.chat_room_id,
@@ -330,5 +337,10 @@ async def websocket_chat(websocket: WebSocket, room_id: int):
                 db.close()
 
             await manager.broadcast(room_id, message_data)
+            
+            await notification_manager.send_personal_message(
+                {"type": "new_message", "message": f"Nuevo mensaje de {username}", "room_id": room_id},
+                target_user_id
+            )
     except WebSocketDisconnect:
         manager.disconnect(websocket, room_id)

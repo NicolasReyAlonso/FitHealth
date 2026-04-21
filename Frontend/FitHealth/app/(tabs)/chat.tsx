@@ -23,6 +23,7 @@ import { WS_BASE_URL } from '@/services/api';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/context/auth-context';
+import { useNotifications } from '@/context/notification-context';
 
 type ChatRoom = {
   id: number;
@@ -61,6 +62,7 @@ export default function ChatScreen() {
   const [loadingRoutines, setLoadingRoutines] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
   const flatListRef = useRef<FlatList>(null);
+  const { setActiveRoomId } = useNotifications();
 
   const fetchRooms = async () => {
     try {
@@ -93,7 +95,12 @@ export default function ChatScreen() {
 
   // Connect / disconnect WebSocket when selectedRoom changes
   useEffect(() => {
-    if (!selectedRoom || !token) return;
+    setActiveRoomId(selectedRoom?.id || null);
+
+    if (!selectedRoom || !token) {
+      if (!selectedRoom) setActiveRoomId(null);
+      return;
+    }
 
     const ws = new WebSocket(`${WS_BASE_URL}/chat/ws/${selectedRoom.id}?token=${token}`);
     wsRef.current = ws;
@@ -114,8 +121,9 @@ export default function ChatScreen() {
     return () => {
       ws.close();
       wsRef.current = null;
+      setActiveRoomId(null);
     };
-  }, [selectedRoom, token]);
+  }, [selectedRoom, token, setActiveRoomId]);
 
   const openRoom = async (room: ChatRoom) => {
     setSelectedRoom(room);
