@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, ScrollView, Pressable, Modal, Image, Dimensions } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, Pressable, Modal, Image, Dimensions, TouchableOpacity } from 'react-native';
 import { LineChart } from 'react-native-chart-kit';
 import { useAuth } from '@/context/auth-context';
 import { Colors } from '@/constants/theme';
@@ -45,6 +45,7 @@ export default function HomeScreen() {
   const [monthlyDistance, setMonthlyDistance] = useState(0);
   const [monthlySteps, setMonthlySteps] = useState(0);
   const [progressReport, setProgressReport] = useState<ProgressReport | null>(null);
+  const [selectedReportRoutineId, setSelectedReportRoutineId] = useState<number | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -52,18 +53,12 @@ export default function HomeScreen() {
     }, [])
   );
 
-  const buildProgressReport = (routinesList: any[], eventsList: any[]): ProgressReport | null => {
+  const buildProgressReport = (routinesList: any[], eventsList: any[], selectedRoutineId: number | null): ProgressReport | null => {
     if (!Array.isArray(routinesList) || routinesList.length === 0) {
       return null;
     }
 
-    const sortedRoutines = [...routinesList].sort((a, b) => {
-      const aDate = a?.created_at ? new Date(a.created_at).getTime() : 0;
-      const bDate = b?.created_at ? new Date(b.created_at).getTime() : 0;
-      return bDate - aDate;
-    });
-
-    const selectedRoutine = sortedRoutines.find((routine) => routine?.creator_id) || sortedRoutines[0];
+    const selectedRoutine = routinesList.find((routine) => routine?.id === selectedRoutineId) || routinesList[0];
     const routineStartDate = selectedRoutine?.created_at ? new Date(selectedRoutine.created_at) : new Date();
     const validStartDate = Number.isNaN(routineStartDate.getTime()) ? new Date() : routineStartDate;
 
@@ -71,8 +66,10 @@ export default function HomeScreen() {
       if (!event?.timestamp) return false;
       const eventDate = new Date(event.timestamp);
       if (Number.isNaN(eventDate.getTime())) return false;
-      const matchesRoutine = selectedRoutine?.id && event?.routine_id === selectedRoutine.id;
-      return eventDate >= validStartDate || matchesRoutine;
+      if (selectedRoutine?.id) {
+        return event?.routine_id === selectedRoutine.id;
+      }
+      return eventDate >= validStartDate;
     });
 
     let totalActivities = 0;
@@ -201,7 +198,14 @@ export default function HomeScreen() {
 
       setMonthlyDistance(tempDistance);
       setMonthlySteps(tempSteps);
-      setProgressReport(buildProgressReport(routinesDataFetch, eventsDataFetch));
+      const hasSelectedRoutine = selectedReportRoutineId !== null && routinesDataFetch.some((routine: any) => routine.id === selectedReportRoutineId);
+      const reportRoutineId = hasSelectedRoutine ? selectedReportRoutineId : (routinesDataFetch[0]?.id ?? null);
+
+      if (!hasSelectedRoutine && reportRoutineId !== null) {
+        setSelectedReportRoutineId(reportRoutineId);
+      }
+
+      setProgressReport(buildProgressReport(routinesDataFetch, eventsDataFetch, reportRoutineId));
       
       // Mapear actividad por día del mes
       const year = today.getFullYear();
@@ -299,6 +303,11 @@ export default function HomeScreen() {
         router.push('/(tabs)/chat');
         break;
     }
+  };
+
+  const handleSelectProgressRoutine = (routineId: number) => {
+    setSelectedReportRoutineId(routineId);
+    setProgressReport(buildProgressReport(routinesData, eventsData, routineId));
   };
 
   const features = [
@@ -441,6 +450,34 @@ export default function HomeScreen() {
       {progressReport && (
         <View style={[styles.reportCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Text style={[styles.reportTitle, { color: colors.text }]}>📄 Reporte de progreso</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.reportRoutineSelector}>
+            {routinesData.map((routine: any) => {
+              const isSelected = selectedReportRoutineId === routine.id;
+              return (
+                <TouchableOpacity
+                  key={routine.id}
+                  style={[
+                    styles.reportRoutineChip,
+                    {
+                      borderColor: isSelected ? colors.primary : colors.border,
+                      backgroundColor: isSelected ? colors.primaryLight : colors.background,
+                    },
+                  ]}
+                  onPress={() => handleSelectProgressRoutine(routine.id)}
+                >
+                  <Text
+                    style={{
+                      color: isSelected ? colors.primary : colors.text,
+                      fontWeight: isSelected ? '700' : '500',
+                      fontSize: 12,
+                    }}
+                  >
+                    {routine.name}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
           <Text style={[styles.reportSubtitle, { color: colors.icon }]}>Rutina: {progressReport.routineName}</Text>
           <Text style={[styles.reportSubtitle, { color: colors.icon }]}>Desde: {new Date(progressReport.routineStart).toLocaleDateString()}</Text>
 
@@ -549,24 +586,45 @@ export default function HomeScreen() {
             const hasActivity = day && dayActivityMap[day];
             const activity = hasActivity ? dayActivityMap[day] : null;
             const totalActivity = activity ? activity.routines + activity.events : 0;
-            const backgroundColor = isToday ? colors.primary : hasActivity ? colors.primaryLight : colors.gray50;
-            const borderColor = isToday ? colors.primary : hasActivity ? colors.primary : colors.border;
-            const opacity = day ? 1 : 0;
-            const textColor = isToday ? '#fff' : hasActivity ? colors.primary : colors.text;
-            
+            let backgroundColor = colors.gray50;
+            let borderColor = colors.border;
+            let textColor = colors.text;
+            const cellOpacity = day ? 1 : 0;
+
+            if (hasActivity) {
+              backgroundColor = colors.primaryLight;
+              borderColor = colors.primary;
+              textColor = colors.primary;
+            }
+
+            if (isToday) {
+              backgroundColor = colors.primary;
+              borderColor = colors.primary;
+              textColor = '#fff';
+            }
+
             return (
               <Pressable
                 key={cellKey}
                 onPress={() => handleDayPress(day)}
                 disabled={!day}
-                style={({ pressed }) => [
-                  styles.dayCell,
-                  {
-                    backgroundColor,
-                    borderColor,
-                    opacity: day ? (pressed ? 0.8 : opacity) : 0,
-                  },
-                ]}>
+                style={({ pressed }) => {
+                  let currentOpacity = 0;
+                  if (day) {
+                    currentOpacity = cellOpacity;
+                    if (pressed) {
+                      currentOpacity = 0.8;
+                    }
+                  }
+                  return [
+                    styles.dayCell,
+                    {
+                      backgroundColor,
+                      borderColor,
+                      opacity: currentOpacity,
+                    },
+                  ];
+                }}>
                 <Text style={[styles.dayNumber, { color: textColor }]}>
                   {day}
                 </Text>
@@ -1069,6 +1127,17 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
     marginBottom: 2,
+  },
+  reportRoutineSelector: {
+    marginTop: 8,
+    marginBottom: 10,
+  },
+  reportRoutineChip: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginRight: 8,
   },
   reportStatsGrid: {
     marginTop: 14,
