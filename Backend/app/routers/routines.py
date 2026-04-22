@@ -507,6 +507,13 @@ async def update_routine(
     res = crud.routine.update_routine(db, routine_id, routine_data)
     await manager.broadcast(routine_id, {"type": "routine_updated"})
     
+    # Update lists for both users via WebSocket
+    await list_manager.broadcast(old_user_id, {"type": "routine_unassigned"})
+    if routine_data.user_id is not None:
+        await list_manager.broadcast(routine_data.user_id, {"type": "routine_added"})
+    if db_routine.creator_id:
+        await list_manager.broadcast(db_routine.creator_id, {"type": "routine_updated"})
+    
     target_user_id = db_routine.creator_id if current_user.id == db_routine.user_id else db_routine.user_id
     if target_user_id:
         await notification_manager.send_personal_message(
@@ -518,6 +525,11 @@ async def update_routine(
             {"type": "routine_assigned", "message": f"{current_user.username} te ha asignado una nueva rutina: {db_routine.name}"},
             routine_data.user_id
         )
+        if old_user_id != current_user.id:
+            await notification_manager.send_personal_message(
+                {"type": "routine_unassigned", "message": f"{current_user.username} te ha desasignado la rutina: {db_routine.name}"},
+                old_user_id
+            )
 
     return res
 
@@ -547,6 +559,12 @@ async def delete_routine(
     if db_routine.creator_id:
         await list_manager.broadcast(db_routine.creator_id, {"type": "routine_deleted"})
         
+    # Notificación de desasignación/eliminación al paciente (user_id)
+    await list_manager.broadcast(db_routine.user_id, {
+        "type": "routine_unassigned", 
+        "message": f"La rutina '{db_routine.name}' ha sido eliminada o desasignada."
+    })
+
     if current_user.id != db_routine.user_id:
         await notification_manager.send_personal_message(
             {"type": "routine_deleted", "message": f"{current_user.username} ha eliminado la rutina: {db_routine.name}"},
