@@ -364,9 +364,9 @@ export default function EventsScreen() {
       setUndoDeletedEvent(null);
       setUndoTimeoutId(null);
       await fetchEvents();
-      showNotification('Evento restaurado correctamente', 'success');
+      showNotification('Evento recuperado correctamente', 'success');
     } catch {
-      showNotification('No se pudo restaurar el evento', 'error');
+      showNotification('No se pudo recuperar el evento', 'error');
     }
   };
 

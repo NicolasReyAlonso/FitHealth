@@ -218,9 +218,9 @@ export default function RoutinesScreen() {
       setUndoDeletedRoutine(null);
       setUndoTimeoutId(null);
       await fetchRoutines();
-      showNotification('Rutina restaurada correctamente', 'success');
+      showNotification('Rutina recuperada correctamente', 'success');
     } catch {
-      showNotification('No se pudo restaurar la rutina', 'error');
+      showNotification('No se pudo recuperar la rutina', 'error');
     }
   };
 
