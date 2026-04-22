@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   StyleSheet,
   Text,
@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Alert,
   ActivityIndicator,
   Modal,
 } from 'react-native';
@@ -16,6 +15,7 @@ import api from '@/services/api';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/context/auth-context';
+import { useNotifications } from '@/context/notification-context';
 
 type Routine = {
   id: number;
@@ -46,7 +46,10 @@ export default function RoutinesScreen() {
   const [editingName, setEditingName] = useState('');
   const [editingDescription, setEditingDescription] = useState('');
   const [editingPatientId, setEditingPatientId] = useState<number | null>(null);
+  const [undoDeletedRoutine, setUndoDeletedRoutine] = useState<Routine | null>(null);
+  const [undoTimeoutId, setUndoTimeoutId] = useState<ReturnType<typeof setTimeout> | null>(null);
   const { user } = useAuth();
+  const { showNotification } = useNotifications();
   const [patients, setPatients] = useState<{ id: number; username: string }[]>([]);
   const [patientId, setPatientId] = useState<number | null>(null);
 
@@ -55,7 +58,7 @@ export default function RoutinesScreen() {
       const res = await api.get('/routines/');
       setRoutines(res.data);
     } catch {
-      Alert.alert('Error', 'No se pudieron cargar las rutinas');
+      showNotification('No se pudieron cargar las rutinas', 'error');
     } finally {
       setLoading(false);
     }
@@ -89,9 +92,17 @@ export default function RoutinesScreen() {
     }, [user])
   );
 
+  useEffect(() => {
+    return () => {
+      if (undoTimeoutId) {
+        clearTimeout(undoTimeoutId);
+      }
+    };
+  }, [undoTimeoutId]);
+
   const handleCreate = async () => {
     if (!name.trim()) {
-      Alert.alert('Error', 'El nombre es requerido');
+      showNotification('El nombre es requerido', 'error');
       return;
     }
     try {
@@ -105,8 +116,9 @@ export default function RoutinesScreen() {
       setPatientId(null);
       setShowModal(false);
       fetchRoutines();
+      showNotification('Rutina añadida correctamente', 'success');
     } catch {
-      Alert.alert('Error', 'No se pudo crear la rutina');
+      showNotification('No se pudo crear la rutina', 'error');
     }
   };
 
@@ -119,15 +131,27 @@ export default function RoutinesScreen() {
     if (!deleteId) return;
     try {
       setDeleting(true);
+      const deletedRoutine = routines.find((routine) => routine.id === deleteId) ?? null;
       console.log('📡 Eliminando rutina:', deleteId);
       await api.delete(`/routines/${deleteId}`);
       console.log('✅ Rutina eliminada exitosamente');
       setDeleteId(null);
       await fetchRoutines();
-      Alert.alert('Éxito', 'Rutina eliminada correctamente');
+      if (deletedRoutine) {
+        setUndoDeletedRoutine(deletedRoutine);
+        if (undoTimeoutId) {
+          clearTimeout(undoTimeoutId);
+        }
+        const timeoutId = setTimeout(() => {
+          setUndoDeletedRoutine(null);
+          setUndoTimeoutId(null);
+        }, 5000);
+        setUndoTimeoutId(timeoutId);
+      }
+      showNotification('Rutina eliminada. Puedes deshacer durante 5 segundos', 'warning');
     } catch (error: any) {
       console.error('❌ Error al eliminar:', error);
-      Alert.alert('Error', error.message || 'No se pudo eliminar la rutina');
+      showNotification(error.message || 'No se pudo eliminar la rutina', 'error');
     } finally {
       setDeleting(false);
     }
@@ -138,10 +162,10 @@ export default function RoutinesScreen() {
     setEditingId(routine.id);
     setEditingName(routine.name);
     setEditingDescription(routine.description || '');
-    if (routine.user_id !== routine.creator_id) {
-      setEditingPatientId(routine.user_id);
-    } else {
+    if (routine.creator_id !== null && routine.user_id === routine.creator_id) {
       setEditingPatientId(null);
+    } else {
+      setEditingPatientId(routine.user_id);
     }
   };
 
@@ -166,10 +190,37 @@ export default function RoutinesScreen() {
       setEditingDescription('');
       setEditingPatientId(null);
       await fetchRoutines();
-      Alert.alert('Éxito', 'Rutina actualizada correctamente');
+      showNotification('Rutina actualizada correctamente', 'success');
     } catch (error: any) {
       console.error('❌ Error al actualizar:', error);
-      Alert.alert('Error', error.message || 'No se pudo actualizar la rutina');
+      showNotification(error.message || 'No se pudo actualizar la rutina', 'error');
+    }
+  };
+
+  const canCreateRoutine = name.trim().length > 0;
+  const canSaveRoutineEdit = editingName.trim().length > 0;
+
+  const handleUndoDelete = async () => {
+    if (!undoDeletedRoutine) return;
+    try {
+      const payload: any = {
+        name: undoDeletedRoutine.name,
+        description: undoDeletedRoutine.description,
+      };
+      if (user?.role === 'doctor' && undoDeletedRoutine.user_id !== user.id) {
+        payload.patient_id = undoDeletedRoutine.user_id;
+      }
+
+      await api.post('/routines/', payload);
+      if (undoTimeoutId) {
+        clearTimeout(undoTimeoutId);
+      }
+      setUndoDeletedRoutine(null);
+      setUndoTimeoutId(null);
+      await fetchRoutines();
+      showNotification('Rutina restaurada correctamente', 'success');
+    } catch {
+      showNotification('No se pudo restaurar la rutina', 'error');
     }
   };
 
@@ -363,12 +414,23 @@ export default function RoutinesScreen() {
                 <Text style={{ color: colors.text, fontWeight: '600' }}>Cancelar</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={{ flex: 1, backgroundColor: colors.primary, borderRadius: 12, padding: 14, alignItems: 'center' }}
+                style={{
+                  flex: 1,
+                  backgroundColor: canSaveRoutineEdit ? colors.primary : colors.border,
+                  borderRadius: 12,
+                  padding: 14,
+                  alignItems: 'center',
+                  opacity: canSaveRoutineEdit ? 1 : 0.6,
+                }}
                 onPress={confirmEdit}
+                disabled={!canSaveRoutineEdit}
               >
                 <Text style={{ color: '#fff', fontWeight: '600' }}>Guardar</Text>
               </TouchableOpacity>
             </View>
+            {!canSaveRoutineEdit && (
+              <Text style={styles.inlineErrorText}>El nombre es obligatorio para guardar la rutina.</Text>
+            )}
           </View>
         </View>
       </Modal>
@@ -432,13 +494,32 @@ export default function RoutinesScreen() {
               <TouchableOpacity style={[styles.modalBtn, { backgroundColor: colors.border }]} onPress={() => setShowModal(false)}>
                 <Text style={{ color: colors.text, fontWeight: '600' }}>Cancelar</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.modalBtn, { backgroundColor: colors.primary }]} onPress={handleCreate}>
+              <TouchableOpacity
+                style={[
+                  styles.modalBtn,
+                  { backgroundColor: canCreateRoutine ? colors.primary : colors.border, opacity: canCreateRoutine ? 1 : 0.6 },
+                ]}
+                onPress={handleCreate}
+                disabled={!canCreateRoutine}
+              >
                 <Text style={{ color: '#fff', fontWeight: '600' }}>Crear</Text>
               </TouchableOpacity>
             </View>
+            {!canCreateRoutine && (
+              <Text style={styles.inlineErrorText}>El nombre es obligatorio para crear la rutina.</Text>
+            )}
           </View>
         </View>
       </Modal>
+
+      {undoDeletedRoutine && (
+        <View style={[styles.undoBanner, { backgroundColor: colors.primary }]}> 
+          <Text style={styles.undoText}>Rutina eliminada</Text>
+          <TouchableOpacity onPress={handleUndoDelete}>
+            <Text style={styles.undoAction}>Deshacer</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 }
@@ -588,5 +669,33 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+  },
+  inlineErrorText: {
+    color: '#ef4444',
+    fontSize: 12,
+    marginTop: 6,
+  },
+  undoBanner: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    bottom: 16,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    elevation: 4,
+  },
+  undoText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  undoAction: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
   },
 });
