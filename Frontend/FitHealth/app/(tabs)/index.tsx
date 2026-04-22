@@ -1,4 +1,5 @@
-import { StyleSheet, Text, View, ScrollView, Pressable, Modal, Image } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, Pressable, Modal, Image, Dimensions } from 'react-native';
+import { LineChart } from 'react-native-chart-kit';
 import { useAuth } from '@/context/auth-context';
 import { Colors } from '@/constants/theme';
 import { useTranslation } from 'react-i18next';
@@ -6,6 +7,26 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import api from '@/services/api';
+
+type ReportPoint = {
+  date: string;
+  value: number;
+};
+
+type ProgressReport = {
+  routineName: string;
+  routineStart: string;
+  stats: {
+    totalActivities: number;
+    totalDistanceKm: number;
+    totalSteps: number;
+  };
+  graphs: {
+    bpmOverTime: ReportPoint[];
+    stepsOverTime: ReportPoint[];
+    weightOverTime: ReportPoint[];
+  };
+};
 
 export default function HomeScreen() {
   const { t } = useTranslation();
@@ -23,12 +44,97 @@ export default function HomeScreen() {
   const [dayActivityMap, setDayActivityMap] = useState<{ [key: number]: { routines: number; events: number } }>({});
   const [monthlyDistance, setMonthlyDistance] = useState(0);
   const [monthlySteps, setMonthlySteps] = useState(0);
+  const [progressReport, setProgressReport] = useState<ProgressReport | null>(null);
 
   useFocusEffect(
     useCallback(() => {
       fetchStats();
     }, [])
   );
+
+  const buildProgressReport = (routinesList: any[], eventsList: any[]): ProgressReport | null => {
+    if (!Array.isArray(routinesList) || routinesList.length === 0) {
+      return null;
+    }
+
+    const sortedRoutines = [...routinesList].sort((a, b) => {
+      const aDate = a?.created_at ? new Date(a.created_at).getTime() : 0;
+      const bDate = b?.created_at ? new Date(b.created_at).getTime() : 0;
+      return bDate - aDate;
+    });
+
+    const selectedRoutine = sortedRoutines.find((routine) => routine?.creator_id) || sortedRoutines[0];
+    const routineStartDate = selectedRoutine?.created_at ? new Date(selectedRoutine.created_at) : new Date();
+    const validStartDate = Number.isNaN(routineStartDate.getTime()) ? new Date() : routineStartDate;
+
+    const relevantEvents = (eventsList || []).filter((event: any) => {
+      if (!event?.timestamp) return false;
+      const eventDate = new Date(event.timestamp);
+      if (Number.isNaN(eventDate.getTime())) return false;
+      const matchesRoutine = selectedRoutine?.id && event?.routine_id === selectedRoutine.id;
+      return eventDate >= validStartDate || matchesRoutine;
+    });
+
+    let totalActivities = 0;
+    let totalDistanceKm = 0;
+    let totalSteps = 0;
+    const bpmOverTime: ReportPoint[] = [];
+    const stepsOverTime: ReportPoint[] = [];
+    const weightOverTime: ReportPoint[] = [];
+
+    relevantEvents.forEach((event: any) => {
+      const eventDate = new Date(event.timestamp);
+      const dateStr = eventDate.toISOString().split('T')[0];
+
+      if (['activity', 'walking', 'running', 'Caminar', 'Correr'].includes(event?.event_type) && event?.activity_log) {
+        totalActivities += 1;
+        const distance = Number(event.activity_log.distance_km || 0);
+        const steps = Number(event.activity_log.steps || 0);
+        totalDistanceKm += Number.isNaN(distance) ? 0 : distance;
+        totalSteps += Number.isNaN(steps) ? 0 : steps;
+
+        if (steps > 0) {
+          stepsOverTime.push({ date: dateStr, value: steps });
+        }
+      }
+
+      const bpmValue = Number(event?.biometric?.heart_rate_avg || 0);
+      if (event?.event_type === 'biometric' && bpmValue > 0) {
+        bpmOverTime.push({ date: dateStr, value: bpmValue });
+      }
+
+      const weightValue = Number(event?.weight_log?.weight_kg || 0);
+      if (event?.event_type === 'weight' && weightValue > 0) {
+        weightOverTime.push({ date: dateStr, value: weightValue });
+      }
+    });
+
+    return {
+      routineName: selectedRoutine?.name || 'Rutina actual',
+      routineStart: validStartDate.toISOString(),
+      stats: {
+        totalActivities,
+        totalDistanceKm: Number(totalDistanceKm.toFixed(2)),
+        totalSteps,
+      },
+      graphs: {
+        bpmOverTime,
+        stepsOverTime,
+        weightOverTime,
+      },
+    };
+  };
+
+  const toLineData = (points: ReportPoint[]) => {
+    const trimmed = points.slice(-7);
+    return {
+      labels: trimmed.map((point) => {
+        const date = new Date(point.date);
+        return Number.isNaN(date.getTime()) ? '' : `${date.getDate()}`;
+      }),
+      datasets: [{ data: trimmed.map((point) => point.value) }],
+    };
+  };
 
   const fetchStats = async () => {
     try {
@@ -95,6 +201,7 @@ export default function HomeScreen() {
 
       setMonthlyDistance(tempDistance);
       setMonthlySteps(tempSteps);
+      setProgressReport(buildProgressReport(routinesDataFetch, eventsDataFetch));
       
       // Mapear actividad por día del mes
       const year = today.getFullYear();
@@ -219,6 +326,7 @@ export default function HomeScreen() {
 
   const maxStat = Math.max(...weekStats);
   const dayLabels = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sab', 'Dom'];
+  const chartWidth = Math.max(Dimensions.get('window').width - 96, 240);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -328,6 +436,102 @@ export default function HomeScreen() {
           })}
         </View>
       </View>
+
+      {/* Progress Report */}
+      {progressReport && (
+        <View style={[styles.reportCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Text style={[styles.reportTitle, { color: colors.text }]}>📄 Reporte de progreso</Text>
+          <Text style={[styles.reportSubtitle, { color: colors.icon }]}>Rutina: {progressReport.routineName}</Text>
+          <Text style={[styles.reportSubtitle, { color: colors.icon }]}>Desde: {new Date(progressReport.routineStart).toLocaleDateString()}</Text>
+
+          <View style={styles.reportStatsGrid}>
+            <View style={[styles.reportStatChip, { backgroundColor: colors.primaryLight }]}> 
+              <Text style={[styles.reportStatLabel, { color: colors.primary }]}>Actividades</Text>
+              <Text style={[styles.reportStatValue, { color: colors.primary }]}>{progressReport.stats.totalActivities}</Text>
+            </View>
+            <View style={[styles.reportStatChip, { backgroundColor: colors.secondaryLight }]}> 
+              <Text style={[styles.reportStatLabel, { color: colors.secondary }]}>Distancia</Text>
+              <Text style={[styles.reportStatValue, { color: colors.secondary }]}>{progressReport.stats.totalDistanceKm.toFixed(2)} km</Text>
+            </View>
+            <View style={[styles.reportStatChip, { backgroundColor: colors.accentLight }]}> 
+              <Text style={[styles.reportStatLabel, { color: colors.accent }]}>Pasos</Text>
+              <Text style={[styles.reportStatValue, { color: colors.accent }]}>{progressReport.stats.totalSteps}</Text>
+            </View>
+          </View>
+
+          {progressReport.graphs.bpmOverTime.length === 0 &&
+            progressReport.graphs.stepsOverTime.length === 0 &&
+            progressReport.graphs.weightOverTime.length === 0 && (
+              <Text style={[styles.reportEmptyState, { color: colors.icon }]}>Aún no hay datos suficientes para graficar.</Text>
+            )}
+
+          {progressReport.graphs.bpmOverTime.length > 0 && (
+            <View style={styles.reportChartBlock}>
+              <Text style={[styles.reportChartTitle, { color: colors.text }]}>Evolución BPM</Text>
+              <LineChart
+                data={toLineData(progressReport.graphs.bpmOverTime)}
+                width={chartWidth}
+                height={170}
+                chartConfig={{
+                  backgroundColor: colors.card,
+                  backgroundGradientFrom: colors.card,
+                  backgroundGradientTo: colors.card,
+                  decimalPlaces: 0,
+                  color: (opacity = 1) => `rgba(59, 130, 246, ${opacity})`,
+                  labelColor: (opacity = 1) => `rgba(107, 114, 128, ${opacity})`,
+                  propsForDots: { r: '3', strokeWidth: '1' },
+                }}
+                bezier
+                style={styles.reportChart}
+              />
+            </View>
+          )}
+
+          {progressReport.graphs.stepsOverTime.length > 0 && (
+            <View style={styles.reportChartBlock}>
+              <Text style={[styles.reportChartTitle, { color: colors.text }]}>Evolución Pasos</Text>
+              <LineChart
+                data={toLineData(progressReport.graphs.stepsOverTime)}
+                width={chartWidth}
+                height={170}
+                chartConfig={{
+                  backgroundColor: colors.card,
+                  backgroundGradientFrom: colors.card,
+                  backgroundGradientTo: colors.card,
+                  decimalPlaces: 0,
+                  color: (opacity = 1) => `rgba(16, 185, 129, ${opacity})`,
+                  labelColor: (opacity = 1) => `rgba(107, 114, 128, ${opacity})`,
+                  propsForDots: { r: '3', strokeWidth: '1' },
+                }}
+                bezier
+                style={styles.reportChart}
+              />
+            </View>
+          )}
+
+          {progressReport.graphs.weightOverTime.length > 0 && (
+            <View style={styles.reportChartBlock}>
+              <Text style={[styles.reportChartTitle, { color: colors.text }]}>Evolución Peso</Text>
+              <LineChart
+                data={toLineData(progressReport.graphs.weightOverTime)}
+                width={chartWidth}
+                height={170}
+                chartConfig={{
+                  backgroundColor: colors.card,
+                  backgroundGradientFrom: colors.card,
+                  backgroundGradientTo: colors.card,
+                  decimalPlaces: 1,
+                  color: (opacity = 1) => `rgba(245, 158, 11, ${opacity})`,
+                  labelColor: (opacity = 1) => `rgba(107, 114, 128, ${opacity})`,
+                  propsForDots: { r: '3', strokeWidth: '1' },
+                }}
+                bezier
+                style={styles.reportChart}
+              />
+            </View>
+          )}
+        </View>
+      )}
 
       {/* Calendar */}
       <View style={[styles.calendarCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -843,5 +1047,65 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 8,
     borderWidth: 1,
+  },
+  reportCard: {
+    marginHorizontal: 20,
+    marginBottom: 24,
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  reportTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    marginBottom: 8,
+  },
+  reportSubtitle: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginBottom: 2,
+  },
+  reportStatsGrid: {
+    marginTop: 14,
+    marginBottom: 10,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  reportStatChip: {
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    minWidth: '31%',
+  },
+  reportStatLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  reportStatValue: {
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  reportEmptyState: {
+    marginTop: 10,
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  reportChartBlock: {
+    marginTop: 14,
+  },
+  reportChartTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+  reportChart: {
+    borderRadius: 12,
   },
 });
