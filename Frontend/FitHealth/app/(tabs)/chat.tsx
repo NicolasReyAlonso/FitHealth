@@ -213,7 +213,11 @@ export default function ChatScreen() {
         keyboardVerticalOffset={90}
       >
         <View style={[styles.chatHeader, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <TouchableOpacity onPress={() => setSelectedRoom(null)}>
+          <TouchableOpacity
+            onPress={() => setSelectedRoom(null)}
+            accessibilityRole="button"
+            accessibilityLabel="Go back to conversations"
+          >
             <Text style={[styles.backBtn, { color: colors.primary }]}>← Atrás</Text>
           </TouchableOpacity>
           <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>

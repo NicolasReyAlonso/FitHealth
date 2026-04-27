@@ -86,9 +86,15 @@ export default function ProfileScreen() {
     >
       <View style={[styles.header, { backgroundColor: colors.primary }]}>
         
-        <TouchableOpacity style={[styles.avatar, { backgroundColor: 'rgba(255,255,255,0.2)' }]} onPress={pickImage} activeOpacity={0.8}>
+        <TouchableOpacity style={[styles.avatar, { backgroundColor: 'rgba(255,255,255,0.2)' }]}
+          onPress={pickImage} activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel="change profile picture"
+          accessibilityHint="opens image gallery"
+        >
           {uploadingImage ? (
-             <ActivityIndicator size="large" color="#fff" />
+             <ActivityIndicator size="large" color="#fff" 
+             accessibilityLabel="uploading profile image"/>
           ) : user?.profile_picture ? (
              <Image source={{ uri: user.profile_picture }} style={{ width: 120, height: 120, borderRadius: 60 }} />
           ) : (
@@ -101,7 +107,12 @@ export default function ProfileScreen() {
         <Text style={styles.username}>{user?.username}</Text>
         <Text style={styles.email}>{user?.email}</Text>
         <View style={[styles.roleBadge, { backgroundColor: 'rgba(255,255,255,0.15)' }]}>
-          <Text style={styles.roleText}>
+          <Text style={styles.roleText}
+          accessibilityLabel={
+            user?.role === 'doctor'
+              ? t('doctor')
+              : t('patient')
+          }>
             {user?.role === 'doctor' ? `🩺 ${t('doctor')}` : `🏃 ${t('patient')}`}
           </Text>
         </View>
@@ -135,18 +146,24 @@ export default function ProfileScreen() {
             <TouchableOpacity 
               style={[styles.langBtn, i18n.language?.startsWith('es') && { backgroundColor: colors.primary, borderColor: colors.primary }]}
               onPress={() => i18n.changeLanguage('es')}
+              accessibilityRole="button"
+              accessibilityLabel="change language to Spanish"
             >
               <Text style={{ color: i18n.language?.startsWith('es') ? '#fff' : colors.text, fontWeight: 'bold' }}>🇪🇸 {t('spanish')}</Text>
             </TouchableOpacity>
             <TouchableOpacity 
               style={[styles.langBtn, i18n.language?.startsWith('en') && { backgroundColor: colors.primary, borderColor: colors.primary }]}
               onPress={() => i18n.changeLanguage('en')}
+              accessibilityRole="button"
+              accessibilityLabel="change language to English"
             >
               <Text style={{ color: i18n.language?.startsWith('en') ? '#fff' : colors.text, fontWeight: 'bold' }}>🇬🇧 {t('english')}</Text>
             </TouchableOpacity>
             <TouchableOpacity 
               style={[styles.langBtn, i18n.language?.startsWith('de') && { backgroundColor: colors.primary, borderColor: colors.primary }]}
               onPress={() => i18n.changeLanguage('de')}
+              accessibilityRole="button"
+              accessibilityLabel="change language to German"
             >
               <Text style={{ color: i18n.language?.startsWith('de') ? '#fff' : colors.text, fontWeight: 'bold' }}>🇩🇪 {t('german')}</Text>
             </TouchableOpacity>
@@ -181,7 +198,10 @@ export default function ProfileScreen() {
 
 
         <TouchableOpacity style={[styles.infoCard, { backgroundColor: colors.edit, borderColor: colors.border }]}
-            onPress={() => router.push('/edit_profile')}>
+            onPress={() => router.push('/edit_profile')}
+            accessibilityRole="button"
+            accessibilityLabel="edit profile"
+          >
           <Text style={[styles.infoLabel, { color: colors.icon }]}>✏️ {t('profile.edit_profile')}</Text>
         </TouchableOpacity>
 
@@ -191,6 +211,8 @@ export default function ProfileScreen() {
         style={[styles.logoutButton, { backgroundColor: '#EF4444' }]}
         onPress={handleLogout}
         activeOpacity={0.85}
+        accessibilityRole="button"
+        accessibilityLabel="logout"
       >
         <Text style={styles.logoutIcon}>🚪</Text>
         <Text style={styles.logoutText}>{t('logout')}</Text>
