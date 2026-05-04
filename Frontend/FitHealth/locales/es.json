@@ -11,7 +11,9 @@
     "logout": "Cerrar sesión",
     "back": "Atrás",
     "cancel": "Cancelar",
-    "confirm": "Confirmar"
+    "confirm": "Confirmar",
+    "delete": "Eliminar",
+    "deleting": "Eliminando..."
   },
   "home": {
     "greeting": "¡Hola",
@@ -47,7 +49,15 @@
     "my_routines": "Mis Rutinas",
     "org_training": "Organiza tu entrenamiento",
     "description": "Crea y gestiona tus rutinas de entrenamiento personalizadas",
-    "steps": "Pasos"
+    "steps": "Pasos",
+    "routine": "Rutina",
+    "add_step": "Agregar paso",
+    "edit_step": "Editar paso",
+    "delete_step": "Eliminar paso",
+    "no_routines": "No tienes rutinas aún",
+    "create_routine": "Crear rutina",
+    "routine_created": "¡Rutina creada!",
+    "confirm_delete": "¿Eliminar paso de rutina?"
   },
   "events": {
     "label": "Eventos",
@@ -56,7 +66,46 @@
     "description": "Mantente al día con tus eventos de salud y bienestar",
     "registered": "Registrado",
     "no_events": "No tienes eventos aún",
-    "add_event": "Agregar evento"
+    "new_event": "Nuevo evento",
+    "add_event": "Agregar evento",
+    "edit_event": "Editar evento",
+    "event_name": "Nombre del evento",
+    "event_created": "¡Evento creado!",
+    "confirm_delete": "Mostrar confirmación para evento:",
+    "event_deleted": "Evento eliminado",
+    "cant_be_undone": "Esta acción no se puede deshacer",
+    "remove_event": "¿Eliminar evento?",
+    "register_health": "Registra tus actividades de salud",
+    "event_type": "Tipo de evento",
+    "associated_routine": "Rutina asociada",
+    "notes": "Notas",
+    "add_notes": "Agregar notas...",
+    "done": "Hecho",
+    "types": {
+      "activity_type": "Tipo de actividad",
+      "appointment": "Cita médica",
+      "workout": "Entrenamiento",
+      "checkup": "Chequeo",
+      "walk": "Caminar",
+      "run": "Correr",
+      "biometry": "Biométrico",
+      "water": "Agua",
+      "water_amount": "Cantidad (ml)",
+      "water_intake": "Ingesta de agua",
+      "medication": "Medicación",
+      "other": "Otro",
+      "activity": "Actividad física",
+      "snack": "Alimento",
+      "weight": "Peso",
+      "heart_rate_avg": "BPM Medio",
+      "heart_rate_max": "BPM Pico",
+      "heart_rate_min": "BPM Mínimo",
+      "blood_sugar": "Azúcar",
+      "distance": "Distancia",
+      "food_name": "Nombre del alimento",
+      "no_routine": "Ninguna"
+
+    }
   },
   "chat": {
     "label": "Chat",
@@ -86,7 +135,16 @@
     "load_messages": "No se pudieron cargar los mensajes",
     "send_messages": "No se pudo enviar el mensaje",
     "create_chat": "No se pudo crear la conversación",
-    "generate_report": "No se pudo generar el reporte"
+    "generate_report": "No se pudo generar el reporte",
+    "fetch_events": "No se pudieron cargar los eventos",
+    "fetch_routines": "Error al cargar las rutinas",
+    "create_event": "No se pudo crear el evento",
+    "delete_event": "No se pudo eliminar el evento",
+    "restore_event": "No se pudo restaurar el evento",
+    "update_event": "No se pudo actualizar el evento"
+  },
+  "warnings": {
+    "name_required": "El nombre es requerido"
   },
   "alerts": {
     "sure_logout": "¿Estás seguro de que quieres cerrar sesión?"
@@ -106,6 +164,13 @@
       "Octubre",
       "Noviembre",
       "Diciembre"
-    ]
+    ],
+    "date_time": "Fecha y Hora",
+    "date_format": "DD/MM/AAAA",
+    "day_format": "DD",
+    "month_format": "MM",
+    "year_format": "YYYY",
+    "hour_format": "HH",
+    "minute_format": "mm"
   }
 }
