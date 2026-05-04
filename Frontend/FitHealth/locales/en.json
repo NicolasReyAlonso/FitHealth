@@ -5,10 +5,15 @@
   "common": {
     "not_provided": "Not provided",
     "save": "Save",
-    "en": "🇬🇧 English",
     "es": "🇪🇸 Spanish",
+    "en": "🇬🇧 English",
     "cs": "🇨🇿 Czech",
-    "logout": "Logout"
+    "logout": "Log out",
+    "back": "Back",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "delete": "Delete",
+    "deleting": "Deleting..."
   },
   "home": {
     "greeting": "Hello",
@@ -17,7 +22,7 @@
   },
   "profile": {
     "edit_profile": "Edit profile",
-    "birthday": "Birthday",
+    "birthday": "Date of birth",
     "set_birthday": "Set birthday",
     "first_name": "First name",
     "last_name": "Last name",
@@ -27,31 +32,144 @@
     "member_since": "Member since",
     "information": "Information",
     "status": "Status",
-    "doctor": "Doctor",
-    "patient": "Patient",
     "active": "Active",
     "inactive": "Inactive",
     "label": "Profile",
-    "photoUpdated": {
+    "photo_updated": {
       "title": "Photo updated!",
       "subtitle": "Your profile looks great"
     }
   },
+  "roles": {
+    "doctor": "Doctor",
+    "patient": "Patient"
+  },
   "routines": {
     "label": "Routines",
     "my_routines": "My Routines",
-    "org_training": "Organize your training"
+    "org_training": "Organize your training",
+    "description": "Create and manage your personalized training routines",
+    "steps": "Steps",
+    "routine": "Routine",
+    "add_step": "Add step",
+    "edit_step": "Edit step",
+    "delete_step": "Delete step",
+    "no_routines": "You don't have any routines yet",
+    "create_routine": "Create routine",
+    "routine_created": "Routine created!",
+    "confirm_delete": "Delete routine step?"
   },
   "events": {
     "label": "Events",
     "my_events": "My Events",
-    "org_events": "Organize your events"
+    "org_events": "Organize your events",
+    "description": "Stay up to date with your health and wellness events",
+    "registered": "Registered",
+    "no_events": "You don't have any events yet",
+    "new_event": "New event",
+    "add_event": "Add event",
+    "edit_event": "Edit event",
+    "event_name": "Event name",
+    "event_created": "Event created!",
+    "confirm_delete": "Show confirmation for event:",
+    "event_deleted": "Event deleted",
+    "cant_be_undone": "This action cannot be undone",
+    "remove_event": "Delete event?",
+    "register_health": "Log your health activities",
+    "event_type": "Event type",
+    "associated_routine": "Associated routine",
+    "notes": "Notes",
+    "add_notes": "Add notes...",
+    "done": "Done",
+    "types": {
+      "activity_type": "Activity type",
+      "appointment": "Medical appointment",
+      "workout": "Workout",
+      "checkup": "Checkup",
+      "walk": "Walk",
+      "run": "Run",
+      "biometry": "Biometric",
+      "water": "Water",
+      "water_amount": "Amount (ml)",
+      "water_intake": "Water intake",
+      "medication": "Medication",
+      "other": "Other",
+      "activity": "Physical activity",
+      "snack": "Food",
+      "weight": "Weight",
+      "heart_rate_avg": "Average BPM",
+      "heart_rate_max": "Peak BPM",
+      "heart_rate_min": "Minimum BPM",
+      "blood_sugar": "Blood sugar",
+      "distance": "Distance",
+      "food_name": "Food name",
+      "no_routine": "None"
+    }
   },
   "chat": {
     "label": "Chat",
-    "start_chat": "Start a chat with your doctor"
+    "subtitle": "Communicate with your doctor",
+    "start_chat": "Start a chat with your doctor",
+    "generate_report": "Generate report",
+    "write_message": "Write a message...",
+    "send": "Send",
+    "my_doctors": "My doctors",
+    "my_patients": "My patients",
+    "no_conversations": "You don't have any conversations yet",
+    "description": "Easily communicate with your doctor or patient to resolve your questions"
+  },
+  "index": {
+    "your_summary": "Your summary",
+    "summary_desc": "Check your progress, routines, and upcoming events in one place",
+    "activity_this_week": "Activity this week",
+    "health_tip_today": "Health tip for today",
+    "daily_hydration": "Daily hydration",
+    "hydration_desc": "Remember to drink at least 8 glasses of water a day",
+    "main_features": "Main features"
   },
   "errors": {
-    "loadRoutines": "Could not load routines"
+    "load_routines": "Could not load routines",
+    "photo_permission": "We need permission to access your photos",
+    "photo_upload_failed": "Photo upload failed",
+    "load_messages": "Could not load messages",
+    "send_messages": "Could not send message",
+    "create_chat": "Could not create conversation",
+    "generate_report": "Could not generate report",
+    "fetch_events": "Could not load events",
+    "fetch_routines": "Error loading routines",
+    "create_event": "Could not create event",
+    "delete_event": "Could not delete event",
+    "restore_event": "Could not restore event",
+    "update_event": "Could not update event"
+  },
+  "warnings": {
+    "name_required": "Name is required"
+  },
+  "alerts": {
+    "sure_logout": "Are you sure you want to log out?"
+  },
+  "date": {
+    "this_month": "this month",
+    "months": [
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December"
+    ],
+    "date_time": "Date and Time",
+    "date_format": "DD/MM/YYYY",
+    "day_format": "DD",
+    "month_format": "MM",
+    "year_format": "YYYY",
+    "hour_format": "HH",
+    "minute_format": "mm"
   }
 }

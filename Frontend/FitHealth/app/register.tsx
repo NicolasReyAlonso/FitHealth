@@ -12,7 +12,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import { useAuth } from '@/context/auth-context';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -233,12 +233,14 @@ export default function RegisterScreen() {
             )}
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={() => router.back()} style={styles.linkContainer}>
-            <Text style={[styles.linkText, { color: colors.text }]}>
-              ¿Ya tienes cuenta?{' '}
-              <Text style={[styles.linkBold, { color: colors.primary }]}>Inicia Sesión</Text>
-            </Text>
-          </TouchableOpacity>
+          <Link href="/login" asChild>
+            <TouchableOpacity style={styles.linkContainer}>
+              <Text style={[styles.linkText, { color: colors.text }]}>
+                ¿Ya tienes cuenta?{' '}
+                <Text style={[styles.linkBold, { color: colors.primary }]}>Inicia Sesión</Text>
+              </Text>
+            </TouchableOpacity>
+          </Link>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
