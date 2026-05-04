@@ -45,12 +45,14 @@
   "routines": {
     "label": "Rutinas",
     "my_routines": "Mis Rutinas",
-    "org_training": "Organiza tu entrenamiento"
+    "org_training": "Organiza tu entrenamiento",
+    "description": "Crea y gestiona tus rutinas de entrenamiento personalizadas"
   },
   "events": {
     "label": "Eventos",
     "my_events": "Mis Eventos",
-    "org_events": "Organiza tus eventos"
+    "org_events": "Organiza tus eventos",
+    "description": "Mantente al día con tus eventos de salud y bienestar"
   },
   "chat": {
     "label": "Chat",
@@ -62,6 +64,11 @@
     "my_doctors": "Mis doctores",
     "my_patients": "Mis pacientes",
     "no_conversations": "No tienes conversaciones aún",
+    "description": "Comunícate fácilmente con tu doctor o paciente para resolver tus dudas"
+  },
+  "index": {
+    "your_summary": "Tu resumen",
+    "summary_desc": "Revisa tu progreso, rutinas y eventos próximos en un solo lugar"
   },
   "errors": {
     "load_routines": "No se pudieron cargar las rutinas",
@@ -74,5 +81,19 @@
   },
   "alerts": {
     "sure_logout": "¿Estás seguro de que quieres cerrar sesión?"
-  }
+  },
+  "months": [
+    "Enero",
+    "Febrero",
+    "Marzo",
+    "Abril",
+    "Mayo",
+    "Junio",
+    "Julio",
+    "Agosto",
+    "Septiembre",
+    "Octubre",
+    "Noviembre",
+    "Diciembre"
+  ]
 }
