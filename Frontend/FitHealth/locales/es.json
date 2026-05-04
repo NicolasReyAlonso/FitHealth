@@ -46,13 +46,17 @@
     "label": "Rutinas",
     "my_routines": "Mis Rutinas",
     "org_training": "Organiza tu entrenamiento",
-    "description": "Crea y gestiona tus rutinas de entrenamiento personalizadas"
+    "description": "Crea y gestiona tus rutinas de entrenamiento personalizadas",
+    "steps": "Pasos"
   },
   "events": {
     "label": "Eventos",
     "my_events": "Mis Eventos",
     "org_events": "Organiza tus eventos",
-    "description": "Mantente al día con tus eventos de salud y bienestar"
+    "description": "Mantente al día con tus eventos de salud y bienestar",
+    "registered": "Registrado",
+    "no_events": "No tienes eventos aún",
+    "add_event": "Agregar evento"
   },
   "chat": {
     "label": "Chat",
@@ -68,7 +72,12 @@
   },
   "index": {
     "your_summary": "Tu resumen",
-    "summary_desc": "Revisa tu progreso, rutinas y eventos próximos en un solo lugar"
+    "summary_desc": "Revisa tu progreso, rutinas y eventos próximos en un solo lugar",
+    "activity_this_week": "Actividad esta semana",
+    "health_tip_today": "Consejo de salud para hoy",
+    "daily_hydration": "Hidratación diaria",
+    "hydration_desc": "Recuerda beber al menos 8 vasos de agua al día",
+    "main_features": "Funciones principales"
   },
   "errors": {
     "load_routines": "No se pudieron cargar las rutinas",
@@ -82,18 +91,21 @@
   "alerts": {
     "sure_logout": "¿Estás seguro de que quieres cerrar sesión?"
   },
-  "months": [
-    "Enero",
-    "Febrero",
-    "Marzo",
-    "Abril",
-    "Mayo",
-    "Junio",
-    "Julio",
-    "Agosto",
-    "Septiembre",
-    "Octubre",
-    "Noviembre",
-    "Diciembre"
-  ]
+  "date": {
+    "this_month": "este mes",
+    "months": [
+      "Enero",
+      "Febrero",
+      "Marzo",
+      "Abril",
+      "Mayo",
+      "Junio",
+      "Julio",
+      "Agosto",
+      "Septiembre",
+      "Octubre",
+      "Noviembre",
+      "Diciembre"
+    ]
+  }
 }

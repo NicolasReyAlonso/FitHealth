@@ -173,7 +173,7 @@ export default function HomeScreen() {
   };
 
   const getMonthName = () => {
-    const months = t('months', { returnObjects: true }) as string[];
+    const months = t('date.months', { returnObjects: true }) as string[];
     return months[new Date().getMonth()];
   };
 
@@ -248,10 +248,10 @@ export default function HomeScreen() {
         {/* Header Hero */}
         <View style={[styles.heroSection, { backgroundColor: colors.primary }]}>
           <Text style={styles.heroGreeting}>
-            {t('hello')}, {user?.username}! 👋
+            {t('home.greeting')}, {user?.username}! 👋
           </Text>
           <Text style={styles.heroSubtitle}>
-            {t('welcomeMsg')}
+            {t('home.welcome')}
           </Text>
 
           <View style={[styles.avatarPlaceholder, { backgroundColor: 'rgba(255, 255, 255, 0.2)' }]}>
@@ -276,8 +276,8 @@ export default function HomeScreen() {
               pressed && styles.statBoxPressed,
             ]}>
             <Text style={styles.statNumber}>{routines}</Text>
-            <Text style={[styles.statLabel, { color: colors.primary }]}>{t('routines')}</Text>
-            <Text style={[styles.statSubtext, { color: colors.primary }]}>{t('active')}</Text>
+            <Text style={[styles.statLabel, { color: colors.primary }]}>{t('routines.label')}</Text>
+            <Text style={[styles.statSubtext, { color: colors.primary }]}>{t('profile.active')}</Text>
           </Pressable>
           <Pressable
             onPress={() => handleStatPress('events')}
@@ -287,8 +287,8 @@ export default function HomeScreen() {
               pressed && styles.statBoxPressed,
             ]}>
             <Text style={styles.statNumber}>{events}</Text>
-            <Text style={[styles.statLabel, { color: colors.secondary }]}>{t('events')}</Text>
-            <Text style={[styles.statSubtext, { color: colors.secondary }]}>{t('registered')}</Text>
+            <Text style={[styles.statLabel, { color: colors.secondary }]}>{t('events.label')}</Text>
+            <Text style={[styles.statSubtext, { color: colors.secondary }]}>{t('events.registered')}</Text>
           </Pressable>
           <Pressable
             onPress={() => handleStatPress('events')}
@@ -299,7 +299,7 @@ export default function HomeScreen() {
             ]}>
             <Text style={styles.statNumber}>{monthlyDistance.toFixed(1)}</Text>
             <Text style={[styles.statLabel, { color: colors.accent }]}>Km</Text>
-            <Text style={[styles.statSubtext, { color: colors.accent }]}>este mes</Text>
+            <Text style={[styles.statSubtext, { color: colors.accent }]}>{t('date.this_month')}</Text>
           </Pressable>
           <Pressable
             onPress={() => handleStatPress('events')}
@@ -309,8 +309,8 @@ export default function HomeScreen() {
               pressed && styles.statBoxPressed,
             ]}>
             <Text style={styles.statNumber}>{monthlySteps}</Text>
-            <Text style={[styles.statLabel, { color: colors.accent }]}>Pasos</Text>
-            <Text style={[styles.statSubtext, { color: colors.accent }]}>este mes</Text>
+            <Text style={[styles.statLabel, { color: colors.accent }]}>{t('routines.steps')}</Text>
+            <Text style={[styles.statSubtext, { color: colors.accent }]}>{t('date.this_month')}</Text>
           </Pressable>
         </View>
 
@@ -319,7 +319,7 @@ export default function HomeScreen() {
 
         {/* Weekly Activity Chart */}
         <View style={[styles.chartCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[styles.chartTitle, { color: colors.text }]}>📊 {t('activityThisWeek')}</Text>
+          <Text style={[styles.chartTitle, { color: colors.text }]}>📊 {t('index.activity_this_week')}</Text>
           <View style={styles.chartContainer}>
             {weekStats.map((value, index) => {
               const dayLabel = dayLabels[index];
@@ -398,16 +398,16 @@ export default function HomeScreen() {
         {/* Health Tips */}
         <View style={styles.sectionContainer}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            {t('healthTipToday')}
+            {t('index.health_tip_today')}
           </Text>
           <View style={[styles.tipCard, { backgroundColor: colors.primaryLight, borderColor: colors.primary }]}>
             <Text style={[styles.tipIcon, { color: colors.primary }]}>💡</Text>
             <View style={{ flex: 1 }}>
               <Text style={[styles.tipTitle, { color: colors.primary }]}>
-                {t('dailyHydration')}
+                {t('index.daily_hydration')}
               </Text>
               <Text style={[styles.tipText, { color: colors.text }]}>
-                {t('hydrationDesc')}
+                {t('index.hydration_desc')}
               </Text>
             </View>
           </View>
@@ -416,7 +416,7 @@ export default function HomeScreen() {
         {/* Featured Section */}
         <View style={styles.sectionContainer}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            {t('mainFeatures')}
+            {t('index.main_features')}
           </Text>
           <View style={styles.featuresContainer}>
             {features.map((feature) => (
@@ -475,7 +475,7 @@ export default function HomeScreen() {
                 <>
                   {dayActivityMap[selectedDay].routines > 0 && (
                     <View style={{ marginBottom: 20 }}>
-                      <Text style={[styles.activitySectionTitle, { color: colors.primary }]}>{t('routines')} ({dayActivityMap[selectedDay].routines})</Text>
+                      <Text style={[styles.activitySectionTitle, { color: colors.primary }]}>{t('routines.label')} ({dayActivityMap[selectedDay].routines})</Text>
                       {routinesData.map((routine: any) => {
                         const year = new Date().getFullYear();
                         const month = new Date().getMonth();
@@ -495,7 +495,7 @@ export default function HomeScreen() {
                   )}
                   {dayActivityMap[selectedDay].events > 0 && (
                     <View style={{ marginBottom: 20 }}>
-                      <Text style={[styles.activitySectionTitle, { color: colors.secondary }]}>{t('events')} ({dayActivityMap[selectedDay].events})</Text>
+                      <Text style={[styles.activitySectionTitle, { color: colors.secondary }]}>{t('events.label')} ({dayActivityMap[selectedDay].events})</Text>
                       {eventsData.map((event: any) => {
                         if (event.timestamp) {
                           const eventDate = new Date(event.timestamp);
@@ -518,7 +518,7 @@ export default function HomeScreen() {
                 </>
               ) : (
                 <Text style={[styles.noEventsText, { color: colors.icon }]}>
-                  {t('noEvents')}
+                  {t('events.no_events')}
                 </Text>
               )}
             </ScrollView>
@@ -532,7 +532,7 @@ export default function HomeScreen() {
                 { backgroundColor: colors.primary },
                 pressed && { opacity: 0.8 },
               ]}>
-              <Text style={styles.modalButtonText}>{t('addEvent')}</Text>
+              <Text style={styles.modalButtonText}>{t('events.add_event')}</Text>
             </Pressable>
           </View>
         </View>
