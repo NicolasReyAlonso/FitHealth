@@ -25,7 +25,7 @@ export default function ProfileScreen() {
     // Solicita permisos
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      toast.error(t('errors.photoPermission'));
+      toast.error(t('errors.photo_permission'));
       // toast.error('Necesitamos permisos para acceder a tus fotos');
       return;
     }
@@ -57,7 +57,7 @@ export default function ProfileScreen() {
           t('profile.photoUpdated.title'),
           t('profile.photoUpdated.subtitle'));
       } catch (err) {
-        toast.error(t('errors.photoUploadFailed'));
+        toast.error(t('errors.photo_upload_failed'));
         // toast.error('No se pudo subir la foto');
       } finally {
         setUploadingImage(false);
@@ -113,7 +113,7 @@ export default function ProfileScreen() {
                 ? t('profile.doctor')
                 : t('profile.patient')
             }>
-            {user?.role === 'doctor' ? `🩺 ${t('profile.doctor')}` : `🏃 ${t('profile.patient')}`}
+            {user?.role === 'doctor' ? `🩺 ${t('roles.doctor')}` : `🏃 ${t('roles.patient')}`}
           </Text>
         </View>
       </View>

@@ -1,15 +1,17 @@
 {
   "settings": {
     "preferred_language": "Idioma preferido"
-
   },
   "common": {
     "not_provided": "No proporcionado",
     "save": "Guardar",
     "es": "🇪🇸 Español",
     "en": "🇬🇧 Inglés",
-    "cs": "🇨🇿 Checo"
-
+    "cs": "🇨🇿 Checo",
+    "logout": "Cerrar sesión",
+    "back": "Atrás",
+    "cancel": "Cancelar",
+    "confirm": "Confirmar"
   },
   "home": {
     "greeting": "¡Hola",
@@ -26,25 +28,48 @@
     "name": "Nombre",
     "notes": "Notas",
     "member_since": "Miembro desde",
+    "information": "Información",
     "status": "Estado",
-    "doctor": "Doctor",
-    "patient": "Paciente",
     "active": "Activo",
     "inactive": "Inactivo",
     "label": "Perfil",
-     "photoUpdated": {
+    "photoUpdated": {
       "title": "¡Foto actualizada!",
       "subtitle": "Tu perfil se ve genial"
     }
+  },
+  "roles": {
+    "doctor": "Doctor",
+    "patient": "Paciente"
   },
   "routines": {
     "label": "Rutinas",
     "my_routines": "Mis Rutinas",
     "org_training": "Organiza tu entrenamiento"
   },
+  "events": {
+    "label": "Eventos",
+    "my_events": "Mis Eventos",
+    "org_events": "Organiza tus eventos"
+  },
+  "chat": {
+    "label": "Chat",
+    "subtitle": "Comunícate con tu doctor",
+    "start_chat": "Inicia un chat con tu doctor",
+    "generate_report": "Generar Reporte",
+    "write_message": "Escribe un mensaje...",
+    "send": "Enviar",
+    "my_doctors": "Mis doctores",
+    "my_patients": "Mis pacientes",
+    "no_conversations": "No tienes conversaciones aún",
+  },
   "errors": {
-    "loadRoutines": "No se pudieron cargar las rutinas",
-    "photoPermission": "Necesitamos permisos para acceder a tus fotos",
-    "photoUploadFailed": "No se pudo subir la foto"
+    "load_routines": "No se pudieron cargar las rutinas",
+    "photo_permission": "Necesitamos permisos para acceder a tus fotos",
+    "photo_upload_failed": "No se pudo subir la foto",
+    "load_messages": "No se pudieron cargar los mensajes",
+    "send_messages": "No se pudo enviar el mensaje",
+    "create_chat": "No se pudo crear la conversación",
+    "generate_report": "No se pudo generar el reporte"
   }
 }
