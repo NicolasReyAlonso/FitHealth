@@ -54,8 +54,8 @@ export default function ProfileScreen() {
 
         // Mostrar confirmación de cierre
         showClosure(
-          t('profile.photoUpdated.title'),
-          t('profile.photoUpdated.subtitle'));
+          t('profile.photo_updated.title'),
+          t('profile.photo_updated.subtitle'));
       } catch (err) {
         toast.error(t('errors.photo_upload_failed'));
         // toast.error('No se pudo subir la foto');
@@ -67,13 +67,13 @@ export default function ProfileScreen() {
 
   const handleLogout = () => {
     if (Platform.OS === 'web') {
-      if (window.confirm(t('sureLogout'))) {
+      if (window.confirm(t('alerts.sure_logout'))) {
         logout();
       }
     } else {
-      Alert.alert(t('logout'), t('sureLogout'), [
-        { text: t('cancel') },
-        { text: t('exit'), style: 'destructive', onPress: logout },
+      Alert.alert(t('logout'), t('alerts.sure_logout'), [
+        { text: t('common.cancel') },
+        { text: t('common.confirm'), style: 'destructive', onPress: logout },
       ]);
     }
   };

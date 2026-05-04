@@ -33,7 +33,7 @@
     "active": "Activo",
     "inactive": "Inactivo",
     "label": "Perfil",
-    "photoUpdated": {
+    "photo_updated": {
       "title": "¡Foto actualizada!",
       "subtitle": "Tu perfil se ve genial"
     }
@@ -71,5 +71,8 @@
     "send_messages": "No se pudo enviar el mensaje",
     "create_chat": "No se pudo crear la conversación",
     "generate_report": "No se pudo generar el reporte"
+  },
+  "alerts": {
+    "sure_logout": "¿Estás seguro de que quieres cerrar sesión?"
   }
 }
