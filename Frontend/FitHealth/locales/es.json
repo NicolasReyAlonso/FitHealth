@@ -6,12 +6,15 @@
   "common": {
     "not_provided": "No proporcionado",
     "save": "Guardar",
-    "es": "🇪🇸 Español"
+    "es": "🇪🇸 Español",
+    "en": "🇬🇧 Inglés",
+    "cs": "🇨🇿 Checo"
 
   },
   "home": {
     "greeting": "¡Hola",
-    "welcome": "Bienvenido a FitHealth"
+    "welcome": "Bienvenido a FitHealth",
+    "label": "Inicio"
   },
   "profile": {
     "edit_profile": "Editar perfil",
@@ -27,6 +30,21 @@
     "doctor": "Doctor",
     "patient": "Paciente",
     "active": "Activo",
-    "inactive": "Inactivo"
+    "inactive": "Inactivo",
+    "label": "Perfil",
+     "photoUpdated": {
+      "title": "¡Foto actualizada!",
+      "subtitle": "Tu perfil se ve genial"
+    }
+  },
+  "routines": {
+    "label": "Rutinas",
+    "my_routines": "Mis Rutinas",
+    "org_training": "Organiza tu entrenamiento"
+  },
+  "errors": {
+    "loadRoutines": "No se pudieron cargar las rutinas",
+    "photoPermission": "Necesitamos permisos para acceder a tus fotos",
+    "photoUploadFailed": "No se pudo subir la foto"
   }
 }

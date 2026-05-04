@@ -1,16 +1,19 @@
 {
   "settings": {
     "preferred_language": "Preferred language"
-
   },
   "common": {
     "not_provided": "Not provided",
     "save": "Save",
-    "en": "🇬🇧 English"
+    "en": "🇬🇧 English",
+    "es": "🇪🇸 Spanish",
+    "cs": "🇨🇿 Czech",
+    "logout": "Logout"
   },
   "home": {
     "greeting": "Hello",
-    "welcome": "Welcome to FitHealth"
+    "welcome": "Welcome to FitHealth",
+    "label": "Home"
   },
   "profile": {
     "edit_profile": "Edit profile",
@@ -26,6 +29,28 @@
     "doctor": "Doctor",
     "patient": "Patient",
     "active": "Active",
-    "inactive": "Inactive"
+    "inactive": "Inactive",
+    "label": "Profile",
+    "photoUpdated": {
+      "title": "Photo updated!",
+      "subtitle": "Your profile looks great"
+    }
+  },
+  "routines": {
+    "label": "Routines",
+    "my_routines": "My Routines",
+    "org_training": "Organize your training"
+  },
+  "events": {
+    "label": "Events",
+    "my_events": "My Events",
+    "org_events": "Organize your events"
+  },
+  "chat": {
+    "label": "Chat",
+    "start_chat": "Start a chat with your doctor"
+  },
+  "errors": {
+    "loadRoutines": "Could not load routines"
   }
 }

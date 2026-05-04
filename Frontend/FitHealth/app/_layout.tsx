@@ -32,7 +32,7 @@ function RootNavigator() {
   useEffect(() => {
     if (!user) return;
 
-    const lang = user.preferred_language ?? 'es';
+    const lang = user.preferred_language ?? 'en';
     i18n.changeLanguage(lang);
   }, [user]);
 

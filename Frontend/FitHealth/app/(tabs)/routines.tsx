@@ -63,7 +63,7 @@ export default function RoutinesScreen() {
       const res = await api.get('/routines/');
       setRoutines(res.data);
     } catch {
-      toast.error('No se pudieron cargar las rutinas');
+      toast.error(t('errors.loadRoutines'));
     } finally {
       setLoading(false);
     }
@@ -221,8 +221,8 @@ export default function RoutinesScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { backgroundColor: colors.primary }]}>
         <View>
-          <Text style={styles.title}>{t('myRoutines')}</Text>
-          <Text style={styles.subtitle}>{t('orgTraining')}</Text>
+          <Text style={styles.title}> 🏋️ {t('routines.my_routines')}</Text>
+          <Text style={styles.subtitle}>{t('routines.org_training')}</Text>
         </View>
         <TouchableOpacity 
           style={[styles.addButton, { backgroundColor: 'rgba(255,255,255,0.25)' }]}

@@ -8,7 +8,7 @@ import { Platform } from 'react-native';
 import { useLayoutEffect } from 'react';
 import { useNavigation } from 'expo-router';
 import { Picker } from '@react-native-picker/picker';
-import i18n from '@/i18n';
+import i18n from '@/services/i18n';
 
 
 import api from '@/services/api';
@@ -21,7 +21,7 @@ export default function EditProfileScreen() {
   const [showPicker, setShowPicker] = useState(false);
   const { t } = useTranslation(); // translation
   const navigation = useNavigation();
-  
+
   useLayoutEffect(() => {
     navigation.setOptions({
       title: t('profile.edit_profile'),
@@ -39,7 +39,7 @@ export default function EditProfileScreen() {
   const [language, setLanguage] = useState(user?.preferred_language ?? 'es');
 
   const save = async () => {
-  
+
     if (!user) return;
 
     const res = await api.patch(`/users/${user.id}`, {
@@ -77,7 +77,7 @@ export default function EditProfileScreen() {
           onChangeText={setLastName}
         />
 
-          <TextInput style={[styles.infoValue, { color: colors.text }]}
+        <TextInput style={[styles.infoValue, { color: colors.text }]}
           placeholder={t('profile.second_last_name')}
           placeholderTextColor={colors.placeholder}
           value={secondLastName}
@@ -91,7 +91,7 @@ export default function EditProfileScreen() {
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'space-between',
-          }]}>
+        }]}>
           <Text style={[styles.infoLabel, { color: colors.icon }]}>{t('profile.birthday')}</Text>
           <Text style={[styles.infoValue, { color: colors.text }]}>
             {birthday ? birthday.toLocaleDateString() : t('common.not_provided')}
@@ -112,7 +112,7 @@ export default function EditProfileScreen() {
                 width: 150,
                 borderRadius: 6,
                 border: '1px solid #ccc',
-                marginLeft: 'auto',                
+                marginLeft: 'auto',
               }}
               value={birthday ? birthday.toISOString().split('T')[0] : ''}
               onChange={(e) => {
@@ -139,8 +139,8 @@ export default function EditProfileScreen() {
           )
         )}
       </View>
- 
-       <View style={[styles.infoCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+
+      <View style={[styles.infoCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <TextInput style={[styles.infoValue, { color: colors.text, width: '100%' }]}
           placeholder={t('profile.notes')}
           placeholderTextColor={colors.placeholder}
@@ -161,6 +161,7 @@ export default function EditProfileScreen() {
           <Picker.Item label="🇪🇸 Español" value="es" />
           <Picker.Item label="🇬🇧 English" value="en" />
           <Picker.Item label="🇨🇿 Čeština" value="cs" />
+          <Picker.Item label="🇩🇪 Deutsch" value="de" />
         </Picker>
 
       </View>

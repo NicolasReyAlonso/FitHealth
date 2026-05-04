@@ -21,12 +21,17 @@ export default function ProfileScreen() {
   const { user, logout, setUser } = useAuth();
   const [uploadingImage, setUploadingImage] = React.useState(false);
 
-  
+  // console.log('logout key:', t('common.logout'));
+  // console.log('keys:', i18n.store.data);
+  // console.log('PROFILE LOGOUT:', i18n.t('profile.logout'));
+  // console.log('PROFILE RAW:', i18n.getResource(i18n.language, 'translation', 'profile'));
+
   const pickImage = async () => {
     // Solicita permisos
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      toast.error('Necesitamos permisos para acceder a tus fotos');
+      toast.error(t('errors.photoPermission'));
+      // toast.error('Necesitamos permisos para acceder a tus fotos');
       return;
     }
 
@@ -42,23 +47,23 @@ export default function ProfileScreen() {
       setUploadingImage(true);
       try {
         const base64Prefix = `data:image/jpeg;base64,${result.assets[0].base64}`;
-        
+
         // Actualizamos usuario en database
         const res = await api.patch(`/users/${user.id}`, { profile_picture: base64Prefix });
-        
+
         // Refrescamos app context
         setUser({
           ...user,
           profile_picture: res.data.profile_picture
         });
-        
+
         // Mostrar confirmación de cierre
         showClosure(
-          `¡Foto actualizada!`,
-          `Tu perfil se ve genial`
-        );
+          t('profile.photoUpdated.title'),
+          t('profile.photoUpdated.subtitle'));
       } catch (err) {
-         toast.error('No se pudo subir la foto');
+        toast.error(t('errors.photoUploadFailed'));
+        // toast.error('No se pudo subir la foto');
       } finally {
         setUploadingImage(false);
       }
@@ -79,13 +84,13 @@ export default function ProfileScreen() {
   };
 
   return (
-    <ScrollView 
+    <ScrollView
       style={[styles.container, { backgroundColor: colors.background }]}
       contentContainerStyle={{ paddingBottom: 40 }}
       showsVerticalScrollIndicator={false}
     >
       <View style={[styles.header, { backgroundColor: colors.primary }]}>
-        
+
         <TouchableOpacity style={[styles.avatar, { backgroundColor: 'rgba(255,255,255,0.2)' }]}
           onPress={pickImage} activeOpacity={0.8}
           accessibilityRole="button"
@@ -93,10 +98,10 @@ export default function ProfileScreen() {
           accessibilityHint="opens image gallery"
         >
           {uploadingImage ? (
-             <ActivityIndicator size="large" color="#fff" 
-             accessibilityLabel="uploading profile image"/>
+            <ActivityIndicator size="large" color="#fff"
+              accessibilityLabel="uploading profile image" />
           ) : user?.profile_picture ? (
-             <Image source={{ uri: user.profile_picture }} style={{ width: 120, height: 120, borderRadius: 60 }} />
+            <Image source={{ uri: user.profile_picture }} style={{ width: 120, height: 120, borderRadius: 60 }} />
           ) : (
             <Text style={styles.avatarText}>
               {user?.username?.charAt(0).toUpperCase() ?? '?'}
@@ -108,12 +113,12 @@ export default function ProfileScreen() {
         <Text style={styles.email}>{user?.email}</Text>
         <View style={[styles.roleBadge, { backgroundColor: 'rgba(255,255,255,0.15)' }]}>
           <Text style={styles.roleText}
-          accessibilityLabel={
-            user?.role === 'doctor'
-              ? t('doctor')
-              : t('patient')
-          }>
-            {user?.role === 'doctor' ? `🩺 ${t('doctor')}` : `🏃 ${t('patient')}`}
+            accessibilityLabel={
+              user?.role === 'doctor'
+                ? t('profile.doctor')
+                : t('profile.patient')
+            }>
+            {user?.role === 'doctor' ? `🩺 ${t('profile.doctor')}` : `🏃 ${t('profile.patient')}`}
           </Text>
         </View>
       </View>
@@ -122,18 +127,18 @@ export default function ProfileScreen() {
         <Text style={[styles.sectionLabel, { color: colors.text }]}>{t('information')}</Text>
         <View style={[styles.infoCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={styles.infoLeft}>
-            <Text style={[styles.infoLabel, { color: colors.icon }]}>{t('status')}</Text>
+            <Text style={[styles.infoLabel, { color: colors.icon }]}>{t('profile.status')}</Text>
             <Text style={[styles.infoValue, { color: colors.text }]}>
-              {user?.is_active ? `✅ ${t('activeStatus')}` : `❌ ${t('inactiveStatus')}`}
+              {user?.is_active ? `✅ ${t('profile.active')}` : `❌ ${t('profile.inactive')}`}
             </Text>
           </View>
           <Text style={[styles.infoIcon, { color: colors.primary }]}>💚</Text>
         </View>
         <View style={[styles.infoCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={styles.infoLeft}>
-            <Text style={[styles.infoLabel, { color: colors.icon }]}>{t('memberSince')}</Text>
+            <Text style={[styles.infoLabel, { color: colors.icon }]}>{t('profile.member_since')}</Text>
             <Text style={[styles.infoValue, { color: colors.text }]}>
-              {user?.created_at ? new Date(user.created_at).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' }) : '-'}
+              {user?.created_at ? new Date(user.created_at).toLocaleDateString(i18n.language, { year: 'numeric', month: 'long', day: 'numeric' }) : '-'}
             </Text>
           </View>
           <Text style={[styles.infoIcon, { color: colors.primary }]}>📅</Text>
@@ -141,7 +146,7 @@ export default function ProfileScreen() {
       </View>
 
       <View style={styles.section}>
-        <Text style={[styles.sectionLabel, { color: colors.text }]}>{t('language')}</Text>
+        {/*         <Text style={[styles.sectionLabel, { color: colors.text }]}>{t('language')}</Text>
         <View style={{ flexDirection: 'row', gap: 10, justifyContent: 'space-between' }}>
             <TouchableOpacity 
               style={[styles.langBtn, i18n.language?.startsWith('es') && { backgroundColor: colors.primary, borderColor: colors.primary }]}
@@ -167,12 +172,13 @@ export default function ProfileScreen() {
             >
               <Text style={{ color: i18n.language?.startsWith('de') ? '#fff' : colors.text, fontWeight: 'bold' }}>🇩🇪 {t('german')}</Text>
             </TouchableOpacity>
-        </View>
+        </View> */}
+
         <View style={[styles.infoCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Text style={[styles.infoLabel, { color: colors.icon }]}>{t('profile.name')}</Text>
           <Text style={[styles.infoValue, { color: colors.text }]}>
             {/* {user?.created_at ? new Date(user.created_at).toLocaleDateString() : '-'} */}
-              {user?.first_name} {user?.last_name} {user?.second_last_name}
+            {user?.first_name} {user?.last_name} {user?.second_last_name}
           </Text>
         </View>
         <View style={[styles.infoCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -185,7 +191,7 @@ export default function ProfileScreen() {
         <View style={[styles.infoCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Text style={[styles.infoLabel, { color: colors.icon }]}>{t('profile.notes')}</Text>
           <Text style={[styles.infoValue, { color: colors.text }]}>
-              {user?.notes}
+            {user?.notes}
           </Text>
         </View>
 
@@ -198,16 +204,16 @@ export default function ProfileScreen() {
 
 
         <TouchableOpacity style={[styles.infoCard, { backgroundColor: colors.edit, borderColor: colors.border }]}
-            onPress={() => router.push('/edit_profile')}
-            accessibilityRole="button"
-            accessibilityLabel="edit profile"
-          >
+          onPress={() => router.push('/edit_profile')}
+          accessibilityRole="button"
+          accessibilityLabel="edit profile"
+        >
           <Text style={[styles.infoLabel, { color: colors.icon }]}>✏️ {t('profile.edit_profile')}</Text>
         </TouchableOpacity>
 
       </View>
 
-      <TouchableOpacity 
+      <TouchableOpacity
         style={[styles.logoutButton, { backgroundColor: '#EF4444' }]}
         onPress={handleLogout}
         activeOpacity={0.85}
@@ -215,7 +221,7 @@ export default function ProfileScreen() {
         accessibilityLabel="logout"
       >
         <Text style={styles.logoutIcon}>🚪</Text>
-        <Text style={styles.logoutText}>{t('logout')}</Text>
+        <Text style={styles.logoutText}>{t('common.logout')}</Text>
       </TouchableOpacity>
 
       <View style={{ height: 30 }} />

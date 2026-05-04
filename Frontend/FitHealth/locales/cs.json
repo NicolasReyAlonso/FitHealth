@@ -6,12 +6,16 @@
   "common": {
     "not_provided": "Nevyplněno",
     "save": "Uložit",
-    "cs": "🇨🇿 Čeština"
+    "cs": "🇨🇿 Čeština",
+    "en": "🇬🇧 Angličtina",
+    "es": "🇪🇸 Španělina",
+    "logout": "Odhlásit se"
 
   },
   "home": {
     "greeting": "Ahoj",
-    "welcome": "Vítej ve FitHealth"
+    "welcome": "Vítej ve FitHealth",
+    "label": "Domů"
 
   },
   "profile": {
@@ -28,7 +32,21 @@
     "doctor": "Doktor",
     "patient": "Pacient",
     "active": "Aktivní",
-    "inactive": "Neaktivní"
+    "inactive": "Neaktivní",
+    "label": "Profil"
+  },
+  "routines": {
+    "label": "Tréninky",
+    "my_routines": "Moje tréninky",
+    "org_training": "Organizuj svůj trénink"
+  },
+  "events": {
+    "label": "Události",
+    "my_events": "Moje události",
+    "org_events": "Organizuj své události"
+  },
+   "errors": {
+    "loadRoutines": "Nelze načíst tréninky"
   }
 }
 
