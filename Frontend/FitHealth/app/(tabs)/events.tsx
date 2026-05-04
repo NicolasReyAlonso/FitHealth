@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import {
   StyleSheet,
   Text,
@@ -15,17 +15,9 @@ import api from '@/services/api';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useNotifications } from '@/context/notification-context';
-
-const EVENT_TYPES = [
-  { key: 'walking', label: '🚶 Caminar' },
-  { key: 'running', label: '🏃 Correr' },
-  { key: 'biometric', label: '❤️ Biométrico' },
-  { key: 'water', label: '💧 Agua' },
-  { key: 'activity', label: '🏃 Actividad' },
-  { key: 'food', label: '🍎 Alimento' },
-  { key: 'weight', label: '⚖️ Peso' },
-  { key: 'custom', label: '📝 Otro' },
-];
+import { useToast } from '@/context/toast-context';
+import { useClosureOverlay } from '@/hooks/use-closure-overlay';
+import { UndoToast } from '@/components/undo-toast';
 
 type EventItem = {
   id: number;
@@ -39,6 +31,8 @@ export default function EventsScreen() {
   const { t } = useTranslation();
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
+  const toast = useToast();
+  const { component: closureOverlay, show: showClosure } = useClosureOverlay();
   const [events, setEvents] = useState<EventItem[]>([]);
   const [routines, setRoutines] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,6 +41,22 @@ export default function EventsScreen() {
   const [deleting, setDeleting] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editingName, setEditingName] = useState('');
+
+  const EVENT_TYPES = [
+    { key: 'walking', label: '🚶 ' + t('events.types.walk') },
+    { key: 'running', label: '🏃 ' + t('events.types.run') },
+    { key: 'biometric', label: '❤️ ' + t('events.types.biometry') },
+    { key: 'water', label: '💧 ' + t('events.types.water') },
+    { key: 'activity', label: '🏃 ' + t('events.types.activity') },
+    { key: 'food', label: '🍎 ' + t('events.types.snack') },
+    { key: 'weight', label: '⚖️ ' + t('events.types.weight') },
+    { key: 'custom', label: '📝 ' + t('events.types.other') },
+  ];
+
+  // Undo functionality
+  const [lastDeletedEventId, setLastDeletedEventId] = useState<number | null>(null);
+  const [showUndoToast, setShowUndoToast] = useState(false);
+  const undoTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [editingNotes, setEditingNotes] = useState('');
   const [editingDateText, setEditingDateText] = useState('');
   const [editingTimeText, setEditingTimeText] = useState('');
@@ -70,10 +80,10 @@ export default function EventsScreen() {
   const [hrMax, setHrMax] = useState('');
   const [hrMin, setHrMin] = useState('');
   const [bloodSugar, setBloodSugar] = useState('');
-  
+
   const [steps, setSteps] = useState('');
   const [distanceKm, setDistanceKm] = useState('');
-  
+
   // Date picker state
   const [selectedDate, setSelectedDate] = useState(new Date());
   const { showNotification } = useNotifications();
@@ -229,7 +239,7 @@ export default function EventsScreen() {
       const res = await api.get('/routines/');
       setRoutines(res.data);
     } catch {
-      console.error('Error al cargar rutinas');
+      console.error(t('errors.fetch_routines'));
     }
   };
 
@@ -266,7 +276,7 @@ export default function EventsScreen() {
   };
 
   const handleDelete = (id: number) => {
-    console.log('🗑️ Mostrar confirmación para evento:', id);
+    console.log('🗑️ ' + t('events.confirm_delete'), id);
     setDeleteId(id);
   };
 
@@ -278,6 +288,22 @@ export default function EventsScreen() {
       console.log('📡 Eliminando evento:', deleteId);
       await api.delete(`/events/${deleteId}`);
       console.log('✅ Evento eliminado exitosamente');
+
+      // Guardar ID para undo
+      setLastDeletedEventId(deleteId);
+      setShowUndoToast(true);
+
+      // Limpiar timeout anterior si existe
+      if (undoTimeoutRef.current) {
+        clearTimeout(undoTimeoutRef.current);
+      }
+
+      // Auto-dismiss después de 5 segundos
+      undoTimeoutRef.current = setTimeout(() => {
+        setShowUndoToast(false);
+        setLastDeletedEventId(null);
+      }, 5000);
+
       setDeleteId(null);
       await fetchEvents();
       if (deletedEvent) {
@@ -297,6 +323,26 @@ export default function EventsScreen() {
       showNotification(error.message || 'No se pudo eliminar el evento', 'error');
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const handleUndo = async () => {
+    if (!lastDeletedEventId) return;
+
+    try {
+      console.log('↶ Deshaciendo eliminación de evento:', lastDeletedEventId);
+      await api.post(`/events/${lastDeletedEventId}/restore`);
+      toast.success('↶ Evento restaurado');
+      await fetchEvents();
+    } catch (error: any) {
+      console.error('❌ Error al restaurar:', error);
+      toast.error(t('errors.restore_event'));
+    } finally {
+      setShowUndoToast(false);
+      setLastDeletedEventId(null);
+      if (undoTimeoutRef.current) {
+        clearTimeout(undoTimeoutRef.current);
+      }
     }
   };
 
@@ -334,6 +380,14 @@ export default function EventsScreen() {
       }
       await api.patch(`/events/${editingId}`, payload);
       console.log('✅ Evento actualizado exitosamente');
+
+      // Mostrar confirmación de cierre
+      const eventTypeLabel = EVENT_TYPES.find(et => et.key === editingType)?.label || editingType;
+      showClosure(
+        `¡Evento actualizado!`,
+        `"${editingName.trim()}" - ${eventTypeLabel}`
+      );
+
       setEditingId(null);
       setEditingName('');
       setEditingNotes('');
@@ -382,11 +436,11 @@ export default function EventsScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { backgroundColor: colors.secondary }]}>
         <View>
-          <Text style={styles.title}>{t('myEvents')}</Text>
-          <Text style={styles.subtitle}>{t('registerHealth')}</Text>
+          <Text style={styles.title}>{t('events.my_events')}</Text>
+          <Text style={styles.subtitle}>{t('events.register_health')}</Text>
         </View>
-        <TouchableOpacity 
-          style={[styles.addButton, { backgroundColor: 'rgba(255,255,255,0.25)' }]} 
+        <TouchableOpacity
+          style={[styles.addButton, { backgroundColor: 'rgba(255,255,255,0.25)' }]}
           onPress={() => setShowModal(true)}
           activeOpacity={0.7}
         >
@@ -397,7 +451,7 @@ export default function EventsScreen() {
       <ScrollView style={styles.list} showsVerticalScrollIndicator={false}>
         {events.length === 0 ? (
           <Text style={[styles.empty, { color: colors.icon }]}>
-            No tienes eventos registrados aún.
+            {t('events.no_events')}
           </Text>
         ) : (
           events.map((e) => (
@@ -433,22 +487,22 @@ export default function EventsScreen() {
               {e.notes && <Text style={[styles.cardNotes, { color: colors.icon }]}>{e.notes}</Text>}
               {(e as any).routine_id && (
                 <Text style={[styles.cardNotes, { color: colors.primary, fontWeight: '600' }]}>
-                  🎯 Rutina: {routines.find((r) => r.id === (e as any).routine_id)?.name || (e as any).routine_id}
+                  🎯 {t('routines.routine')}: {routines.find((r) => r.id === (e as any).routine_id)?.name || (e as any).routine_id}
                 </Text>
               )}
               {e.event_type === 'biometric' && (e as any).biometric && (
                 <View style={{ marginTop: 10 }}>
-                  {(e as any).biometric.heart_rate_avg && <Text style={[styles.cardNotes, { color: colors.text }]}>❤️ BPM Medio: {(e as any).biometric.heart_rate_avg}</Text>}
-                  {(e as any).biometric.blood_sugar && <Text style={[styles.cardNotes, { color: colors.text }]}>🍬 Azúcar: {(e as any).biometric.blood_sugar} mg/dL</Text>}
+                  {(e as any).biometric.heart_rate_avg && <Text style={[styles.cardNotes, { color: colors.text }]}>❤️ {t('events.types.heart_rate_avg')}: {(e as any).biometric.heart_rate_avg}</Text>}
+                  {(e as any).biometric.blood_sugar && <Text style={[styles.cardNotes, { color: colors.text }]}>🍬 {t('events.types.blood_sugar')}: {(e as any).biometric.blood_sugar} mg/dL</Text>}
                 </View>
               )}
               {(e.event_type === 'walking' || e.event_type === 'running') && (
                 <View style={{ marginTop: 10 }}>
-                  {(e as any).activity_log?.steps && <Text style={[styles.cardNotes, { color: colors.text }]}>👣 Pasos: {(e as any).activity_log.steps}</Text>}
-                  {(e as any).activity_log?.distance_km && <Text style={[styles.cardNotes, { color: colors.text }]}>📏 Distancia: {(e as any).activity_log.distance_km} km</Text>}
-                  {(e as any).biometric?.heart_rate_avg && <Text style={[styles.cardNotes, { color: colors.text }]}>❤️ BPM Medio: {(e as any).biometric.heart_rate_avg}</Text>}
-                  {(e as any).biometric?.heart_rate_max && <Text style={[styles.cardNotes, { color: colors.text }]}>❤️ BPM Pico: {(e as any).biometric.heart_rate_max}</Text>}
-                  {(e as any).biometric?.heart_rate_min && <Text style={[styles.cardNotes, { color: colors.text }]}>❤️ BPM Mínimo: {(e as any).biometric.heart_rate_min}</Text>}
+                  {(e as any).activity_log?.steps && <Text style={[styles.cardNotes, { color: colors.text }]}>👣 {t('events.types.steps')}: {(e as any).activity_log.steps}</Text>}
+                  {(e as any).activity_log?.distance_km && <Text style={[styles.cardNotes, { color: colors.text }]}>📏 {t('events.types.distance')}: {(e as any).activity_log.distance_km} km</Text>}
+                  {(e as any).biometric?.heart_rate_avg && <Text style={[styles.cardNotes, { color: colors.text }]}>❤️ {t('events.types.heart_rate_avg')}: {(e as any).biometric.heart_rate_avg}</Text>}
+                  {(e as any).biometric?.heart_rate_max && <Text style={[styles.cardNotes, { color: colors.text }]}>❤️ {t('events.types.heart_rate_max')}: {(e as any).biometric.heart_rate_max}</Text>}
+                  {(e as any).biometric?.heart_rate_min && <Text style={[styles.cardNotes, { color: colors.text }]}>❤️ {t('events.types.heart_rate_min')}: {(e as any).biometric.heart_rate_min}</Text>}
                 </View>
               )}
             </View>
@@ -462,10 +516,10 @@ export default function EventsScreen() {
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
           <View style={{ backgroundColor: colors.card, borderRadius: 16, padding: 24, width: '100%', maxWidth: 300 }}>
             <Text style={{ fontSize: 18, fontWeight: 'bold', color: colors.text, marginBottom: 12 }}>
-              ¿Eliminar evento?
+              {t('events.remove_event')}
             </Text>
             <Text style={{ fontSize: 14, color: colors.icon, marginBottom: 24 }}>
-              Esta acción no se puede deshacer
+              {t('events.cant_be_undone')}
             </Text>
             <View style={{ flexDirection: 'row', gap: 12 }}>
               <TouchableOpacity
@@ -476,7 +530,7 @@ export default function EventsScreen() {
                 }}
                 disabled={deleting}
               >
-                <Text style={{ color: colors.text, fontWeight: '600' }}>Cancelar</Text>
+                <Text style={{ color: colors.text, fontWeight: '600' }}>{t('common.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={{ flex: 1, backgroundColor: '#FF4444', borderRadius: 12, padding: 12, alignItems: 'center', opacity: deleting ? 0.6 : 1 }}
@@ -484,7 +538,7 @@ export default function EventsScreen() {
                 disabled={deleting}
               >
                 <Text style={{ color: '#fff', fontWeight: '600' }}>
-                  {deleting ? 'Eliminando...' : 'Eliminar'}
+                  {deleting ? t('common.deleting') : t('common.delete')}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -498,20 +552,20 @@ export default function EventsScreen() {
           <View style={{ backgroundColor: colors.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 40, maxHeight: '90%' }}>
             <ScrollView showsVerticalScrollIndicator={false}>
               <Text style={{ fontSize: 20, fontWeight: 'bold', color: colors.text, marginBottom: 16 }}>
-                Editar Evento
+                {t('events.edit_event')}
               </Text>
-              
+
               {/* Nombre */}
               <TextInput
                 style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text }]}
-                placeholder="Nombre del evento"
+                placeholder={t('events.event_name')}
                 placeholderTextColor={colors.icon}
                 value={editingName}
                 onChangeText={setEditingName}
               />
 
               {/* Tipo de Evento */}
-              <Text style={{ color: colors.text, marginBottom: 8, marginTop: 12, fontWeight: '600', fontSize: 14 }}>Tipo:</Text>
+              <Text style={{ color: colors.text, marginBottom: 8, marginTop: 12, fontWeight: '600', fontSize: 14 }}>{t('events.event_type')}:</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
                 {EVENT_TYPES.map((type) => (
                   <TouchableOpacity
@@ -519,8 +573,8 @@ export default function EventsScreen() {
                     style={[
                       styles.typeChip,
                       { borderColor: colors.border, marginRight: 8 },
-                      editingType === type.key 
-                        ? { backgroundColor: colors.primary, borderColor: colors.primary } 
+                      editingType === type.key
+                        ? { backgroundColor: colors.primary, borderColor: colors.primary }
                         : { backgroundColor: colors.background }
                     ]}
                     onPress={() => setEditingType(type.key)}
@@ -533,27 +587,27 @@ export default function EventsScreen() {
               </ScrollView>
 
               {/* Fecha y Hora (compacto) */}
-              <Text style={{ color: colors.text, marginBottom: 8, fontWeight: '600', fontSize: 14 }}>Fecha y Hora:</Text>
+              <Text style={{ color: colors.text, marginBottom: 8, fontWeight: '600', fontSize: 14 }}>{t('date.date_time')}:</Text>
               <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
                 <TextInput
-                  style={[styles.input, { 
+                  style={[styles.input, {
                     flex: 1.5,
-                    borderColor: colors.border, 
-                    backgroundColor: colors.background, 
+                    borderColor: colors.border,
+                    backgroundColor: colors.background,
                     color: colors.text,
                     height: 40,
                     fontSize: 12
                   }]}
-                  placeholder="DD/MM/AAAA"
+                  placeholder={t('date.date_format')}
                   placeholderTextColor={colors.icon}
                   value={editingDateText}
                   onChangeText={setEditingDateText}
                 />
                 <TextInput
-                  style={[styles.input, { 
+                  style={[styles.input, {
                     flex: 1,
-                    borderColor: colors.border, 
-                    backgroundColor: colors.background, 
+                    borderColor: colors.border,
+                    backgroundColor: colors.background,
                     color: colors.text,
                     height: 40,
                     fontSize: 12
@@ -569,7 +623,7 @@ export default function EventsScreen() {
               )}
 
               {/* Rutina asociada */}
-              <Text style={{ color: colors.text, marginBottom: 8, fontWeight: '600', fontSize: 14 }}>Rutina asociada:</Text>
+              <Text style={{ color: colors.text, marginBottom: 8, fontWeight: '600', fontSize: 14 }}>{t('events.associated_routine')}:</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
                 <TouchableOpacity
                   style={[
@@ -601,17 +655,17 @@ export default function EventsScreen() {
               </ScrollView>
 
               {/* Notas */}
-              <Text style={{ color: colors.text, marginBottom: 8, fontWeight: '600', fontSize: 14 }}>Notas:</Text>
+              <Text style={{ color: colors.text, marginBottom: 8, fontWeight: '600', fontSize: 14 }}>{t('events.notes')}:</Text>
               <TextInput
                 style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text, height: 60 }]}
-                placeholder="Agregar notas..."
+                placeholder={t('events.add_notes')}
                 placeholderTextColor={colors.icon}
                 value={editingNotes}
                 onChangeText={setEditingNotes}
                 multiline
                 numberOfLines={2}
               />
-              
+
               {/* Botones */}
               <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
                 <TouchableOpacity
@@ -626,7 +680,7 @@ export default function EventsScreen() {
                     setEditingRoutineId('');
                   }}
                 >
-                  <Text style={{ color: colors.text, fontWeight: '600', fontSize: 14 }}>Cancelar</Text>
+                  <Text style={{ color: colors.text, fontWeight: '600', fontSize: 14 }}>{t('common.cancel')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={{
@@ -640,7 +694,7 @@ export default function EventsScreen() {
                   onPress={confirmEdit}
                   disabled={!canSaveEdit}
                 >
-                  <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>Guardar</Text>
+                  <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>{t('common.save')}</Text>
                 </TouchableOpacity>
               </View>
             </ScrollView>
@@ -653,11 +707,11 @@ export default function EventsScreen() {
         <View style={styles.modalOverlay}>
           <ScrollView>
             <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
-              <Text style={[styles.modalTitle, { color: colors.primary }]}>Nuevo Evento</Text>
+              <Text style={[styles.modalTitle, { color: colors.primary }]}>{t('events.new_event')}</Text>
 
               <TextInput
                 style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text }]}
-                placeholder="Nombre del evento"
+                placeholder={t('events.event_name')}
                 placeholderTextColor={colors.icon}
                 value={name}
                 onChangeText={setName}
@@ -769,7 +823,7 @@ export default function EventsScreen() {
               {eventType === 'water' && (
                 <TextInput
                   style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text }]}
-                  placeholder="Cantidad (ml)"
+                  placeholder={t('events.types.water_amount')}
                   placeholderTextColor={colors.icon}
                   value={waterMl}
                   onChangeText={setWaterMl}
@@ -779,7 +833,7 @@ export default function EventsScreen() {
               {eventType === 'weight' && (
                 <TextInput
                   style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text }]}
-                  placeholder="Peso (kg)"
+                    placeholder={`${t('events.types.weight')} (kg)`}
                   placeholderTextColor={colors.icon}
                   value={weightKg}
                   onChangeText={setWeightKg}
@@ -789,7 +843,7 @@ export default function EventsScreen() {
               {eventType === 'activity' && (
                 <TextInput
                   style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text }]}
-                  placeholder="Tipo de actividad"
+                  placeholder={t('events.types.activity_type')}
                   placeholderTextColor={colors.icon}
                   value={activityType}
                   onChangeText={setActivityType}
@@ -798,7 +852,7 @@ export default function EventsScreen() {
               {eventType === 'food' && (
                 <TextInput
                   style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text }]}
-                  placeholder="Nombre del alimento"
+                  placeholder={t('events.types.food_name')}
                   placeholderTextColor={colors.icon}
                   value={foodName}
                   onChangeText={setFoodName}
@@ -808,7 +862,7 @@ export default function EventsScreen() {
                 <>
                   <TextInput
                     style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text }]}
-                    placeholder="BPM Medio (opcional)"
+                    placeholder={t('events.types.heart_rate_avg')}
                     placeholderTextColor={colors.icon}
                     value={hrAvg}
                     onChangeText={setHrAvg}
@@ -816,7 +870,7 @@ export default function EventsScreen() {
                   />
                   <TextInput
                     style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text }]}
-                    placeholder="BPM Pico (opcional)"
+                    placeholder={t('events.types.heart_rate_max')}
                     placeholderTextColor={colors.icon}
                     value={hrMax}
                     onChangeText={setHrMax}
@@ -824,7 +878,7 @@ export default function EventsScreen() {
                   />
                   <TextInput
                     style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text }]}
-                    placeholder="BPM Mínimo (opcional)"
+                    placeholder={t('events.types.heart_rate_min')}
                     placeholderTextColor={colors.icon}
                     value={hrMin}
                     onChangeText={setHrMin}
@@ -832,7 +886,7 @@ export default function EventsScreen() {
                   />
                   <TextInput
                     style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text }]}
-                    placeholder="Pasos (opcional)"
+                    placeholder={t('events.types.steps')}
                     placeholderTextColor={colors.icon}
                     value={steps}
                     onChangeText={setSteps}
@@ -840,7 +894,7 @@ export default function EventsScreen() {
                   />
                   <TextInput
                     style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text }]}
-                    placeholder="Distancia en km (opcional)"
+                    placeholder={t('events.types.distance')}
                     placeholderTextColor={colors.icon}
                     value={distanceKm}
                     onChangeText={setDistanceKm}
@@ -852,7 +906,7 @@ export default function EventsScreen() {
                 <>
                   <TextInput
                     style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text }]}
-                    placeholder="BPM Medio (opcional)"
+                    placeholder={t('events.types.heart_rate_avg')}
                     placeholderTextColor={colors.icon}
                     value={hrAvg}
                     onChangeText={setHrAvg}
@@ -860,7 +914,7 @@ export default function EventsScreen() {
                   />
                   <TextInput
                     style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text }]}
-                    placeholder="BPM Pico (opcional)"
+                    placeholder={t('events.types.heart_rate_max')}
                     placeholderTextColor={colors.icon}
                     value={hrMax}
                     onChangeText={setHrMax}
@@ -868,7 +922,7 @@ export default function EventsScreen() {
                   />
                   <TextInput
                     style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text }]}
-                    placeholder="BPM Mínimo (opcional)"
+                    placeholder={t('events.types.heart_rate_min')}
                     placeholderTextColor={colors.icon}
                     value={hrMin}
                     onChangeText={setHrMin}
@@ -876,7 +930,7 @@ export default function EventsScreen() {
                   />
                   <TextInput
                     style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text }]}
-                    placeholder="Azúcar en sangre (mg/dL) (opcional)"
+                    placeholder={t('events.types.blood_sugar') + ' (mg/dL)'}
                     placeholderTextColor={colors.icon}
                     value={bloodSugar}
                     onChangeText={setBloodSugar}
@@ -885,7 +939,7 @@ export default function EventsScreen() {
                 </>
               )}
 
-              <Text style={{ color: colors.text, marginBottom: 8, marginTop: 4 }}>Rutina asociada (opcional):</Text>
+              <Text style={{ color: colors.text, marginBottom: 8, marginTop: 4 }}>{t('events.types.associated_routine')}:</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 15 }}>
                 <TouchableOpacity
                   style={[
@@ -895,7 +949,7 @@ export default function EventsScreen() {
                   ]}
                   onPress={() => setRoutineId('')}
                 >
-                  <Text style={{ color: routineId ? colors.text : '#fff' }}>Ninguna</Text>
+                  <Text style={{ color: routineId ? colors.text : '#fff' }}>{t('events.types.no_routine')}</Text>
                 </TouchableOpacity>
                 {routines.map((r) => (
                   <TouchableOpacity
@@ -914,7 +968,7 @@ export default function EventsScreen() {
 
               <TextInput
                 style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text }]}
-                placeholder="Notas (opcional)"
+                placeholder={t('events.notes')}
                 placeholderTextColor={colors.icon}
                 value={notes}
                 onChangeText={setNotes}
@@ -923,7 +977,7 @@ export default function EventsScreen() {
 
               <View style={styles.modalButtons}>
                 <TouchableOpacity style={[styles.modalBtn, { backgroundColor: colors.border }]} onPress={() => setShowModal(false)}>
-                  <Text style={{ color: colors.text, fontWeight: '600' }}>Cancelar</Text>
+                  <Text style={{ color: colors.text, fontWeight: '600' }}>{t('common.cancel')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[
@@ -957,38 +1011,38 @@ export default function EventsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    paddingTop: 0 
+  container: {
+    flex: 1,
+    paddingTop: 0
   },
-  center: { 
-    flex: 1, 
-    justifyContent: 'center', 
-    alignItems: 'center' 
+  center: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center'
   },
-  header: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    alignItems: 'center', 
-    paddingHorizontal: 24, 
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 24,
     paddingVertical: 32,
     paddingTop: 40,
   },
-  title: { 
-    fontSize: 32, 
+  title: {
+    fontSize: 32,
     fontWeight: '800',
     letterSpacing: -0.5,
     color: '#FFFFFF',
   },
-  subtitle: { 
+  subtitle: {
     fontSize: 14,
     fontWeight: '500',
     color: 'rgba(255,255,255,0.85)',
     marginTop: 4,
   },
-  addButton: { 
-    borderRadius: 12, 
-    paddingHorizontal: 14, 
+  addButton: {
+    borderRadius: 12,
+    paddingHorizontal: 14,
     paddingVertical: 14,
     justifyContent: 'center',
     alignItems: 'center',
@@ -998,25 +1052,25 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  addButtonText: { 
-    color: '#fff', 
-    fontWeight: '800', 
-    fontSize: 18 
+  addButtonText: {
+    color: '#fff',
+    fontWeight: '800',
+    fontSize: 18
   },
-  list: { 
+  list: {
     paddingHorizontal: 20,
     paddingVertical: 12,
   },
-  empty: { 
-    textAlign: 'center', 
-    marginTop: 60, 
+  empty: {
+    textAlign: 'center',
+    marginTop: 60,
     fontSize: 16,
     fontWeight: '500',
   },
-  card: { 
-    borderRadius: 16, 
-    padding: 18, 
-    marginBottom: 12, 
+  card: {
+    borderRadius: 16,
+    padding: 18,
+    marginBottom: 12,
     borderWidth: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
@@ -1024,12 +1078,12 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 1,
   },
-  cardHeader: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    gap: 12 
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12
   },
-  emoji: { 
+  emoji: {
     width: 48,
     height: 48,
     borderRadius: 12,
@@ -1037,18 +1091,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     fontSize: 22,
   },
-  cardTitle: { 
-    fontSize: 15, 
+  cardTitle: {
+    fontSize: 15,
     fontWeight: '700',
     flex: 1,
   },
-  cardDate: { 
-    fontSize: 12, 
+  cardDate: {
+    fontSize: 12,
     marginTop: 4,
     fontWeight: '500',
   },
-  cardNotes: { 
-    fontSize: 13, 
+  cardNotes: {
+    fontSize: 13,
     marginTop: 10,
     lineHeight: 18,
   },
@@ -1056,22 +1110,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
   },
-  deleteButton: { 
-    padding: 4, 
-    justifyContent: 'center', 
-    alignItems: 'center' 
+  deleteButton: {
+    padding: 4,
+    justifyContent: 'center',
+    alignItems: 'center'
   },
-  deleteIcon: { 
-    fontSize: 18 
+  deleteIcon: {
+    fontSize: 18
   },
-  modalOverlay: { 
-    flex: 1, 
-    backgroundColor: 'rgba(0,0,0,0.5)', 
-    justifyContent: 'center', 
-    padding: 24 
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    padding: 24
   },
-  modalContent: { 
-    borderRadius: 24, 
+  modalContent: {
+    borderRadius: 24,
     padding: 28,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
@@ -1079,50 +1133,50 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
     elevation: 8,
   },
-  modalTitle: { 
-    fontSize: 24, 
-    fontWeight: '800', 
-    marginBottom: 20, 
-    textAlign: 'center' 
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    marginBottom: 20,
+    textAlign: 'center'
   },
-  label: { 
-    fontSize: 15, 
-    fontWeight: '700', 
-    marginBottom: 10 
+  label: {
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 10
   },
-  typeGrid: { 
-    flexDirection: 'row', 
-    flexWrap: 'wrap', 
-    gap: 10, 
-    marginBottom: 18 
+  typeGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 18
   },
-  typeButton: { 
-    borderWidth: 2, 
-    borderRadius: 14, 
-    paddingHorizontal: 14, 
-    paddingVertical: 10 
+  typeButton: {
+    borderWidth: 2,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10
   },
-  typeText: { 
-    fontSize: 13, 
+  typeText: {
+    fontSize: 13,
     fontWeight: '700',
   },
-  input: { 
-    borderWidth: 1, 
-    borderRadius: 14, 
-    padding: 16, 
-    fontSize: 16, 
+  input: {
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 16,
+    fontSize: 16,
     marginBottom: 14,
     fontWeight: '500',
   },
-  modalButtons: { 
-    flexDirection: 'row', 
-    gap: 12, 
-    marginTop: 12 
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 12
   },
-  modalBtn: { 
-    flex: 1, 
-    borderRadius: 14, 
-    padding: 16, 
+  modalBtn: {
+    flex: 1,
+    borderRadius: 14,
+    padding: 16,
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },

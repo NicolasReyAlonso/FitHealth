@@ -6,3 +6,4 @@
 *.pyc
 __pycache__/
 Backend/uploads/*
+db_backup/

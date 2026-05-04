@@ -17,6 +17,7 @@ class Event(Base):
     timestamp: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     user: Mapped["User"] = relationship("User", back_populates="events")  # noqa: F821
     routine: Mapped["Routine | None"] = relationship("Routine")  # noqa: F821

@@ -10,7 +10,7 @@ from app.schemas.event import EventCreate, EventUpdate
 
 
 def get_event(db: Session, event_id: int) -> Event | None:
-    return db.query(Event).filter(Event.id == event_id).first()
+    return db.query(Event).filter(Event.id == event_id, Event.deleted_at == None).first()
 
 
 def get_events_by_user(
@@ -23,7 +23,7 @@ def get_events_by_user(
     date: str | None = None,
     time_str: str | None = None
 ) -> list[Event]:
-    query = db.query(Event).filter(Event.user_id == user_id)
+    query = db.query(Event).filter(Event.user_id == user_id, Event.deleted_at == None)
     
     if routine_id is not None:
         query = query.filter(Event.routine_id == routine_id)
@@ -83,9 +83,32 @@ def update_event(db: Session, event_id: int, event_data: EventUpdate) -> Event |
 
 
 def delete_event(db: Session, event_id: int) -> bool:
-    db_event = get_event(db, event_id)
+    db_event = db.query(Event).filter(Event.id == event_id).first()
     if not db_event:
         return False
     db.delete(db_event)
     db.commit()
     return True
+
+
+def soft_delete_event(db: Session, event_id: int) -> Event | None:
+    """Soft delete: marca el evento como eliminado sin borrar los datos"""
+    db_event = get_event(db, event_id)
+    if not db_event:
+        return None
+    db_event.deleted_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(db_event)
+    return db_event
+
+
+def restore_event(db: Session, event_id: int) -> Event | None:
+    """Restaura un evento eliminado"""
+    # Usar query sin el filtro de deleted_at para obtener el evento eliminado
+    db_event = db.query(Event).filter(Event.id == event_id).first()
+    if not db_event or db_event.deleted_at is None:
+        return None
+    db_event.deleted_at = None
+    db.commit()
+    db.refresh(db_event)
+    return db_event

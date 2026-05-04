@@ -1,0 +1,53 @@
+{
+  "settings":{
+    "preferred_language": "Preferovaný jazyk"
+
+  },
+  "common": {
+    "not_provided": "Nevyplněno",
+    "save": "Uložit",
+    "cs": "🇨🇿 Čeština",
+    "en": "🇬🇧 Angličtina",
+    "es": "🇪🇸 Španělina",
+    "logout": "Odhlásit se"
+
+  },
+  "home": {
+    "greeting": "Ahoj",
+    "welcome": "Vítej ve FitHealth",
+    "label": "Domů"
+
+  },
+  "profile": {
+    "edit_profile": "Upravit profil",
+    "birthday": "Datum narození",
+    "set_birthday": "Nastavit datum narození",
+    "first_name": "Jméno",
+    "last_name": "Příjmení",
+    "second_last_name": "Druhé příjmení",
+    "name": "Jméno",
+    "notes": "Poznámky",
+    "member_since": "Člen od",
+    "information": "Informace",
+    "status": "Status",
+    "doctor": "Doktor",
+    "patient": "Pacient",
+    "active": "Aktivní",
+    "inactive": "Neaktivní",
+    "label": "Profil"
+  },
+  "routines": {
+    "label": "Tréninky",
+    "my_routines": "Moje tréninky",
+    "org_training": "Organizuj svůj trénink"
+  },
+  "events": {
+    "label": "Události",
+    "my_events": "Moje události",
+    "org_events": "Organizuj své události"
+  },
+   "errors": {
+    "loadRoutines": "Nelze načíst tréninky"
+  }
+}
+

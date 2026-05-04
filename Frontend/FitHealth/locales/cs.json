@@ -1,0 +1,175 @@
+{
+  "settings": {
+    "preferred_language": "Preferovaný jazyk"
+  },
+  "common": {
+    "not_provided": "Neuvedeno",
+    "save": "Uložit",
+    "es": "🇪🇸 Španělština",
+    "en": "🇬🇧 Angličtina",
+    "cs": "🇨🇿 Čeština",
+    "logout": "Odhlásit se",
+    "back": "Zpět",
+    "cancel": "Zrušit",
+    "confirm": "Potvrdit",
+    "delete": "Smazat",
+    "deleting": "Mazání..."
+  },
+  "home": {
+    "greeting": "Ahoj",
+    "welcome": "Vítej ve FitHealth",
+    "label": "Domů"
+  },
+  "profile": {
+    "edit_profile": "Upravit profil",
+    "birthday": "Datum narození",
+    "set_birthday": "Nastavit narozeniny",
+    "first_name": "Jméno",
+    "last_name": "Příjmení",
+    "second_last_name": "Druhé příjmení",
+    "name": "Jméno",
+    "notes": "Poznámky",
+    "member_since": "Členem od",
+    "information": "Informace",
+    "status": "Stav",
+    "active": "Aktivní",
+    "inactive": "Neaktivní",
+    "label": "Profil",
+    "photo_updated": {
+      "title": "Fotka aktualizována!",
+      "subtitle": "Tvůj profil vypadá skvěle"
+    }
+  },
+  "roles": {
+    "doctor": "Doktor",
+    "patient": "Pacient"
+  },
+  "routines": {
+    "label": "Tréninky",
+    "my_routines": "Moje tréninky",
+    "org_training": "Organizuj si svůj trénink",
+    "description": "Vytvářej a spravuj své vlastní tréninky",
+    "steps": "Kroky",
+    "routine": "Trénink",
+    "add_step": "Přidat kroky",
+    "edit_step": "Upravit kroky",
+    "delete_step": "Smazat kroky",
+    "no_routines": "Zatím nemáš žádné tréninky",
+    "create_routine": "Vytvořit trénink",
+    "routine_created": "Trénink vytvořen!",
+    "confirm_delete": "Smazat trénink?"
+  },
+  "events": {
+    "label": "Události",
+    "my_events": "Moje události",
+    "org_events": "Organizuj si své události",
+    "description": "Sleduj své zdravotní a wellness aktivity",
+    "registered": "Zaznamenáno",
+    "no_events": "Zatím nemáš žádné události",
+    "new_event": "Nová událost",
+    "add_event": "Přidat událost",
+    "edit_event": "Upravit událost",
+    "event_name": "Název události",
+    "event_created": "Událost vytvořena!",
+    "confirm_delete": "Potvrzení smazání události:",
+    "event_deleted": "Událost smazána",
+    "cant_be_undone": "Tuto akci nelze vrátit zpět",
+    "remove_event": "Smazat událost?",
+    "register_health": "Zaznamenej své zdravotní aktivity",
+    "event_type": "Typ události",
+    "associated_routine": "Přidružená událost",
+    "notes": "Poznámky",
+    "add_notes": "Přidat poznámky...",
+    "done": "Hotovo",
+    "types": {
+      "activity_type": "Typ aktivity",
+      "appointment": "Lékařská prohlídka",
+      "workout": "Trénink",
+      "checkup": "Kontrola",
+      "walk": "Chůze",
+      "run": "Běh",
+      "biometry": "Biometrie",
+      "water": "Voda",
+      "water_amount": "Množství (ml)",
+      "water_intake": "Příjem vody",
+      "medication": "Léky",
+      "other": "Ostatní",
+      "activity": "Fyzická aktivita",
+      "snack": "Jídlo",
+      "weight": "Hmotnost",
+      "heart_rate_avg": "Průměrný tep",
+      "heart_rate_max": "Max tep",
+      "heart_rate_min": "Min tep",
+      "blood_sugar": "Glykémie",
+      "distance": "Vzdálenost",
+      "food_name": "Název jídla",
+      "no_routine": "Žádná událost"
+    }
+  },
+  "chat": {
+    "label": "Chat",
+    "subtitle": "Komunikuj se svým lékařem",
+    "start_chat": "Začni chat s lékařem",
+    "generate_report": "Vygenerovat zprávu",
+    "write_message": "Napiš zprávu...",
+    "send": "Odeslat",
+    "my_doctors": "Moji lékaři",
+    "my_patients": "Moji pacienti",
+    "no_conversations": "Zatím nemáš žádné konverzace",
+    "description": "Snadná komunikace s lékařem nebo pacientem"
+  },
+  "index": {
+    "your_summary": "Tvůj přehled",
+    "summary_desc": "Sleduj svůj pokrok, rutiny a nadcházející události na jednom místě",
+    "activity_this_week": "Aktivita tento týden",
+    "health_tip_today": "Dnešní tip pro zdraví",
+    "daily_hydration": "Denní příjem vody",
+    "hydration_desc": "Nezapomeň vypít alespoň 8 sklenic vody denně",
+    "main_features": "Hlavní funkce"
+  },
+  "errors": {
+    "load_routines": "Nepodařilo se načíst tréninky",
+    "photo_permission": "Potřebujeme oprávnění k přístupu k fotkám",
+    "photo_upload_failed": "Nepodařilo se nahrát fotku",
+    "load_messages": "Nepodařilo se načíst zprávy",
+    "send_messages": "Nepodařilo se odeslat zprávu",
+    "create_chat": "Nepodařilo se vytvořit konverzaci",
+    "generate_report": "Nepodařilo se vygenerovat zprávu",
+    "fetch_events": "Nepodařilo se načíst události",
+    "fetch_routines": "Nepodařilo se načíst tréninky",
+    "create_event": "Nepodařilo se vytvořit událost",
+    "delete_event": "Nepodařilo se smazat událost",
+    "restore_event": "Nepodařilo se obnovit událost",
+    "update_event": "Nepodařilo se aktualizovat událost"
+  },
+  "warnings": {
+    "name_required": "Jméno je povinné"
+  },
+  "alerts": {
+    "sure_logout": "Opravdu se chceš odhlásit?"
+  },
+  "date": {
+    "this_month": "tento měsíc",
+    "months": [
+      "Leden",
+      "Únor",
+      "Březen",
+      "Duben",
+      "Květen",
+      "Červen",
+      "Červenec",
+      "Srpen",
+      "Září",
+      "Říjen",
+      "Listopad",
+      "Prosinec"
+    ],
+    "date_time": "Datum a čas",
+    "date_format": "DD.MM.RRRR",
+    "day_format": "DD",
+    "month_format": "MM",
+    "year_format": "RRRR",
+    "hour_format": "HH",
+    "minute_format": "mm"
+  }
+}

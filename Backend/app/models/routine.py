@@ -15,6 +15,7 @@ class Routine(Base):
     name: Mapped[str] = mapped_column(String(150), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     user: Mapped["User"] = relationship("User", foreign_keys=[user_id], back_populates="routines")  # noqa: F821
     creator: Mapped["User"] = relationship("User", foreign_keys=[creator_id])  # noqa: F821

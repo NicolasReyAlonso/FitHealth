@@ -137,15 +137,15 @@ export default function HomeScreen() {
     try {
       const routinesRes = await api.get('/routines/');
       const eventsRes = await api.get('/events/');
-      
+
       const routinesDataFetch = routinesRes.data || [];
       const eventsDataFetch = eventsRes.data || [];
-      
+
       setRoutines(routinesDataFetch.length);
       setEvents(eventsDataFetch.length);
       setRoutinesData(routinesDataFetch);
       setEventsData(eventsDataFetch);
-      
+
       // Calcular actividad de esta semana (rutinas recurrentes + eventos)
       const today = new Date();
       const currentDay = today.getDay();
@@ -153,14 +153,14 @@ export default function HomeScreen() {
       const mondayOfWeek = new Date(today);
       mondayOfWeek.setDate(today.getDate() - daysFromMonday);
       mondayOfWeek.setHours(0, 0, 0, 0);
-      
+
       const sundayOfWeek = new Date(mondayOfWeek);
       sundayOfWeek.setDate(mondayOfWeek.getDate() + 6);
       sundayOfWeek.setHours(23, 59, 59, 999);
-      
+
       const weekData = [0, 0, 0, 0, 0, 0, 0]; // Lun, Mar, Mié, Jue, Vie, Sab, Dom
       const activityMap: { [key: number]: { routines: number; events: number } } = {};
-      
+
       // Contar rutinas recurrentes por día de la semana
       routinesDataFetch.forEach((routine: any) => {
         if (routine.days && Array.isArray(routine.days)) {
@@ -172,7 +172,7 @@ export default function HomeScreen() {
           });
         }
       });
-      
+
       let tempDistance = 0;
       let tempSteps = 0;
 
@@ -180,7 +180,7 @@ export default function HomeScreen() {
       eventsDataFetch.forEach((event: any) => {
         if (event.timestamp) {
           const eventDate = new Date(event.timestamp);
-          
+
           if (eventDate >= mondayOfWeek && eventDate <= sundayOfWeek) {
             const dayOfWeek = eventDate.getDay();
             const dayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
@@ -189,8 +189,8 @@ export default function HomeScreen() {
 
           if (eventDate.getMonth() === today.getMonth() && eventDate.getFullYear() === today.getFullYear()) {
             if (event.activity_log) {
-               tempDistance += event.activity_log.distance_km || 0;
-               tempSteps += event.activity_log.steps || 0;
+              tempDistance += event.activity_log.distance_km || 0;
+              tempSteps += event.activity_log.steps || 0;
             }
           }
         }
@@ -211,15 +211,15 @@ export default function HomeScreen() {
       const year = today.getFullYear();
       const month = today.getMonth();
       const daysInMonth = new Date(year, month + 1, 0).getDate();
-      
+
       for (let day = 1; day <= daysInMonth; day++) {
         let routineCount = 0;
         let eventCount = 0;
-        
+
         const dayDate = new Date(year, month, day);
         const dayOfWeek = dayDate.getDay();
         const dayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-        
+
         routinesDataFetch.forEach((routine: any) => {
           if (routine.days && Array.isArray(routine.days)) {
             routine.days.forEach((routineDay: any) => {
@@ -229,7 +229,7 @@ export default function HomeScreen() {
             });
           }
         });
-        
+
         eventsDataFetch.forEach((event: any) => {
           if (event.timestamp) {
             const eventDate = new Date(event.timestamp);
@@ -238,17 +238,17 @@ export default function HomeScreen() {
             }
           }
         });
-        
+
         if (routineCount > 0 || eventCount > 0) {
           activityMap[day] = { routines: routineCount, events: eventCount };
         }
       }
-      
+
       setDayActivityMap(activityMap);
       console.log('Weekly activity:', weekData);
       setWeekStats(weekData);
     } catch (error) {
-      console.error('Error cargando estadísticas:', error);
+      console.error('Error cargando estadísticas:', error); // ? TODO
     }
   };
 
@@ -256,22 +256,34 @@ export default function HomeScreen() {
     const today = new Date();
     const year = today.getFullYear();
     const month = today.getMonth();
-    const firstDay = new Date(year, month, 1).getDay();
+
+    // JS getDay() pone el Domingo como 0. Ajustamos para empezar en Lunes (0)
+    let firstDay = new Date(year, month, 1).getDay();
+    firstDay = firstDay === 0 ? 6 : firstDay - 1;
+
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const days = [];
-    
+
     for (let i = 0; i < firstDay; i++) {
       days.push(null);
     }
     for (let i = 1; i <= daysInMonth; i++) {
       days.push(i);
     }
+
+    // Rellenamos el final de la matriz para asegurar múltiplos de 7 celdas
+    const remainder = days.length % 7;
+    if (remainder !== 0) {
+      for (let i = 0; i < 7 - remainder; i++) {
+        days.push(null);
+      }
+    }
+
     return days;
   };
 
   const getMonthName = () => {
-    const months = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 
-                    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    const months = t('date.months', { returnObjects: true }) as string[];
     return months[new Date().getMonth()];
   };
 
@@ -290,16 +302,16 @@ export default function HomeScreen() {
 
   const handleFeaturePress = (feature: string) => {
     switch (feature) {
-      case 'Tu Resumen':
+      case 'summary':
         router.push('/(tabs)');
         break;
-      case 'Rutinas':
+      case 'routines':
         router.push('/(tabs)/routines');
         break;
-      case 'Eventos':
+      case 'events':
         router.push('/(tabs)/events');
         break;
-      case 'Chat Médico':
+      case 'chat':
         router.push('/(tabs)/chat');
         break;
     }
@@ -312,24 +324,28 @@ export default function HomeScreen() {
 
   const features = [
     {
+      id: 'summary',
       icon: '📊',
-      title: t('yourSummary'),
-      description: t('summaryDesc'),
+      title: t('index.your_summary'),
+      description: t('index.summary_desc'),
     },
     {
+      id: 'routines',
       icon: '🏋️',
-      title: t('routines'),
-      description: t('routinesDesc'),
+      title: t('routines.label'),
+      description: t('routines.description'),
     },
     {
+      id: 'events',
       icon: '📅',
-      title: t('events'),
-      description: t('eventsDesc'),
+      title: t('events.label'),
+      description: t('events.description'),
     },
     {
+      id: 'chat',
       icon: '💬',
-      title: t('chat'),
-      description: t('chatDesc'),
+      title: t('chat.label'),
+      description: t('chat.description'),
     },
   ];
 
@@ -339,112 +355,112 @@ export default function HomeScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <ScrollView 
+      <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
       >
-      {/* Header Hero */}
-      <View style={[styles.heroSection, { backgroundColor: colors.primary }]}>
-        <Text style={styles.heroGreeting}>
-          {t('hello')}, {user?.username}! 👋
-        </Text>
-        <Text style={styles.heroSubtitle}>
-          {t('welcomeMsg')}
-        </Text>
-        
-        <View style={[styles.avatarPlaceholder, { backgroundColor: 'rgba(255, 255, 255, 0.2)' }]}>
-          {user?.profile_picture ? (
-             <Image source={{ uri: user.profile_picture }} style={{ width: 48, height: 48, borderRadius: 24 }} />
-          ) : (
-             <Text style={styles.avatarText}>
-               {user?.username?.charAt(0).toUpperCase() || '👤'}
-             </Text>
-          )}
+        {/* Header Hero */}
+        <View style={[styles.heroSection, { backgroundColor: colors.primary }]}>
+          <Text style={styles.heroGreeting}>
+            {t('home.greeting')}, {user?.username}! 👋
+          </Text>
+          <Text style={styles.heroSubtitle}>
+            {t('home.welcome')}
+          </Text>
+
+          <View style={[styles.avatarPlaceholder, { backgroundColor: 'rgba(255, 255, 255, 0.2)' }]}>
+            {user?.profile_picture ? (
+              <Image source={{ uri: user.profile_picture }} style={{ width: 48, height: 48, borderRadius: 24 }} />
+            ) : (
+              <Text style={styles.avatarText}>
+                {user?.username?.charAt(0).toUpperCase() || '👤'}
+              </Text>
+            )}
+          </View>
+
         </View>
 
-      </View>
-
-      {/* Stats Cards */}
-      <View style={[styles.statsContainer, { flexWrap: 'wrap' }]}>
-        <Pressable
-          onPress={() => handleStatPress('routines')}
-          style={({ pressed }) => [
-            styles.statBox,
-            { backgroundColor: colors.primaryLight, minWidth: '45%' },
-            pressed && styles.statBoxPressed,
-          ]}>
-          <Text style={styles.statNumber}>{routines}</Text>
-          <Text style={[styles.statLabel, { color: colors.primary }]}>{t('routines')}</Text>
-          <Text style={[styles.statSubtext, { color: colors.primary }]}>{t('active')}</Text>
-        </Pressable>
-        <Pressable
-          onPress={() => handleStatPress('events')}
-          style={({ pressed }) => [
-            styles.statBox,
-            { backgroundColor: colors.secondaryLight, minWidth: '45%' },
-            pressed && styles.statBoxPressed,
-          ]}>
-          <Text style={styles.statNumber}>{events}</Text>
-          <Text style={[styles.statLabel, { color: colors.secondary }]}>{t('events')}</Text>
-          <Text style={[styles.statSubtext, { color: colors.secondary }]}>{t('registered')}</Text>
-        </Pressable>
-        <Pressable
-          onPress={() => handleStatPress('events')}
-          style={({ pressed }) => [
-            styles.statBox,
-            { backgroundColor: colors.accentLight, minWidth: '45%' },
-            pressed && styles.statBoxPressed,
-          ]}>
-          <Text style={styles.statNumber}>{monthlyDistance.toFixed(1)}</Text>
-          <Text style={[styles.statLabel, { color: colors.accent }]}>Km</Text>
-          <Text style={[styles.statSubtext, { color: colors.accent }]}>este mes</Text>
-        </Pressable>
-        <Pressable
-          onPress={() => handleStatPress('events')}
-          style={({ pressed }) => [
-            styles.statBox,
-            { backgroundColor: colors.accentLight, minWidth: '45%' },
-            pressed && styles.statBoxPressed,
-          ]}>
-          <Text style={styles.statNumber}>{monthlySteps}</Text>
-          <Text style={[styles.statLabel, { color: colors.accent }]}>Pasos</Text>
-          <Text style={[styles.statSubtext, { color: colors.accent }]}>este mes</Text>
-        </Pressable>
-      </View>
-
-
-
-
-      {/* Weekly Activity Chart */}
-      <View style={[styles.chartCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-        <Text style={[styles.chartTitle, { color: colors.text }]}>📊 {t('activityThisWeek')}</Text>
-        <View style={styles.chartContainer}>
-          {weekStats.map((value, index) => {
-            const dayLabel = dayLabels[index];
-            return (
-              <Pressable
-                key={dayLabel}
-                onPress={() => handleDayPress(index)}
-                style={styles.barWrapper}>
-                <View style={styles.barLabels}>
-                  <Text style={[styles.barValue, { color: colors.primary }]}>{value}</Text>
-                </View>
-                <View
-                  style={[
-                    styles.bar,
-                    {
-                      height: maxStat > 0 ? (value / maxStat) * 120 : 10,
-                      backgroundColor: colors.primary,
-                    },
-                  ]}
-                />
-                <Text style={[styles.dayLabel, { color: colors.icon }]}>{dayLabels[index]}</Text>
-              </Pressable>
-            );
-          })}
+        {/* Stats Cards */}
+        <View style={[styles.statsContainer, { flexWrap: 'wrap' }]}>
+          <Pressable
+            onPress={() => handleStatPress('routines')}
+            style={({ pressed }) => [
+              styles.statBox,
+              { backgroundColor: colors.primaryLight, minWidth: '45%' },
+              pressed && styles.statBoxPressed,
+            ]}>
+            <Text style={styles.statNumber}>{routines}</Text>
+            <Text style={[styles.statLabel, { color: colors.primary }]}>{t('routines.label')}</Text>
+            <Text style={[styles.statSubtext, { color: colors.primary }]}>{t('profile.active')}</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => handleStatPress('events')}
+            style={({ pressed }) => [
+              styles.statBox,
+              { backgroundColor: colors.secondaryLight, minWidth: '45%' },
+              pressed && styles.statBoxPressed,
+            ]}>
+            <Text style={styles.statNumber}>{events}</Text>
+            <Text style={[styles.statLabel, { color: colors.secondary }]}>{t('events.label')}</Text>
+            <Text style={[styles.statSubtext, { color: colors.secondary }]}>{t('events.registered')}</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => handleStatPress('events')}
+            style={({ pressed }) => [
+              styles.statBox,
+              { backgroundColor: colors.accentLight, minWidth: '45%' },
+              pressed && styles.statBoxPressed,
+            ]}>
+            <Text style={styles.statNumber}>{monthlyDistance.toFixed(1)}</Text>
+            <Text style={[styles.statLabel, { color: colors.accent }]}>Km</Text>
+            <Text style={[styles.statSubtext, { color: colors.accent }]}>{t('date.this_month')}</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => handleStatPress('events')}
+            style={({ pressed }) => [
+              styles.statBox,
+              { backgroundColor: colors.accentLight, minWidth: '45%' },
+              pressed && styles.statBoxPressed,
+            ]}>
+            <Text style={styles.statNumber}>{monthlySteps}</Text>
+            <Text style={[styles.statLabel, { color: colors.accent }]}>{t('routines.steps')}</Text>
+            <Text style={[styles.statSubtext, { color: colors.accent }]}>{t('date.this_month')}</Text>
+          </Pressable>
         </View>
-      </View>
+
+
+
+
+        {/* Weekly Activity Chart */}
+        <View style={[styles.chartCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Text style={[styles.chartTitle, { color: colors.text }]}>📊 {t('index.activity_this_week')}</Text>
+          <View style={styles.chartContainer}>
+            {weekStats.map((value, index) => {
+              const dayLabel = dayLabels[index];
+              return (
+                <Pressable
+                  key={dayLabel}
+                  onPress={() => handleDayPress(index)}
+                  style={styles.barWrapper}>
+                  <View style={styles.barLabels}>
+                    <Text style={[styles.barValue, { color: colors.primary }]}>{value}</Text>
+                  </View>
+                  <View
+                    style={[
+                      styles.bar,
+                      {
+                        height: maxStat > 0 ? (value / maxStat) * 120 : 10,
+                        backgroundColor: colors.primary,
+                      },
+                    ]}
+                  />
+                  <Text style={[styles.dayLabel, { color: colors.icon }]}>{dayLabels[index]}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
 
       {/* Progress Report */}
       {progressReport && (
@@ -639,147 +655,147 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      {/* Health Tips */}
-      <View style={styles.sectionContainer}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>
-          {t('healthTipToday')}
-        </Text>
-        <View style={[styles.tipCard, { backgroundColor: colors.primaryLight, borderColor: colors.primary }]}>
-          <Text style={[styles.tipIcon, { color: colors.primary }]}>💡</Text>
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.tipTitle, { color: colors.primary }]}>
-              {t('dailyHydration')}
-            </Text>
-            <Text style={[styles.tipText, { color: colors.text }]}>
-              {t('hydrationDesc')}
-            </Text>
+        {/* Health Tips */}
+        <View style={styles.sectionContainer}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            {t('index.health_tip_today')}
+          </Text>
+          <View style={[styles.tipCard, { backgroundColor: colors.primaryLight, borderColor: colors.primary }]}>
+            <Text style={[styles.tipIcon, { color: colors.primary }]}>💡</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.tipTitle, { color: colors.primary }]}>
+                {t('index.daily_hydration')}
+              </Text>
+              <Text style={[styles.tipText, { color: colors.text }]}>
+                {t('index.hydration_desc')}
+              </Text>
+            </View>
           </View>
         </View>
-      </View>
 
-      {/* Featured Section */}
-      <View style={styles.sectionContainer}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>
-          {t('mainFeatures')}
-        </Text>
-        <View style={styles.featuresContainer}>
-          {features.map((feature) => (
-            <Pressable
-              key={feature.title}
-              onPress={() => handleFeaturePress(feature.title)}
-              style={({ pressed }) => [
-                styles.featureCard,
-                {
-                  backgroundColor: colors.card,
-                  borderColor: colors.border,
-                  opacity: pressed ? 0.9 : 1,
-                  transform: [{ scale: pressed ? 0.98 : 1 }],
-                },
-              ]}>
-              <View style={[styles.featureGradient, { backgroundColor: colors.primary }]}>
-                <Text style={styles.featureEmoji}>{feature.icon}</Text>
-              </View>
-              <View style={styles.featureContent}>
-                <Text style={[styles.featureTitle, { color: colors.text }]}>
-                  {feature.title}
-                </Text>
-                <Text style={[styles.featureDescription, { color: colors.icon }]}>
-                  {feature.description}
-                </Text>
-              </View>
-            </Pressable>
-          ))}
-        </View>
-      </View>
-
-      {/* Spacing */}
-      <View style={{ height: 30 }} />
-    </ScrollView>
-
-    {/* Day Details Modal */}
-    <Modal
-      animationType="slide"
-      transparent={true}
-      visible={dayModalVisible}
-      onRequestClose={() => setDayModalVisible(false)}>
-      <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
-        <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
-          <View style={styles.modalHeader}>
-            <Text style={[styles.modalTitle, { color: colors.text }]}>
-              {selectedDay} de {getMonthName()}
-            </Text>
-            <Pressable
-              onPress={() => setDayModalVisible(false)}
-              style={styles.closeButton}>
-              <Text style={[styles.closeButtonText, { color: colors.primary }]}>✕</Text>
-            </Pressable>
+        {/* Featured Section */}
+        <View style={styles.sectionContainer}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            {t('index.main_features')}
+          </Text>
+          <View style={styles.featuresContainer}>
+            {features.map((feature) => (
+              <Pressable
+                key={feature.id}
+                onPress={() => handleFeaturePress(feature.id)}
+                style={({ pressed }) => [
+                  styles.featureCard,
+                  {
+                    backgroundColor: colors.card,
+                    borderColor: colors.border,
+                    opacity: pressed ? 0.9 : 1,
+                    transform: [{ scale: pressed ? 0.98 : 1 }],
+                  },
+                ]}>
+                <View style={[styles.featureGradient, { backgroundColor: colors.primary }]}>
+                  <Text style={styles.featureEmoji}>{feature.icon}</Text>
+                </View>
+                <View style={styles.featureContent}>
+                  <Text style={[styles.featureTitle, { color: colors.text }]}>
+                    {feature.title}
+                  </Text>
+                  <Text style={[styles.featureDescription, { color: colors.icon }]}>
+                    {feature.description}
+                  </Text>
+                </View>
+              </Pressable>
+            ))}
           </View>
-          <ScrollView style={styles.modalBody}>
-            {selectedDay && dayActivityMap[selectedDay] ? (
-              <>
-                {dayActivityMap[selectedDay].routines > 0 && (
-                  <View style={{ marginBottom: 20 }}>
-                    <Text style={[styles.activitySectionTitle, { color: colors.primary }]}>{t('routines')} ({dayActivityMap[selectedDay].routines})</Text>
-                    {routinesData.map((routine: any) => {
-                      const year = new Date().getFullYear();
-                      const month = new Date().getMonth();
-                      const dayDate = new Date(year, month, selectedDay);
-                      const dayOfWeek = dayDate.getDay();
-                      const dayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-                      
-                      const hasDay = routine.days?.some((d: any) => d.day_of_week === dayIndex);
-                      return hasDay ? (
-                        <View key={routine.id} style={[styles.activityItem, { backgroundColor: colors.primaryLight, borderColor: colors.primary }]}>
-                          <Text style={{ color: colors.primary, fontWeight: '600' }}>{routine.name}</Text>
-                          {routine.description && <Text style={{ color: colors.icon, fontSize: 12 }}>{routine.description}</Text>}
-                        </View>
-                      ) : null;
-                    })}
-                  </View>
-                )}
-                {dayActivityMap[selectedDay].events > 0 && (
-                  <View style={{ marginBottom: 20 }}>
-                    <Text style={[styles.activitySectionTitle, { color: colors.secondary }]}>{t('events')} ({dayActivityMap[selectedDay].events})</Text>
-                    {eventsData.map((event: any) => {
-                      if (event.timestamp) {
-                        const eventDate = new Date(event.timestamp);
+        </View>
+
+        {/* Spacing */}
+        <View style={{ height: 30 }} />
+      </ScrollView>
+
+      {/* Day Details Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={dayModalVisible}
+        onRequestClose={() => setDayModalVisible(false)}>
+        <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
+          <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>
+                {selectedDay} de {getMonthName()}
+              </Text>
+              <Pressable
+                onPress={() => setDayModalVisible(false)}
+                style={styles.closeButton}>
+                <Text style={[styles.closeButtonText, { color: colors.primary }]}>✕</Text>
+              </Pressable>
+            </View>
+            <ScrollView style={styles.modalBody}>
+              {selectedDay && dayActivityMap[selectedDay] ? (
+                <>
+                  {dayActivityMap[selectedDay].routines > 0 && (
+                    <View style={{ marginBottom: 20 }}>
+                      <Text style={[styles.activitySectionTitle, { color: colors.primary }]}>{t('routines.label')} ({dayActivityMap[selectedDay].routines})</Text>
+                      {routinesData.map((routine: any) => {
                         const year = new Date().getFullYear();
                         const month = new Date().getMonth();
-                        
-                        if (eventDate.getDate() === selectedDay && eventDate.getMonth() === month && eventDate.getFullYear() === year) {
-                          return (
-                            <View key={event.id} style={[styles.activityItem, { backgroundColor: colors.secondaryLight, borderColor: colors.secondary }]}>
-                              <Text style={{ color: colors.secondary, fontWeight: '600' }}>{event.name}</Text>
-                              <Text style={{ color: colors.icon, fontSize: 12 }}>{new Date(event.timestamp).toLocaleTimeString()}</Text>
-                            </View>
-                          );
+                        const dayDate = new Date(year, month, selectedDay);
+                        const dayOfWeek = dayDate.getDay();
+                        const dayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+
+                        const hasDay = routine.days?.some((d: any) => d.day_of_week === dayIndex);
+                        return hasDay ? (
+                          <View key={routine.id} style={[styles.activityItem, { backgroundColor: colors.primaryLight, borderColor: colors.primary }]}>
+                            <Text style={{ color: colors.primary, fontWeight: '600' }}>{routine.name}</Text>
+                            {routine.description && <Text style={{ color: colors.icon, fontSize: 12 }}>{routine.description}</Text>}
+                          </View>
+                        ) : null;
+                      })}
+                    </View>
+                  )}
+                  {dayActivityMap[selectedDay].events > 0 && (
+                    <View style={{ marginBottom: 20 }}>
+                      <Text style={[styles.activitySectionTitle, { color: colors.secondary }]}>{t('events.label')} ({dayActivityMap[selectedDay].events})</Text>
+                      {eventsData.map((event: any) => {
+                        if (event.timestamp) {
+                          const eventDate = new Date(event.timestamp);
+                          const year = new Date().getFullYear();
+                          const month = new Date().getMonth();
+
+                          if (eventDate.getDate() === selectedDay && eventDate.getMonth() === month && eventDate.getFullYear() === year) {
+                            return (
+                              <View key={event.id} style={[styles.activityItem, { backgroundColor: colors.secondaryLight, borderColor: colors.secondary }]}>
+                                <Text style={{ color: colors.secondary, fontWeight: '600' }}>{event.name}</Text>
+                                <Text style={{ color: colors.icon, fontSize: 12 }}>{new Date(event.timestamp).toLocaleTimeString()}</Text>
+                              </View>
+                            );
+                          }
                         }
-                      }
-                      return null;
-                    })}
-                  </View>
-                )}
-              </>
-            ) : (
-              <Text style={[styles.noEventsText, { color: colors.icon }]}>
-                {t('noEvents')}
-              </Text>
-            )}
-          </ScrollView>
-          <Pressable
-            onPress={() => {
-              setDayModalVisible(false);
-              router.push('/(tabs)/events');
-            }}
-            style={({ pressed }) => [
-              styles.modalButton,
-              { backgroundColor: colors.primary },
-              pressed && { opacity: 0.8 },
-            ]}>
-            <Text style={styles.modalButtonText}>{t('addEvent')}</Text>
-          </Pressable>
+                        return null;
+                      })}
+                    </View>
+                  )}
+                </>
+              ) : (
+                <Text style={[styles.noEventsText, { color: colors.icon }]}>
+                  {t('events.no_events')}
+                </Text>
+              )}
+            </ScrollView>
+            <Pressable
+              onPress={() => {
+                setDayModalVisible(false);
+                router.push('/(tabs)/events');
+              }}
+              style={({ pressed }) => [
+                styles.modalButton,
+                { backgroundColor: colors.primary },
+                pressed && { opacity: 0.8 },
+              ]}>
+              <Text style={styles.modalButtonText}>{t('events.add_event')}</Text>
+            </Pressable>
+          </View>
         </View>
-      </View>
       </Modal>
     </View>
   );
@@ -922,10 +938,11 @@ const styles = StyleSheet.create({
   calendarGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
+    justifyContent: 'space-between',
+    rowGap: 6,
   },
   weekDay: {
-    width: '14.28%',
+    width: '13%',
     aspectRatio: 1,
     textAlign: 'center',
     fontWeight: '700',
@@ -933,7 +950,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   dayCell: {
-    width: '14.28%',
+    width: '13%',
     aspectRatio: 1,
     borderRadius: 10,
     justifyContent: 'center',

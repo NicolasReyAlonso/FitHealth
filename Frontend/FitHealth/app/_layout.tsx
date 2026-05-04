@@ -15,9 +15,12 @@ LogBox.ignoreLogs([
   'Unknown event handler property `onResponderRelease`',
   'Unknown event handler property `onResponderTerminate`'
 ]);
+import { useTranslation } from 'react-i18next';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider, useAuth } from '@/context/auth-context';
+import { ToastProvider } from '@/context/toast-context';
+import i18n from '@/services/i18n';
 
 function RootNavigator() {
   const { user, isLoading } = useAuth();
@@ -36,6 +39,13 @@ function RootNavigator() {
     }
   }, [user, isLoading, segments]);
 
+  useEffect(() => {
+    if (!user) return;
+
+    const lang = user.preferred_language ?? 'en';
+    i18n.changeLanguage(lang);
+  }, [user]);
+
   if (isLoading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#E8F5E9' }}>
@@ -45,7 +55,7 @@ function RootNavigator() {
   }
 
   return (
-    <>
+    <>  {/* so we have one parent */}
       <Stack>
         <Stack.Screen name="login" options={{ headerShown: false }} />
         <Stack.Screen name="register" options={{ headerShown: false }} />

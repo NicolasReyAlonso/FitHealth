@@ -69,7 +69,7 @@ export default function ChatScreen() {
       const res = await api.get('/chat/rooms');
       setRooms(res.data);
     } catch {
-      Alert.alert('Error', 'No se pudieron cargar las conversaciones');
+      Alert.alert('Error', t('errors.load_messages'));
     } finally {
       setLoading(false);
     }
@@ -163,7 +163,41 @@ export default function ChatScreen() {
       const res = await api.get(`/chat/rooms/${room.id}/messages`);
       setMessages(res.data);
     } catch {
-      Alert.alert('Error', 'No se pudieron cargar los mensajes');
+      Alert.alert('Error', t('errors.load_messages'));
+    }
+  };
+
+  const deleteCurrentRoom = async () => {
+    if (!selectedRoom) return;
+
+    const performDelete = async () => {
+      try {
+        console.log(`Attempting to delete room ${selectedRoom.id}...`);
+        await api.delete(`/chat/rooms/${selectedRoom.id}`);
+        console.log('Room deleted successfully');
+        setSelectedRoom(null);
+        fetchRooms();
+      } catch (e: any) {
+        console.error("Error deleting room:", e);
+        const errorMessage = e.response?.data?.detail || e.message || 'Ocurrió un error desconocido al intentar borrar el chat.';
+        if (Platform.OS === 'web') {
+          window.alert(`No se pudo borrar el chat. Detalle: ${errorMessage}`);
+        } else {
+          Alert.alert('Error', `No se pudo borrar el chat. Detalle: ${errorMessage}`);
+        }
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm('¿Estás seguro de que quieres borrar este chat? Se perderán todos los mensajes.');
+      if (confirmed) {
+        performDelete();
+      }
+    } else {
+      Alert.alert('Confirmar', '¿Estás seguro de que quieres borrar este chat? Se perderán todos los mensajes.', [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Borrar', style: 'destructive', onPress: performDelete }
+      ]);
     }
   };
 
@@ -239,7 +273,7 @@ export default function ChatScreen() {
       await fetchRooms();
       openRoom(res.data);
     } catch {
-      Alert.alert('Error', 'No se pudo crear la conversación');
+      Alert.alert('Error', t('errors.create_chat'));
     }
   };
 
@@ -252,7 +286,7 @@ export default function ChatScreen() {
       const myRoutines = res.data.filter((r: any) => r.creator_id === selectedRoom.doctor_id);
       setRoutines(myRoutines);
     } catch {
-      Alert.alert('Error', 'No se pudieron cargar las rutinas');
+      Alert.alert('Error', t('errors.load_routines'));
     } finally {
       setLoadingRoutines(false);
     }
@@ -269,7 +303,7 @@ export default function ChatScreen() {
       });
       setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
     } catch (e: any) {
-      Alert.alert('Error', e.response?.data?.detail || 'No se pudo generar el reporte');
+      Alert.alert('Error', e.response?.data?.detail || t('errors.generate_report'));
     }
   };
 
@@ -300,10 +334,14 @@ export default function ChatScreen() {
         keyboardVerticalOffset={90}
       >
         <View style={[styles.chatHeader, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <TouchableOpacity onPress={() => setSelectedRoom(null)}>
-            <Text style={[styles.backBtn, { color: colors.primary }]}>← Atrás</Text>
+          <TouchableOpacity
+            onPress={() => setSelectedRoom(null)}
+            accessibilityRole="button"
+            accessibilityLabel="Go back to conversations"
+          >
+            <Text style={[styles.backBtn, { color: colors.primary }]}>← {t('common.back')}</Text>
           </TouchableOpacity>
-          <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>t('common.back')
             {otherProfilePicture && (
               <Image source={{ uri: otherProfilePicture }} style={[styles.roomAvatarImage, { width: 32, height: 32, borderRadius: 16, marginRight: 8 }]} />
             )}
@@ -311,7 +349,7 @@ export default function ChatScreen() {
           </View>
           {user?.role === 'patient' && (
             <TouchableOpacity style={[styles.reportBtn, { backgroundColor: colors.primary }]} onPress={openReportModal}>
-              <Text style={styles.reportBtnText}>Generar Reporte</Text>
+              <Text style={styles.reportBtnText}>t('chat.generate_report')</Text>
             </TouchableOpacity>
           )}
           <TouchableOpacity style={[styles.reportBtn, { backgroundColor: '#FF3B30', marginLeft: 8 }]} onPress={deleteCurrentRoom}>
@@ -449,7 +487,7 @@ export default function ChatScreen() {
         <View style={[styles.inputBar, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <TextInput
             style={[styles.messageInput, { color: colors.text, backgroundColor: colors.background, borderColor: colors.border }]}
-            placeholder="Escribe un mensaje..."
+            placeholder={t('chat.write_message')}
             placeholderTextColor={colors.icon}
             value={newMessage}
             onChangeText={setNewMessage}
@@ -458,7 +496,7 @@ export default function ChatScreen() {
             blurOnSubmit={false}
           />
           <TouchableOpacity style={[styles.sendBtn, { backgroundColor: colors.primary }]} onPress={sendMessage}>
-            <Text style={styles.sendBtnText}>Enviar</Text>
+            <Text style={styles.sendBtnText}>t('chat.send')</Text>
           </TouchableOpacity>
         </View>
 
@@ -483,7 +521,7 @@ export default function ChatScreen() {
               )}
               
               <TouchableOpacity onPress={() => setReportModalVisible(false)} style={{ marginTop: 20, padding: 16, backgroundColor: colors.card, borderRadius: 12, alignItems: 'center' }}>
-                <Text style={{ color: colors.text, fontWeight: '700' }}>Cancelar</Text>
+                <Text style={{ color: colors.text, fontWeight: '700' }}>{t('common.cancel')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -497,17 +535,17 @@ export default function ChatScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { backgroundColor: colors.accent }, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}>
         <View style={{ flex: 1, marginRight: 16 }}>
-          <Text style={styles.title}>{t('chatTitle')}</Text>
-          <Text style={styles.subtitle}>{t('commDoctor')}</Text>
+          <Text style={styles.title}>{t('chat.label')}</Text>
+          <Text style={styles.subtitle}>{t('chat.subtitle')}</Text>
         </View>
         <TouchableOpacity style={{ backgroundColor: '#fff', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20 }} onPress={() => router.push('/contacts')}>
-          <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 13 }}>{user?.role === 'patient' ? 'Mis Doctores' : 'Mis Pacientes'}</Text>
+          <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 13 }}>{user?.role === 'patient' ? t('chat.my_doctors') : t('chat.my_patients')}</Text>
         </TouchableOpacity>
       </View>
 
       {doctors.length > 0 && selectedRoom === null && (
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>{user?.role === 'patient' ? 'Mis Doctores' : 'Mis Pacientes'}</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>{user?.role === 'patient' ? t('chat.my_doctors') : t('chat.my_patients')}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.doctorList}>
             {doctors.map((d) => (
               <TouchableOpacity
@@ -531,7 +569,7 @@ export default function ChatScreen() {
       <ScrollView style={styles.list} showsVerticalScrollIndicator={false}>
         {rooms.length === 0 ? (
           <Text style={[styles.empty, { color: colors.icon }]}>
-            No tienes conversaciones aún.
+            {t('chat.no_conversations')}
           </Text>
         ) : (
           rooms.map((r) => {
@@ -539,7 +577,7 @@ export default function ChatScreen() {
               user?.id === r.doctor_id ? r.patient_username : r.doctor_username;
             const otherProfilePicture =
               user?.id === r.doctor_id ? r.patient_profile_picture : r.doctor_profile_picture;
-            const roleLabel = user?.id === r.doctor_id ? '👤 Paciente' : '🩺 Doctor';
+            const roleLabel = user?.id === r.doctor_id ? '👤' + t('roles.patient') : '🩺' + t('roles.doctor');
             return (
               <TouchableOpacity
                 key={r.id}

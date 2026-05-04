@@ -10,6 +10,15 @@ type User = {
   is_active: boolean;
   created_at: string;
   profile_picture?: string;
+
+  first_name?: string;
+  last_name?: string;
+  second_last_name?: string;
+  birthday?: string;
+  notes?: string;
+
+  preferred_language?: string;
+
 };
 
 type AuthContextType = {
@@ -27,9 +36,9 @@ const AuthContext = createContext<AuthContextType>({
   token: null,
   isLoading: true,
   login: async () => {},
-  setUser: () => {},
   register: async () => {},
   logout: async () => {},
+  setUser: () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {

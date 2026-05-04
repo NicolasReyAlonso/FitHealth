@@ -1,0 +1,176 @@
+{
+  "settings": {
+    "preferred_language": "Idioma preferido"
+  },
+  "common": {
+    "not_provided": "No proporcionado",
+    "save": "Guardar",
+    "es": "🇪🇸 Español",
+    "en": "🇬🇧 Inglés",
+    "cs": "🇨🇿 Checo",
+    "logout": "Cerrar sesión",
+    "back": "Atrás",
+    "cancel": "Cancelar",
+    "confirm": "Confirmar",
+    "delete": "Eliminar",
+    "deleting": "Eliminando..."
+  },
+  "home": {
+    "greeting": "¡Hola",
+    "welcome": "Bienvenido a FitHealth",
+    "label": "Inicio"
+  },
+  "profile": {
+    "edit_profile": "Editar perfil",
+    "birthday": "Fecha de nacimiento",
+    "set_birthday": "Establecer cumpleaños",
+    "first_name": "Nombre",
+    "last_name": "Apellido",
+    "second_last_name": "Secondo apellido",
+    "name": "Nombre",
+    "notes": "Notas",
+    "member_since": "Miembro desde",
+    "information": "Información",
+    "status": "Estado",
+    "active": "Activo",
+    "inactive": "Inactivo",
+    "label": "Perfil",
+    "photo_updated": {
+      "title": "¡Foto actualizada!",
+      "subtitle": "Tu perfil se ve genial"
+    }
+  },
+  "roles": {
+    "doctor": "Doctor",
+    "patient": "Paciente"
+  },
+  "routines": {
+    "label": "Rutinas",
+    "my_routines": "Mis Rutinas",
+    "org_training": "Organiza tu entrenamiento",
+    "description": "Crea y gestiona tus rutinas de entrenamiento personalizadas",
+    "steps": "Pasos",
+    "routine": "Rutina",
+    "add_step": "Agregar paso",
+    "edit_step": "Editar paso",
+    "delete_step": "Eliminar paso",
+    "no_routines": "No tienes rutinas aún",
+    "create_routine": "Crear rutina",
+    "routine_created": "¡Rutina creada!",
+    "confirm_delete": "¿Eliminar paso de rutina?"
+  },
+  "events": {
+    "label": "Eventos",
+    "my_events": "Mis Eventos",
+    "org_events": "Organiza tus eventos",
+    "description": "Mantente al día con tus eventos de salud y bienestar",
+    "registered": "Registrado",
+    "no_events": "No tienes eventos aún",
+    "new_event": "Nuevo evento",
+    "add_event": "Agregar evento",
+    "edit_event": "Editar evento",
+    "event_name": "Nombre del evento",
+    "event_created": "¡Evento creado!",
+    "confirm_delete": "Mostrar confirmación para evento:",
+    "event_deleted": "Evento eliminado",
+    "cant_be_undone": "Esta acción no se puede deshacer",
+    "remove_event": "¿Eliminar evento?",
+    "register_health": "Registra tus actividades de salud",
+    "event_type": "Tipo de evento",
+    "associated_routine": "Rutina asociada",
+    "notes": "Notas",
+    "add_notes": "Agregar notas...",
+    "done": "Hecho",
+    "types": {
+      "activity_type": "Tipo de actividad",
+      "appointment": "Cita médica",
+      "workout": "Entrenamiento",
+      "checkup": "Chequeo",
+      "walk": "Caminar",
+      "run": "Correr",
+      "biometry": "Biométrico",
+      "water": "Agua",
+      "water_amount": "Cantidad (ml)",
+      "water_intake": "Ingesta de agua",
+      "medication": "Medicación",
+      "other": "Otro",
+      "activity": "Actividad física",
+      "snack": "Alimento",
+      "weight": "Peso",
+      "heart_rate_avg": "BPM Medio",
+      "heart_rate_max": "BPM Pico",
+      "heart_rate_min": "BPM Mínimo",
+      "blood_sugar": "Azúcar",
+      "distance": "Distancia",
+      "food_name": "Nombre del alimento",
+      "no_routine": "Ninguna"
+
+    }
+  },
+  "chat": {
+    "label": "Chat",
+    "subtitle": "Comunícate con tu doctor",
+    "start_chat": "Inicia un chat con tu doctor",
+    "generate_report": "Generar Reporte",
+    "write_message": "Escribe un mensaje...",
+    "send": "Enviar",
+    "my_doctors": "Mis doctores",
+    "my_patients": "Mis pacientes",
+    "no_conversations": "No tienes conversaciones aún",
+    "description": "Comunícate fácilmente con tu doctor o paciente para resolver tus dudas"
+  },
+  "index": {
+    "your_summary": "Tu resumen",
+    "summary_desc": "Revisa tu progreso, rutinas y eventos próximos en un solo lugar",
+    "activity_this_week": "Actividad esta semana",
+    "health_tip_today": "Consejo de salud para hoy",
+    "daily_hydration": "Hidratación diaria",
+    "hydration_desc": "Recuerda beber al menos 8 vasos de agua al día",
+    "main_features": "Funciones principales"
+  },
+  "errors": {
+    "load_routines": "No se pudieron cargar las rutinas",
+    "photo_permission": "Necesitamos permisos para acceder a tus fotos",
+    "photo_upload_failed": "No se pudo subir la foto",
+    "load_messages": "No se pudieron cargar los mensajes",
+    "send_messages": "No se pudo enviar el mensaje",
+    "create_chat": "No se pudo crear la conversación",
+    "generate_report": "No se pudo generar el reporte",
+    "fetch_events": "No se pudieron cargar los eventos",
+    "fetch_routines": "Error al cargar las rutinas",
+    "create_event": "No se pudo crear el evento",
+    "delete_event": "No se pudo eliminar el evento",
+    "restore_event": "No se pudo restaurar el evento",
+    "update_event": "No se pudo actualizar el evento"
+  },
+  "warnings": {
+    "name_required": "El nombre es requerido"
+  },
+  "alerts": {
+    "sure_logout": "¿Estás seguro de que quieres cerrar sesión?"
+  },
+  "date": {
+    "this_month": "este mes",
+    "months": [
+      "Enero",
+      "Febrero",
+      "Marzo",
+      "Abril",
+      "Mayo",
+      "Junio",
+      "Julio",
+      "Agosto",
+      "Septiembre",
+      "Octubre",
+      "Noviembre",
+      "Diciembre"
+    ],
+    "date_time": "Fecha y Hora",
+    "date_format": "DD/MM/AAAA",
+    "day_format": "DD",
+    "month_format": "MM",
+    "year_format": "YYYY",
+    "hour_format": "HH",
+    "minute_format": "mm"
+  }
+}

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import {
   StyleSheet,
   Text,
@@ -16,6 +16,9 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/context/auth-context';
 import { useNotifications } from '@/context/notification-context';
+import { useToast } from '@/context/toast-context';
+import { UndoToast } from '@/components/undo-toast';
+import { useClosureOverlay } from '@/hooks/use-closure-overlay';
 
 type Routine = {
   id: number;
@@ -35,6 +38,8 @@ export default function RoutinesScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
+  const toast = useToast();
+  const { component: closureOverlay, show: showClosure } = useClosureOverlay();
   const [routines, setRoutines] = useState<Routine[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -52,6 +57,11 @@ export default function RoutinesScreen() {
   const { showNotification } = useNotifications();
   const [patients, setPatients] = useState<{ id: number; username: string }[]>([]);
   const [patientId, setPatientId] = useState<number | null>(null);
+  
+  // Undo functionality
+  const [lastDeletedRoutineId, setLastDeletedRoutineId] = useState<number | null>(null);
+  const [showUndoToast, setShowUndoToast] = useState(false);
+  const undoTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchRoutines = async () => {
     try {
@@ -115,6 +125,16 @@ export default function RoutinesScreen() {
       setDescription('');
       setPatientId(null);
       setShowModal(false);
+      
+      // Mostrar confirmación de cierre
+      const patientName = patientId 
+        ? patients.find(p => p.id === patientId)?.username 
+        : 'Personal';
+      showClosure(
+        `¡Rutina creada!`,
+        `"${name.trim()}" para ${patientName}`
+      );
+      
       fetchRoutines();
       showNotification('Rutina añadida correctamente', 'success');
     } catch {
@@ -135,6 +155,22 @@ export default function RoutinesScreen() {
       console.log('📡 Eliminando rutina:', deleteId);
       await api.delete(`/routines/${deleteId}`);
       console.log('✅ Rutina eliminada exitosamente');
+      
+      // Guardar ID para undo
+      setLastDeletedRoutineId(deleteId);
+      setShowUndoToast(true);
+      
+      // Limpiar timeout anterior si existe
+      if (undoTimeoutRef.current) {
+        clearTimeout(undoTimeoutRef.current);
+      }
+      
+      // Auto-dismiss después de 5 segundos
+      undoTimeoutRef.current = setTimeout(() => {
+        setShowUndoToast(false);
+        setLastDeletedRoutineId(null);
+      }, 5000);
+      
       setDeleteId(null);
       await fetchRoutines();
       if (deletedRoutine) {
@@ -154,6 +190,32 @@ export default function RoutinesScreen() {
       showNotification(error.message || 'No se pudo eliminar la rutina', 'error');
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const handleUndo = async () => {
+    if (!lastDeletedRoutineId) return;
+    
+    try {
+      console.log('↶ Deshaciendo eliminación de rutina:', lastDeletedRoutineId);
+      const res = await api.post(`/routines/${lastDeletedRoutineId}/restore`);
+      
+      // Mostrar confirmación de cierre
+      showClosure(
+        `¡Rutina restaurada!`,
+        `"${res.data.name}" está de vuelta`
+      );
+      
+      await fetchRoutines();
+    } catch (error: any) {
+      console.error('❌ Error al restaurar:', error);
+      toast.error('No se pudo restaurar la rutina');
+    } finally {
+      setShowUndoToast(false);
+      setLastDeletedRoutineId(null);
+      if (undoTimeoutRef.current) {
+        clearTimeout(undoTimeoutRef.current);
+      }
     }
   };
 
@@ -185,6 +247,13 @@ export default function RoutinesScreen() {
       await api.patch(`/routines/${editingId}`, payload);
       
       console.log('✅ Rutina actualizada exitosamente');
+      
+      // Mostrar confirmación de cierre
+      showClosure(
+        `¡Rutina actualizada!`,
+        `"${editingName.trim()}"`
+      );
+      
       setEditingId(null);
       setEditingName('');
       setEditingDescription('');
@@ -236,8 +305,8 @@ export default function RoutinesScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { backgroundColor: colors.primary }]}>
         <View>
-          <Text style={styles.title}>{t('myRoutines')}</Text>
-          <Text style={styles.subtitle}>{t('orgTraining')}</Text>
+          <Text style={styles.title}> 🏋️ {t('routines.my_routines')}</Text>
+          <Text style={styles.subtitle}>{t('routines.org_training')}</Text>
         </View>
         <TouchableOpacity 
           style={[styles.addButton, { backgroundColor: 'rgba(255,255,255,0.25)' }]}

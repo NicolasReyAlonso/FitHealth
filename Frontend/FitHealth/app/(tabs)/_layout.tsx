@@ -35,35 +35,35 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: t('home'),
+          title: t('home.label'),
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
         }}
       />
       <Tabs.Screen
         name="routines"
         options={{
-          title: t('routines'),
+          title: t('routines.label'),
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="figure.run" color={color} />,
         }}
       />
       <Tabs.Screen
         name="events"
         options={{
-          title: t('events'),
+          title: t('events.label'),
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="calendar" color={color} />,
         }}
       />
       <Tabs.Screen
         name="chat"
         options={{
-          title: t('chat'),
+          title: t('chat.label'),
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="message.fill" color={color} />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          title: t('profile'),
+          title: t('profile.label'),
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.fill" color={color} />,
         }}
       />

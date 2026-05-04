@@ -19,6 +19,12 @@ class UserRead(BaseModel):
     is_verified: bool
     created_at: datetime
     profile_picture: str | None = None
+    first_name: str | None = None
+    last_name: str | None = None
+    second_last_name: str | None = None
+    birthday: datetime | None = None
+    notes: str | None = None
+    preferred_language: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -26,6 +32,12 @@ class UserRead(BaseModel):
 class UserUpdate(BaseModel):
     email: EmailStr | None = None
     username: str | None = None
+    first_name: str | None = None
+    last_name: str | None = None
+    second_last_name: str | None = None
+    birthday: datetime | None = None
+    notes: str | None = None
+    preferred_language: str | None = None
     profile_picture: str | None = None
 
 
@@ -37,3 +49,4 @@ class Token(BaseModel):
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
+    preferred_language: str | None = None
