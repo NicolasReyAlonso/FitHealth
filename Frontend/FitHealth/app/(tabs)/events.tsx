@@ -485,24 +485,24 @@ export default function EventsScreen() {
                 </View>
               </View>
               {e.notes && <Text style={[styles.cardNotes, { color: colors.icon }]}>{e.notes}</Text>}
-              {(e as any).routine_id && (
+              {(e as any).routine_id != null && (
                 <Text style={[styles.cardNotes, { color: colors.primary, fontWeight: '600' }]}>
                   🎯 {t('routines.routine')}: {routines.find((r) => r.id === (e as any).routine_id)?.name || (e as any).routine_id}
                 </Text>
               )}
               {e.event_type === 'biometric' && (e as any).biometric && (
                 <View style={{ marginTop: 10 }}>
-                  {(e as any).biometric.heart_rate_avg && <Text style={[styles.cardNotes, { color: colors.text }]}>❤️ {t('events.types.heart_rate_avg')}: {(e as any).biometric.heart_rate_avg}</Text>}
-                  {(e as any).biometric.blood_sugar && <Text style={[styles.cardNotes, { color: colors.text }]}>🍬 {t('events.types.blood_sugar')}: {(e as any).biometric.blood_sugar} mg/dL</Text>}
+                  {(e as any).biometric.heart_rate_avg != null && <Text style={[styles.cardNotes, { color: colors.text }]}>❤️ {t('events.types.heart_rate_avg')}: {(e as any).biometric.heart_rate_avg}</Text>}
+                  {(e as any).biometric.blood_sugar != null && <Text style={[styles.cardNotes, { color: colors.text }]}>🍬 {t('events.types.blood_sugar')}: {(e as any).biometric.blood_sugar} mg/dL</Text>}
                 </View>
               )}
               {(e.event_type === 'walking' || e.event_type === 'running') && (
                 <View style={{ marginTop: 10 }}>
-                  {(e as any).activity_log?.steps && <Text style={[styles.cardNotes, { color: colors.text }]}>👣 {t('events.types.steps')}: {(e as any).activity_log.steps}</Text>}
-                  {(e as any).activity_log?.distance_km && <Text style={[styles.cardNotes, { color: colors.text }]}>📏 {t('events.types.distance')}: {(e as any).activity_log.distance_km} km</Text>}
-                  {(e as any).biometric?.heart_rate_avg && <Text style={[styles.cardNotes, { color: colors.text }]}>❤️ {t('events.types.heart_rate_avg')}: {(e as any).biometric.heart_rate_avg}</Text>}
-                  {(e as any).biometric?.heart_rate_max && <Text style={[styles.cardNotes, { color: colors.text }]}>❤️ {t('events.types.heart_rate_max')}: {(e as any).biometric.heart_rate_max}</Text>}
-                  {(e as any).biometric?.heart_rate_min && <Text style={[styles.cardNotes, { color: colors.text }]}>❤️ {t('events.types.heart_rate_min')}: {(e as any).biometric.heart_rate_min}</Text>}
+                  {(e as any).activity_log?.steps != null && <Text style={[styles.cardNotes, { color: colors.text }]}>👣 {t('events.types.steps')}: {(e as any).activity_log.steps}</Text>}
+                  {(e as any).activity_log?.distance_km != null && <Text style={[styles.cardNotes, { color: colors.text }]}>📏 {t('events.types.distance')}: {(e as any).activity_log.distance_km} km</Text>}
+                  {(e as any).biometric?.heart_rate_avg != null && <Text style={[styles.cardNotes, { color: colors.text }]}>❤️ {t('events.types.heart_rate_avg')}: {(e as any).biometric.heart_rate_avg}</Text>}
+                  {(e as any).biometric?.heart_rate_max != null && <Text style={[styles.cardNotes, { color: colors.text }]}>❤️ {t('events.types.heart_rate_max')}: {(e as any).biometric.heart_rate_max}</Text>}
+                  {(e as any).biometric?.heart_rate_min != null && <Text style={[styles.cardNotes, { color: colors.text }]}>❤️ {t('events.types.heart_rate_min')}: {(e as any).biometric.heart_rate_min}</Text>}
                 </View>
               )}
             </View>

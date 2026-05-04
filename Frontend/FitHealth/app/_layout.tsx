@@ -20,6 +20,7 @@ import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider, useAuth } from '@/context/auth-context';
 import { ToastProvider } from '@/context/toast-context';
+import { NotificationProvider } from '@/context/notification-context';
 import i18n from '@/services/i18n';
 
 function RootNavigator() {
@@ -55,7 +56,8 @@ function RootNavigator() {
   }
 
   return (
-    <>  {/* so we have one parent */}
+    <>
+      {/* so we have one parent */}
       <Stack>
         <Stack.Screen name="login" options={{ headerShown: false }} />
         <Stack.Screen name="register" options={{ headerShown: false }} />
@@ -69,8 +71,6 @@ function RootNavigator() {
     </>
   );
 }
-
-import { NotificationProvider } from '@/context/notification-context';
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -103,7 +103,9 @@ export default function RootLayout() {
     <ThemeProvider value={colorScheme === 'dark' ? customDarkTheme : customLightTheme}>
       <AuthProvider>
         <NotificationProvider>
-          <RootNavigator />
+          <ToastProvider>
+            <RootNavigator />
+          </ToastProvider>
         </NotificationProvider>
       </AuthProvider>
     </ThemeProvider>

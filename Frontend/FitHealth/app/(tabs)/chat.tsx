@@ -143,7 +143,6 @@ export default function ChatScreen() {
         if (prev.some((m) => m.id === msg.id)) return prev;
         return [...prev, msg];
       });
-      setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
     };
 
     ws.onerror = () => {
@@ -268,7 +267,6 @@ export default function ChatScreen() {
         if (prev.some((m) => m.id === res.data.id)) return prev;
         return [...prev, res.data];
       });
-      setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
     } catch (e: any) {
       Alert.alert('Error', e.response?.data?.detail || t('errors.generate_report'));
     }
@@ -308,7 +306,7 @@ export default function ChatScreen() {
           >
             <Text style={[styles.backBtn, { color: colors.primary }]}>← {t('common.back')}</Text>
           </TouchableOpacity>
-          <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>t('common.back')
+          <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
             {otherProfilePicture && (
               <Image source={{ uri: otherProfilePicture }} style={[styles.roomAvatarImage, { width: 32, height: 32, borderRadius: 16, marginRight: 8 }]} />
             )}
@@ -316,7 +314,7 @@ export default function ChatScreen() {
           </View>
           {user?.role === 'patient' && (
             <TouchableOpacity style={[styles.reportBtn, { backgroundColor: colors.primary }]} onPress={openReportModal}>
-              <Text style={styles.reportBtnText}>t('chat.generate_report')</Text>
+              <Text style={styles.reportBtnText}>{t('chat.generate_report')}</Text>
             </TouchableOpacity>
           )}
           <TouchableOpacity style={[styles.reportBtn, { backgroundColor: '#FF3B30', marginLeft: 8 }]} onPress={deleteCurrentRoom}>
@@ -329,7 +327,8 @@ export default function ChatScreen() {
           data={messages}
           keyExtractor={(item) => item.id.toString()}
           contentContainerStyle={styles.messageList}
-          onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
+          onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
+          onContentSizeChange={() => setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100)}
           renderItem={({ item }) => {
             const isMe = item.sender_id === user?.id;
             const msgAvatar = isMe ? user?.profile_picture : otherProfilePicture;
@@ -463,7 +462,7 @@ export default function ChatScreen() {
             blurOnSubmit={false}
           />
           <TouchableOpacity style={[styles.sendBtn, { backgroundColor: colors.primary }]} onPress={sendMessage}>
-            <Text style={styles.sendBtnText}>t('chat.send')</Text>
+            <Text style={styles.sendBtnText}>{t('chat.send')}</Text>
           </TouchableOpacity>
         </View>
 
