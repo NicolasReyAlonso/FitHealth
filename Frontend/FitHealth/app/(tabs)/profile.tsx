@@ -21,11 +21,6 @@ export default function ProfileScreen() {
   const { user, logout, setUser } = useAuth();
   const [uploadingImage, setUploadingImage] = React.useState(false);
 
-  // console.log('logout key:', t('common.logout'));
-  // console.log('keys:', i18n.store.data);
-  // console.log('PROFILE LOGOUT:', i18n.t('profile.logout'));
-  // console.log('PROFILE RAW:', i18n.getResource(i18n.language, 'translation', 'profile'));
-
   const pickImage = async () => {
     // Solicita permisos
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -124,7 +119,7 @@ export default function ProfileScreen() {
       </View>
 
       <View style={styles.section}>
-        <Text style={[styles.sectionLabel, { color: colors.text }]}>{t('information')}</Text>
+        <Text style={[styles.sectionLabel, { color: colors.text }]}>{t('profile.information')}</Text>
         <View style={[styles.infoCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={styles.infoLeft}>
             <Text style={[styles.infoLabel, { color: colors.icon }]}>{t('profile.status')}</Text>

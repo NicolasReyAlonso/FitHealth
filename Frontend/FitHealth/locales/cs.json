@@ -28,6 +28,7 @@
     "name": "Jméno",
     "notes": "Poznámky",
     "member_since": "Člen od",
+    "information": "Informace",
     "status": "Status",
     "doctor": "Doktor",
     "patient": "Pacient",
