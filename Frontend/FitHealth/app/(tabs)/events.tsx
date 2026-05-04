@@ -42,14 +42,14 @@ export default function EventsScreen() {
   const [editingName, setEditingName] = useState('');
 
   const EVENT_TYPES = [
-    { key: 'walking', label: '🚶' + t('events.types.walk') },
-    { key: 'running', label: '🏃' + t('events.types.run') },
-    { key: 'biometric', label: '❤️' + t('events.types.biometry') },
-    { key: 'water', label: '💧' + t('events.types.water') },
-    { key: 'activity', label: '🏃' + t('events.types.activity') },
-    { key: 'food', label: '🍎' + t('events.types.snack') },
-    { key: 'weight', label: '⚖️' + t('events.types.weight') },
-    { key: 'custom', label: '📝' + t('events.types.other') },
+    { key: 'walking', label: '🚶 ' + t('events.types.walk') },
+    { key: 'running', label: '🏃 ' + t('events.types.run') },
+    { key: 'biometric', label: '❤️ ' + t('events.types.biometry') },
+    { key: 'water', label: '💧 ' + t('events.types.water') },
+    { key: 'activity', label: '🏃 ' + t('events.types.activity') },
+    { key: 'food', label: '🍎 ' + t('events.types.snack') },
+    { key: 'weight', label: '⚖️ ' + t('events.types.weight') },
+    { key: 'custom', label: '📝 ' + t('events.types.other') },
   ];
 
   // Undo functionality
