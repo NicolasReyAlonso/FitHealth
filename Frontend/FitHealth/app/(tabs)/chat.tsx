@@ -167,39 +167,6 @@ export default function ChatScreen() {
     }
   };
 
-  const deleteCurrentRoom = async () => {
-    if (!selectedRoom) return;
-
-    const performDelete = async () => {
-      try {
-        console.log(`Attempting to delete room ${selectedRoom.id}...`);
-        await api.delete(`/chat/rooms/${selectedRoom.id}`);
-        console.log('Room deleted successfully');
-        setSelectedRoom(null);
-        fetchRooms();
-      } catch (e: any) {
-        console.error("Error deleting room:", e);
-        const errorMessage = e.response?.data?.detail || e.message || 'Ocurrió un error desconocido al intentar borrar el chat.';
-        if (Platform.OS === 'web') {
-          window.alert(`No se pudo borrar el chat. Detalle: ${errorMessage}`);
-        } else {
-          Alert.alert('Error', `No se pudo borrar el chat. Detalle: ${errorMessage}`);
-        }
-      }
-    };
-
-    if (Platform.OS === 'web') {
-      const confirmed = window.confirm('¿Estás seguro de que quieres borrar este chat? Se perderán todos los mensajes.');
-      if (confirmed) {
-        performDelete();
-      }
-    } else {
-      Alert.alert('Confirmar', '¿Estás seguro de que quieres borrar este chat? Se perderán todos los mensajes.', [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Borrar', style: 'destructive', onPress: performDelete }
-      ]);
-    }
-  };
 
   const deleteCurrentRoom = async () => {
     if (!selectedRoom) return;
