@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.models.routine import Routine, RoutineDay, RoutineExercise, RoutineDiet, RoutineMedication, RoutineObjective
 from app.schemas.routine import RoutineCreate, RoutineUpdate
@@ -61,7 +61,7 @@ def soft_delete_routine(db: Session, routine_id: int) -> Routine | None:
     db_routine = get_routine(db, routine_id)
     if not db_routine:
         return None
-    db_routine.deleted_at = datetime.utcnow()
+    db_routine.deleted_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(db_routine)
     return db_routine
@@ -77,16 +77,6 @@ def restore_routine(db: Session, routine_id: int) -> Routine | None:
     db.commit()
     db.refresh(db_routine)
     return db_routine
-
-
-def delete_routine(db: Session, routine_id: int) -> bool:
-    """Hard delete: elimina completamente la rutina (después de cierto tiempo)"""
-    db_routine = db.query(Routine).filter(Routine.id == routine_id).first()
-    if not db_routine:
-        return False
-    db.delete(db_routine)
-    db.commit()
-    return True
 
 
 def create_routine_objective(db: Session, routine_id: int, obj_data: dict) -> RoutineObjective:

@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, Platform } from 'react-native';
+import { Text, StyleSheet, Animated, Platform } from 'react-native';
 import { useAuth } from '@/context/auth-context';
-import api, { WS_BASE_URL } from '@/services/api';
+import { WS_BASE_URL } from '@/services/api';
 
 const NotificationContext = createContext<any>(null);
 
@@ -35,18 +35,21 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
 
     let isMounted = true;
     let ws: WebSocket | null = null;
-    let reconnectTimeout: NodeJS.Timeout;
+    let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
+    let reconnectDelay = 1000; // 1s inicial, dobla hasta 30s
+    const MAX_RECONNECT_DELAY = 30000;
 
     const connectWebSocket = () => {
       let wsUrl = WS_BASE_URL;
       if (wsUrl?.endsWith('/')) {
         wsUrl = wsUrl.slice(0, -1);
       }
-      
+
       ws = new WebSocket(`${wsUrl}/notifications/ws/${user.id}`);
 
       ws.onopen = () => {
         console.log('✅ Conectado a notificaciones WebSocket');
+        reconnectDelay = 1000; // reset al conectar
       };
 
       ws.onmessage = (event) => {
@@ -81,11 +84,10 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
       };
 
       ws.onclose = () => {
-        console.log('🔌 WebSocket cerrado. Intentando reconectar...');
+        console.log(`🔌 WebSocket cerrado. Reintentando en ${reconnectDelay}ms...`);
         if (isMounted) {
-          reconnectTimeout = setTimeout(() => {
-            connectWebSocket();
-          }, 3000); // Reintentar a los 3 segundos
+          reconnectTimeout = setTimeout(connectWebSocket, reconnectDelay);
+          reconnectDelay = Math.min(reconnectDelay * 2, MAX_RECONNECT_DELAY);
         }
       };
     };
@@ -94,7 +96,7 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
 
     return () => {
       isMounted = false;
-      clearTimeout(reconnectTimeout);
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
       if (ws) {
         // Prevenir loop de reconexión intencional en cleanup
         ws.onclose = null;

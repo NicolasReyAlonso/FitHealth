@@ -155,7 +155,14 @@ export default function RoutineDetailScreen() {
       fetchRoutine();
     } catch (e: any) {
       console.error(e?.response?.data || e);
-      Alert.alert('Error', `Fallo al subir la imagen: ${e?.response?.data?.detail?.[0]?.msg || e.message}`);
+      const detail = e?.response?.data?.detail;
+      const detailMsg =
+        typeof detail === 'string'
+          ? detail
+          : Array.isArray(detail)
+          ? detail[0]?.msg
+          : null;
+      Alert.alert('Error', `Fallo al subir la imagen: ${detailMsg || e.message}`);
     } finally {
       setLoading(false);
     }

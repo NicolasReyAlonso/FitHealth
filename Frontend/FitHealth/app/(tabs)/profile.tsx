@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Platform, Image, ActivityIndicator, Alert } from 'react-native';
+import { Text, View, ScrollView, TouchableOpacity, Platform, Image, ActivityIndicator, Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import api from '@/services/api';
 import { useAuth } from '@/context/auth-context';
@@ -7,14 +7,12 @@ import { useTranslation } from 'react-i18next';
 import { useToast } from '@/context/toast-context';
 import { useClosureOverlay } from '@/hooks/use-closure-overlay';
 
-import { useNavigation } from '@react-navigation/native';
 import { router } from 'expo-router';
 import { profileStyles as styles } from '@/styles/profile-styles';
 import { useColors } from '@/hooks/use-colors';
 
 export default function ProfileScreen() {
   const { t, i18n } = useTranslation();
-  const navigation = useNavigation();
   const colors = useColors();
   const toast = useToast();
   const { component: closureOverlay, show: showClosure } = useClosureOverlay();
@@ -141,34 +139,6 @@ export default function ProfileScreen() {
       </View>
 
       <View style={styles.section}>
-        {/*         <Text style={[styles.sectionLabel, { color: colors.text }]}>{t('language')}</Text>
-        <View style={{ flexDirection: 'row', gap: 10, justifyContent: 'space-between' }}>
-            <TouchableOpacity 
-              style={[styles.langBtn, i18n.language?.startsWith('es') && { backgroundColor: colors.primary, borderColor: colors.primary }]}
-              onPress={() => i18n.changeLanguage('es')}
-              accessibilityRole="button"
-              accessibilityLabel="change language to Spanish"
-            >
-              <Text style={{ color: i18n.language?.startsWith('es') ? '#fff' : colors.text, fontWeight: 'bold' }}>🇪🇸 {t('spanish')}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.langBtn, i18n.language?.startsWith('en') && { backgroundColor: colors.primary, borderColor: colors.primary }]}
-              onPress={() => i18n.changeLanguage('en')}
-              accessibilityRole="button"
-              accessibilityLabel="change language to English"
-            >
-              <Text style={{ color: i18n.language?.startsWith('en') ? '#fff' : colors.text, fontWeight: 'bold' }}>🇬🇧 {t('english')}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.langBtn, i18n.language?.startsWith('de') && { backgroundColor: colors.primary, borderColor: colors.primary }]}
-              onPress={() => i18n.changeLanguage('de')}
-              accessibilityRole="button"
-              accessibilityLabel="change language to German"
-            >
-              <Text style={{ color: i18n.language?.startsWith('de') ? '#fff' : colors.text, fontWeight: 'bold' }}>🇩🇪 {t('german')}</Text>
-            </TouchableOpacity>
-        </View> */}
-
         <View style={[styles.infoCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Text style={[styles.infoLabel, { color: colors.icon }]}>{t('profile.name')}</Text>
           <Text style={[styles.infoValue, { color: colors.text }]}>

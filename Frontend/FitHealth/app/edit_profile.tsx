@@ -161,7 +161,6 @@ export default function EditProfileScreen() {
           <Picker.Item label="🇪🇸 Español" value="es" />
           <Picker.Item label="🇬🇧 English" value="en" />
           <Picker.Item label="🇨🇿 Čeština" value="cs" />
-          <Picker.Item label="🇩🇪 Deutsch" value="de" />
         </Picker>
 
       </View>

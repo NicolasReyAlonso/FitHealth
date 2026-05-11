@@ -248,7 +248,7 @@ export default function HomeScreen() {
       console.log('Weekly activity:', weekData);
       setWeekStats(weekData);
     } catch (error) {
-      console.error('Error cargando estadísticas:', error); // ? TODO
+      console.error('Error cargando estadísticas:', error);
     }
   };
 

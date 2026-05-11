@@ -56,18 +56,20 @@ def get_me(current_user: User = Depends(get_current_user)):
 @router.get("/verify", response_class=HTMLResponse)
 def verify_email(token: str, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.verification_token == token).first()
-    
+
     if not user:
-        return f"""
+        return HTMLResponse(
+            status_code=400,
+            content="""
         <html>
             <head>
                 <meta name="viewport" content="width=device-width, initial-scale=1">
                 <style>
-                    body {{ font-family: system-ui, -apple-system, sans-serif; text-align: center; margin: 0; padding: 40px 20px; background-color: #FFFFFF; color: #0F172A; }}
-                    .container {{ max-width: 500px; margin: 0 auto; background: #FFFFFF; padding: 40px 20px; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); border: 1px solid #E2E8F0; }}
-                    h1 {{ color: #EF4444; font-size: 24px; margin-bottom: 16px; }}
-                    p {{ font-size: 16px; line-height: 1.5; color: #64748B; }}
-                    .icon {{ font-size: 56px; margin-bottom: 16px; display: block; }}
+                    body { font-family: system-ui, -apple-system, sans-serif; text-align: center; margin: 0; padding: 40px 20px; background-color: #FFFFFF; color: #0F172A; }
+                    .container { max-width: 500px; margin: 0 auto; background: #FFFFFF; padding: 40px 20px; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); border: 1px solid #E2E8F0; }
+                    h1 { color: #EF4444; font-size: 24px; margin-bottom: 16px; }
+                    p { font-size: 16px; line-height: 1.5; color: #64748B; }
+                    .icon { font-size: 56px; margin-bottom: 16px; display: block; }
                 </style>
             </head>
             <body>
@@ -78,7 +80,8 @@ def verify_email(token: str, db: Session = Depends(get_db)):
                 </div>
             </body>
         </html>
-        """
+        """,
+        )
         
     user.is_verified = True
     user.verification_token = None # Invalidar el token para que no se re-use

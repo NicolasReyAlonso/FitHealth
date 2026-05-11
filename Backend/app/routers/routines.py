@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, WebSocket, WebSocketDisconnect
 from sqlalchemy.orm import Session
-import os
 import uuid
 
 from app import crud
@@ -11,7 +10,7 @@ from app.models.relationship import DoctorPatient
 from app.schemas.routine import (
     RoutineCreate, RoutineRead, RoutineUpdate,
     RoutineExerciseCreate, RoutineDietCreate, RoutineMedicationCreate,
-    RoutineExerciseRead, RoutineDietRead, RoutineMedicationRead, RoutineDayRead, RoutineObjectiveCreate, RoutineObjectiveRead, RoutineObjectiveUpdate
+    RoutineExerciseRead, RoutineDietRead, RoutineMedicationRead, RoutineObjectiveCreate, RoutineObjectiveRead, RoutineObjectiveUpdate
 )
 from app.models.routine import Routine, RoutineDay, RoutineExercise, RoutineDiet, RoutineMedication, RoutineObjective
 from app.routers.notifications import notification_manager
@@ -248,15 +247,38 @@ async def upload_exercise_image(
     if owner_id == current_user.id and creator_id is not None and creator_id != current_user.id:
         raise HTTPException(status_code=403, detail="No puedes modificar la foto de un ejercicio de tu doctor")
 
-    # Guardar archivo localmente
-    file_ext = file.filename.split(".")[-1]
+    # Aceptar imágenes: el content-type/filename de Expo en web no siempre es fiable,
+    # así que intentamos derivar la extensión de cualquiera de los dos.
+    ALLOWED_EXT = {"jpg", "jpeg", "png", "webp", "heic", "heif", "gif"}
+    MIME_TO_EXT = {
+        "image/jpeg": "jpg", "image/jpg": "jpg", "image/png": "png",
+        "image/webp": "webp", "image/heic": "heic", "image/heif": "heif",
+        "image/gif": "gif",
+    }
+    MAX_BYTES = 5 * 1024 * 1024  # 5 MB
+
+    filename = file.filename or ""
+    content_type = (file.content_type or "").lower().split(";")[0].strip()
+    file_ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+
+    if file_ext not in ALLOWED_EXT:
+        file_ext = MIME_TO_EXT.get(content_type, "")
+
+    if not file_ext:
+        raise HTTPException(status_code=400, detail="Formato de imagen no soportado")
+    if content_type and not content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="El archivo no es una imagen")
+
+    content = await file.read()
+    if len(content) > MAX_BYTES:
+        raise HTTPException(status_code=413, detail="Imagen demasiado grande (máx. 5 MB)")
+
     file_name = f"{uuid.uuid4()}.{file_ext}"
     file_path = f"uploads/exercises/{file_name}"
-    
+
     with open(file_path, "wb") as buffer:
-        content = await file.read()
         buffer.write(content)
-        
+
     db_ex.image_url = f"/static/exercises/{file_name}"
     db.commit()
     db.refresh(db_ex)
@@ -286,10 +308,9 @@ async def update_medication(
     db_med = crud.routine.get_routine_medication(db, medication_id)
     if not db_med:
         raise HTTPException(status_code=404, detail="Medicación no encontrada")
-    
-    db_day = db.query(RoutineDay).filter(RoutineDay.id == db_med.routine_day_id).first()
-    db_routine = crud.routine.get_routine(db, db_day.routine_id)
-    
+
+    db_routine = db_med.day.routine
+
     is_owner = db_routine and db_routine.user_id == current_user.id
     is_creator = db_routine and db_routine.creator_id == current_user.id
     

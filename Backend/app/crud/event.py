@@ -82,15 +82,6 @@ def update_event(db: Session, event_id: int, event_data: EventUpdate) -> Event |
     return db_event
 
 
-def delete_event(db: Session, event_id: int) -> bool:
-    db_event = db.query(Event).filter(Event.id == event_id).first()
-    if not db_event:
-        return False
-    db.delete(db_event)
-    db.commit()
-    return True
-
-
 def soft_delete_event(db: Session, event_id: int) -> Event | None:
     """Soft delete: marca el evento como eliminado sin borrar los datos"""
     db_event = get_event(db, event_id)
