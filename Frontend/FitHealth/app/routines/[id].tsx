@@ -8,10 +8,11 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/context/auth-context';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-
-const DAYS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+import { useTranslation } from 'react-i18next';
 
 export default function RoutineDetailScreen() {
+  const { t } = useTranslation();
+  const DAYS = t('days.long', { returnObjects: true }) as string[];
   const { id } = useLocalSearchParams();
   const router = useRouter();
   const { user } = useAuth();
@@ -55,7 +56,7 @@ export default function RoutineDetailScreen() {
       const res = await api.get(`/routines/${id}`);
       setRoutine(res.data);
     } catch {
-      Alert.alert('Error', 'No se pudo cargar la rutina');
+      Alert.alert(t('common.error'), t('routines.load_failed'));
       router.back();
     } finally {
       setLoading(false);
@@ -162,7 +163,7 @@ export default function RoutineDetailScreen() {
           : Array.isArray(detail)
           ? detail[0]?.msg
           : null;
-      Alert.alert('Error', `Fallo al subir la imagen: ${detailMsg || e.message}`);
+      Alert.alert(t('common.error'), `${t('errors.photo_upload_failed')}: ${detailMsg || e.message}`);
     } finally {
       setLoading(false);
     }
@@ -170,7 +171,7 @@ export default function RoutineDetailScreen() {
 
   const handleSaveItem = async () => {
     if (!itemName) {
-        Alert.alert('Aviso', 'El nombre es obligatorio');
+        Alert.alert(t('common.warning'), t('routines.name_required'));
         return;
     }
     
@@ -221,7 +222,7 @@ export default function RoutineDetailScreen() {
         fetchRoutine();
     } catch (e: any) {
         console.error("DEBUG HTTP 422:", JSON.stringify(e.response?.data || e.message));
-        Alert.alert('Error', 'Fallo al guardar: ' + (e.response?.data?.detail?.[0]?.msg || e.message));
+        Alert.alert(t('common.error'), t('routines.save_failed') + ' ' + (e.response?.data?.detail?.[0]?.msg || e.message));
     } finally {
         setSavingItem(false);
     }
@@ -232,7 +233,7 @@ export default function RoutineDetailScreen() {
           await api.delete(`/routines/items/${type}/${itemId}`);
           fetchRoutine();
       } catch {
-          Alert.alert('Error', 'Fallo al borrar');
+          Alert.alert(t('common.error'), t('routines.delete_failed_short'));
       }
   };
 
@@ -247,7 +248,7 @@ export default function RoutineDetailScreen() {
       }
       
       if (isOverdue && !obj.is_completed) {
-          Alert.alert('Plazo expirado', 'Este objetivo ya ha pasado su fecha límite.');
+          Alert.alert(t('common.warning'), t('routines.objective_overdue'));
           return;
       }
       try {
@@ -256,7 +257,7 @@ export default function RoutineDetailScreen() {
           });
           fetchRoutine();
       } catch (e) {
-          Alert.alert('Error', 'No se pudo actualizar el objetivo.');
+          Alert.alert(t('common.error'), t('routines.update_failed'));
       }
   };
 
@@ -267,7 +268,7 @@ export default function RoutineDetailScreen() {
           });
           fetchRoutine();
       } catch (e) {
-          Alert.alert('Error', 'No se pudo actualizar la medicación.');
+          Alert.alert(t('common.error'), t('routines.update_medication_failed'));
       }
   };
 
@@ -291,23 +292,22 @@ export default function RoutineDetailScreen() {
 
   const confirmDuplicateDays = async () => {
     if (selectedDaysForDuplicate.length === 0) {
-      Alert.alert('Aviso', 'Selecciona al menos un día');
+      Alert.alert(t('common.warning'), t('routines.select_at_least_one_day'));
       return;
     }
     try {
       setCopyingDays(true);
-      // Usar el nuevo endpoint que copia el contenido del día actual a otros días
-      await api.post(`/routines/${id}/duplicate-day`, { 
+      await api.post(`/routines/${id}/duplicate-day`, {
         source_day: selectedDay,
-        target_days: selectedDaysForDuplicate 
+        target_days: selectedDaysForDuplicate
       });
-      Alert.alert('Éxito', 'Rutina copiada a los días seleccionados');
+      Alert.alert(t('common.success'), t('routines.copy_ok'));
       setShowDuplicateModal(false);
       setSelectedDaysForDuplicate([]);
       fetchRoutine();
     } catch (error: any) {
       console.error('Error duplicating day:', error);
-      Alert.alert('Error', error.response?.data?.detail || 'No se pudo copiar la rutina');
+      Alert.alert(t('common.error'), error.response?.data?.detail || t('routines.copy_failed'));
     } finally {
       setCopyingDays(false);
     }
@@ -367,19 +367,19 @@ export default function RoutineDetailScreen() {
 
       <ScrollView style={{ flex: 1, padding: 16 }}>
           <Text style={{ fontSize: 24, fontWeight: 'bold', color: colors.text, marginBottom: 4 }}>{routine.name}</Text>
-          <Text style={{ fontSize: 16, color: colors.icon, marginBottom: 20 }}>Visión del {DAYS[selectedDay]}</Text>
+          <Text style={{ fontSize: 16, color: colors.icon, marginBottom: 20 }}>{t('routines.view_of')} {DAYS[selectedDay]}</Text>
 
-          
+
           {/* OBJETIVOS */}
           <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>🎯 Objetivos de la Rutina</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('routines.objectives_section')}</Text>
             {(!routine.creator_id || routine.creator_id === user?.id) && (
               <TouchableOpacity onPress={() => openModal('objective')}>
-                <Text style={{ color: colors.primary, fontWeight: 'bold' }}>+ Añadir</Text>
+                <Text style={{ color: colors.primary, fontWeight: 'bold' }}>{t('routines.add_button')}</Text>
               </TouchableOpacity>
             )}
           </View>
-          {(!routine.objectives || routine.objectives.length === 0) && <Text style={{ color: colors.icon, marginBottom: 15 }}>Aún no hay objetivos.</Text>}
+          {(!routine.objectives || routine.objectives.length === 0) && <Text style={{ color: colors.icon, marginBottom: 15 }}>{t('routines.no_objectives_yet')}</Text>}
           {routine.objectives && routine.objectives.map((obj: any) => {
               const now = new Date();
               now.setHours(0, 0, 0, 0);
@@ -413,12 +413,12 @@ export default function RoutineDetailScreen() {
                     </TouchableOpacity>
                     <View style={{ flex: 1, opacity: (isOverdue && !isCompleted) ? 0.6 : 1 }}>
                         <Text style={{ color: statusColor, fontWeight: 'bold', fontSize: 16, textDecorationLine: isCompleted ? 'line-through' : 'none' }}>{obj.name}</Text>
-                        <Text style={{ color: colors.icon }}>{obj.target_value ? `Meta: ${obj.target_value} ${obj.unit || ''}` : ''}</Text>
+                        <Text style={{ color: colors.icon }}>{obj.target_value ? `${t('routines.goal_label')}: ${obj.target_value} ${obj.unit || ''}` : ''}</Text>
                         <Text style={{ color: isOverdue && !isCompleted ? '#D32F2F' : colors.icon, fontSize: 12 }}>
-                          {obj.deadline_date ? `Límite: ${new Date(obj.deadline_date).toLocaleDateString()}` : ''}
+                          {obj.deadline_date ? `${t('routines.deadline_label')}: ${new Date(obj.deadline_date).toLocaleDateString()}` : ''}
                         </Text>
                         <Text style={{ color: isRecommendedOk ? '#4CAF50' : colors.icon, fontSize: 12 }}>
-                          {obj.recommended_date ? `Recomendada: ${new Date(obj.recommended_date).toLocaleDateString()}` : ''}
+                          {obj.recommended_date ? `${t('routines.recommended_date')}: ${new Date(obj.recommended_date).toLocaleDateString()}` : ''}
                         </Text>
                     </View>
                     {(!routine.creator_id || routine.creator_id === user?.id) && (
@@ -432,14 +432,14 @@ export default function RoutineDetailScreen() {
 
           {/* MEDICAMENTOS */}
           <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>💊 Medicación</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('routines.medication_section')}</Text>
             {(!routine.creator_id || routine.creator_id === user?.id) && (
               <TouchableOpacity onPress={() => openModal('med')}>
-                <Text style={{ color: colors.primary, fontWeight: 'bold' }}>+ Añadir</Text>
+                <Text style={{ color: colors.primary, fontWeight: 'bold' }}>{t('routines.add_button')}</Text>
               </TouchableOpacity>
             )}
           </View>
-          {currentDayData.medications.length === 0 && <Text style={{ color: colors.icon, marginBottom: 15 }}>No hay medicación este día.</Text>}
+          {currentDayData.medications.length === 0 && <Text style={{ color: colors.icon, marginBottom: 15 }}>{t('routines.no_medication_today')}</Text>}
           {currentDayData.medications.map((m: any) => {
               const isCompleted = m.is_completed;
               return (
@@ -457,7 +457,7 @@ export default function RoutineDetailScreen() {
                     </TouchableOpacity>
                     <View style={{ flex: 1 }}>
                         <Text style={{ color: isCompleted ? '#4CAF50' : colors.text, fontWeight: 'bold', fontSize: 16, textDecorationLine: isCompleted ? 'line-through' : 'none' }}>{m.name}</Text>
-                        <Text style={{ color: colors.icon }}>Dosis: {m.dose} {m.time_of_day ? `| Hora: ${m.time_of_day}` : ''}</Text>
+                        <Text style={{ color: colors.icon }}>{t('routines.dose_label')}: {m.dose} {m.time_of_day ? `| ${t('routines.time_label')}: ${m.time_of_day}` : ''}</Text>
                     </View>
                     {(!routine.creator_id || routine.creator_id === user?.id) && (
                       <TouchableOpacity onPress={() => handleDeleteItem('medication', m.id)}>
@@ -470,20 +470,20 @@ export default function RoutineDetailScreen() {
 
           {/* TABLA DE EJERCICIOS */}
           <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>🏋️ Tabla de Ejercicios</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('routines.exercises_section')}</Text>
             {(!routine.creator_id || routine.creator_id === user?.id) && (
               <TouchableOpacity onPress={() => openModal('exercise')}>
-                <Text style={{ color: colors.primary, fontWeight: 'bold' }}>+ Añadir</Text>
+                <Text style={{ color: colors.primary, fontWeight: 'bold' }}>{t('routines.add_button')}</Text>
               </TouchableOpacity>
             )}
           </View>
-          {currentDayData.exercises.length === 0 && <Text style={{ color: colors.icon, marginBottom: 15 }}>Aún no hay ejercicios.</Text>}
+          {currentDayData.exercises.length === 0 && <Text style={{ color: colors.icon, marginBottom: 15 }}>{t('routines.no_exercises_yet')}</Text>}
           {currentDayData.exercises.map((ex: any) => (
               <View key={`ex-${ex.id}`} style={[styles.cardColumn, { backgroundColor: colors.card, borderColor: colors.border }]}>
                   <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12 }}>
                       <View style={{ flex: 1 }}>
                           <Text style={{ color: colors.text, fontWeight: 'bold', fontSize: 18 }}>{ex.name}</Text>
-                          <Text style={{ color: colors.icon, marginTop: 4 }}>Series: {ex.sets || '-'} | Reps: {ex.reps || '-'}</Text>
+                          <Text style={{ color: colors.icon, marginTop: 4 }}>{t('routines.series_label')}: {ex.sets || '-'} | {t('routines.reps_label')}: {ex.reps || '-'}</Text>
                       </View>
                       {(!routine.creator_id || routine.creator_id === user?.id) && (
                         <TouchableOpacity onPress={() => handleDeleteItem('exercise', ex.id)} style={{ marginLeft: 12 }}>
@@ -498,7 +498,7 @@ export default function RoutineDetailScreen() {
                       ) : (
                           <TouchableOpacity style={[styles.exImagePlaceholderLarge, { backgroundColor: colors.border }]} onPress={() => handlePickImage(ex.id)}>
                               <Ionicons name="camera-outline" size={40} color={colors.icon} />
-                              <Text style={{ color: colors.icon, marginTop: 8, fontSize: 12 }}>Añadir foto</Text>
+                              <Text style={{ color: colors.icon, marginTop: 8, fontSize: 12 }}>{t('routines.add_photo')}</Text>
                           </TouchableOpacity>
                       )}
                   </View>
@@ -507,19 +507,19 @@ export default function RoutineDetailScreen() {
 
           {/* DIETAS Y COMIDAS */}
           <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>🥗 Comidas / Dieta</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('routines.diet_section')}</Text>
             {(!routine.creator_id || routine.creator_id === user?.id) && (
               <TouchableOpacity onPress={() => openModal('diet')}>
-                <Text style={{ color: colors.primary, fontWeight: 'bold' }}>+ Añadir</Text>
+                <Text style={{ color: colors.primary, fontWeight: 'bold' }}>{t('routines.add_button')}</Text>
               </TouchableOpacity>
             )}
           </View>
-          {currentDayData.diet_items.length === 0 && <Text style={{ color: colors.icon, marginBottom: 15 }}>Sin dieta establecida para hoy.</Text>}
+          {currentDayData.diet_items.length === 0 && <Text style={{ color: colors.icon, marginBottom: 15 }}>{t('routines.no_diet_today')}</Text>}
           {currentDayData.diet_items.map((d: any) => (
               <View key={`diet-${d.id}`} style={[styles.cardRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
                   <View style={{ flex: 1 }}>
                       <Text style={{ color: colors.text, fontWeight: 'bold', fontSize: 16 }}>{d.name}</Text>
-                      <Text style={{ color: colors.icon }}>{d.calories ? `${d.calories} kcal` : 'Sin kcal prop.'} {d.time_of_day ? `| Hora: ${d.time_of_day}` : ''}</Text>
+                      <Text style={{ color: colors.icon }}>{d.calories ? `${d.calories} kcal` : t('routines.no_kcal_info')} {d.time_of_day ? `| ${t('routines.time_label')}: ${d.time_of_day}` : ''}</Text>
                   </View>
                   {(!routine.creator_id || routine.creator_id === user?.id) && (
                     <TouchableOpacity onPress={() => handleDeleteItem('diet', d.id)}>
@@ -537,7 +537,7 @@ export default function RoutineDetailScreen() {
                 onPress={() => setShowDuplicateModal(true)}
               >
                 <Text style={{ color: colors.primary, fontWeight: '600', fontSize: 16, textAlign: 'center' }}>
-                  📋 Añadir esta rutina para otros días
+                  {t('routines.add_to_other_days')}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -551,12 +551,12 @@ export default function RoutineDetailScreen() {
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
           <View style={{ backgroundColor: colors.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24 }}>
             <Text style={{ fontSize: 20, fontWeight: 'bold', color: colors.text, marginBottom: 20 }}>
-                {addingType === 'exercise' ? 'Añadir Ejercicio' : addingType === 'diet' ? 'Añadir Comida' : addingType === 'objective' ? 'Añadir Objetivo' : 'Añadir Medicación'}
+                {addingType === 'exercise' ? t('routines.add_exercise') : addingType === 'diet' ? t('routines.add_meal') : addingType === 'objective' ? t('routines.add_objective') : t('routines.add_medication')}
             </Text>
 
             <TextInput
                 style={[styles.input, { color: colors.text, borderColor: colors.border, backgroundColor: colors.background }]}
-                placeholder={addingType === 'med' ? "Nombre píldora (Ej. Ibuprofeno)" : addingType === 'objective' ? "Nombre (Ej. Llegar a 90 Kg)" : "Nombre"}
+                placeholder={addingType === 'med' ? t('routines.name_med_placeholder') : addingType === 'objective' ? t('routines.name_obj_placeholder') : t('common.name_placeholder')}
                 placeholderTextColor={colors.icon}
                 value={itemName}
                 onChangeText={setItemName}
@@ -564,15 +564,15 @@ export default function RoutineDetailScreen() {
 
             {addingType === 'exercise' && (
                 <View style={{ flexDirection: 'row', gap: 10 }}>
-                    <TextInput style={[styles.input, { flex: 1, color: colors.text, borderColor: colors.border, backgroundColor: colors.background }]} placeholder="Series" placeholderTextColor={colors.icon} keyboardType="numeric" value={itemSets} onChangeText={setItemSets} />
-                    <TextInput style={[styles.input, { flex: 1, color: colors.text, borderColor: colors.border, backgroundColor: colors.background }]} placeholder="Reps" placeholderTextColor={colors.icon} keyboardType="numeric" value={itemReps} onChangeText={setItemReps} />
+                    <TextInput style={[styles.input, { flex: 1, color: colors.text, borderColor: colors.border, backgroundColor: colors.background }]} placeholder={t('routines.series_label')} placeholderTextColor={colors.icon} keyboardType="numeric" value={itemSets} onChangeText={setItemSets} />
+                    <TextInput style={[styles.input, { flex: 1, color: colors.text, borderColor: colors.border, backgroundColor: colors.background }]} placeholder={t('routines.reps_label')} placeholderTextColor={colors.icon} keyboardType="numeric" value={itemReps} onChangeText={setItemReps} />
                 </View>
             )}
 
             {addingType === 'diet' && (
                 <View style={{ flexDirection: 'row', gap: 10 }}>
-                    <TextInput style={[styles.input, { flex: 1, color: colors.text, borderColor: colors.border, backgroundColor: colors.background }]} placeholder="Kcal" placeholderTextColor={colors.icon} keyboardType="numeric" value={itemCalories} onChangeText={setItemCalories} />
-                    <TextInput style={[styles.input, { flex: 1, color: colors.text, borderColor: colors.border, backgroundColor: colors.background }]} placeholder="Hora (ej. 14:00)" placeholderTextColor={colors.icon} value={itemTime} onChangeText={setItemTime} />
+                    <TextInput style={[styles.input, { flex: 1, color: colors.text, borderColor: colors.border, backgroundColor: colors.background }]} placeholder={t('routines.kcal_placeholder')} placeholderTextColor={colors.icon} keyboardType="numeric" value={itemCalories} onChangeText={setItemCalories} />
+                    <TextInput style={[styles.input, { flex: 1, color: colors.text, borderColor: colors.border, backgroundColor: colors.background }]} placeholder={t('routines.time_lunch_placeholder')} placeholderTextColor={colors.icon} value={itemTime} onChangeText={setItemTime} />
                 </View>
             )}
             
@@ -580,13 +580,13 @@ export default function RoutineDetailScreen() {
             {addingType === 'objective' && (
                 <>
                   <View style={{ flexDirection: 'row', gap: 10 }}>
-                      <TextInput style={[styles.input, { flex: 1, color: colors.text, borderColor: colors.border, backgroundColor: colors.background }]} placeholder="Valor objetivo (ej. 90)" placeholderTextColor={colors.icon} keyboardType="numeric" value={itemTargetValue} onChangeText={setItemTargetValue} />
-                      <TextInput style={[styles.input, { flex: 1, color: colors.text, borderColor: colors.border, backgroundColor: colors.background }]} placeholder="Unidad (ej. kg, bpm)" placeholderTextColor={colors.icon} value={itemUnit} onChangeText={setItemUnit} />
+                      <TextInput style={[styles.input, { flex: 1, color: colors.text, borderColor: colors.border, backgroundColor: colors.background }]} placeholder={t('routines.target_value_placeholder')} placeholderTextColor={colors.icon} keyboardType="numeric" value={itemTargetValue} onChangeText={setItemTargetValue} />
+                      <TextInput style={[styles.input, { flex: 1, color: colors.text, borderColor: colors.border, backgroundColor: colors.background }]} placeholder={t('routines.unit_placeholder')} placeholderTextColor={colors.icon} value={itemUnit} onChangeText={setItemUnit} />
                   </View>
                   {Platform.OS === 'web' ? (
                     <>
                       <View style={{ flexDirection: 'row', gap: 10, marginBottom: 14 }}>
-                        <Text style={{ color: colors.text, alignSelf: 'center', width: 120 }}>F. Recomendada</Text>
+                        <Text style={{ color: colors.text, alignSelf: 'center', width: 120 }}>{t('routines.recommended_date_short')}</Text>
                         <input
                           type="date"
                           style={{ flex: 1, padding: 10, borderRadius: 12, border: `1px solid ${colors.border}`, backgroundColor: colors.background, color: colors.text, fontSize: 16 }}
@@ -598,7 +598,7 @@ export default function RoutineDetailScreen() {
                         />
                       </View>
                       <View style={{ flexDirection: 'row', gap: 10, marginBottom: 14 }}>
-                        <Text style={{ color: colors.text, alignSelf: 'center', width: 120 }}>F. Límite</Text>
+                        <Text style={{ color: colors.text, alignSelf: 'center', width: 120 }}>{t('routines.deadline_short')}</Text>
                         <input
                           type="date"
                           style={{ flex: 1, padding: 10, borderRadius: 12, border: `1px solid ${colors.border}`, backgroundColor: colors.background, color: colors.text, fontSize: 16 }}
@@ -614,7 +614,7 @@ export default function RoutineDetailScreen() {
                     <>
                       <View style={{ flexDirection: 'row', gap: 10 }}>
                           <TouchableOpacity onPress={() => setShowRecommendedPicker(true)} style={[styles.input, { flex: 1, borderColor: colors.border, backgroundColor: colors.background, justifyContent: 'center' }]}>
-                            <Text style={{ color: itemRecommendedDate ? colors.text : colors.icon }}>{itemRecommendedDate ? formatDate(itemRecommendedDate) : 'F. Recomendada'}</Text>
+                            <Text style={{ color: itemRecommendedDate ? colors.text : colors.icon }}>{itemRecommendedDate ? formatDate(itemRecommendedDate) : t('routines.recommended_date_short')}</Text>
                           </TouchableOpacity>
                       </View>
                       {showRecommendedPicker && (
@@ -630,7 +630,7 @@ export default function RoutineDetailScreen() {
                       )}
                       <View style={{ flexDirection: 'row', gap: 10 }}>
                           <TouchableOpacity onPress={() => setShowDeadlinePicker(true)} style={[styles.input, { flex: 1, borderColor: colors.border, backgroundColor: colors.background, justifyContent: 'center' }]}>
-                            <Text style={{ color: itemDeadlineDate ? colors.text : colors.icon }}>{itemDeadlineDate ? formatDate(itemDeadlineDate) : 'F. Límite'}</Text>
+                            <Text style={{ color: itemDeadlineDate ? colors.text : colors.icon }}>{itemDeadlineDate ? formatDate(itemDeadlineDate) : t('routines.deadline_short')}</Text>
                           </TouchableOpacity>
                       </View>
                       {showDeadlinePicker && (
@@ -651,17 +651,17 @@ export default function RoutineDetailScreen() {
 
             {addingType === 'med' && (
                 <View style={{ flexDirection: 'row', gap: 10 }}>
-                    <TextInput style={[styles.input, { flex: 1, color: colors.text, borderColor: colors.border, backgroundColor: colors.background }]} placeholder="Dosis (Ej: 1 pastilla)" placeholderTextColor={colors.icon} value={itemDose} onChangeText={setItemDose} />
-                    <TextInput style={[styles.input, { flex: 1, color: colors.text, borderColor: colors.border, backgroundColor: colors.background }]} placeholder="Hora (ej. 09:00)" placeholderTextColor={colors.icon} value={itemTime} onChangeText={setItemTime} />
+                    <TextInput style={[styles.input, { flex: 1, color: colors.text, borderColor: colors.border, backgroundColor: colors.background }]} placeholder={t('routines.dose_placeholder')} placeholderTextColor={colors.icon} value={itemDose} onChangeText={setItemDose} />
+                    <TextInput style={[styles.input, { flex: 1, color: colors.text, borderColor: colors.border, backgroundColor: colors.background }]} placeholder={t('routines.time_morning_placeholder')} placeholderTextColor={colors.icon} value={itemTime} onChangeText={setItemTime} />
                 </View>
             )}
 
             <View style={{ flexDirection: 'row', gap: 12, marginTop: 10 }}>
               <TouchableOpacity style={[styles.btn, { backgroundColor: colors.border, flex: 1 }]} onPress={() => setModalVisible(false)}>
-                <Text style={{ textAlign: 'center', color: colors.text }}>Cancelar</Text>
+                <Text style={{ textAlign: 'center', color: colors.text }}>{t('common.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[styles.btn, { backgroundColor: colors.primary, flex: 1 }]} onPress={handleSaveItem} disabled={savingItem}>
-                {savingItem ? <ActivityIndicator color="#fff" /> : <Text style={{ textAlign: 'center', color: '#fff', fontWeight: 'bold' }}>Guardar</Text>}
+                {savingItem ? <ActivityIndicator color="#fff" /> : <Text style={{ textAlign: 'center', color: '#fff', fontWeight: 'bold' }}>{t('common.save')}</Text>}
               </TouchableOpacity>
             </View>
           </View>
@@ -674,10 +674,10 @@ export default function RoutineDetailScreen() {
           <View style={{ backgroundColor: colors.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 40, maxHeight: '80%' }}>
             <ScrollView showsVerticalScrollIndicator={false}>
               <Text style={{ fontSize: 20, fontWeight: 'bold', color: colors.text, marginBottom: 8 }}>
-                Copiar a otros días
+                {t('routines.copy_to_other_days')}
               </Text>
               <Text style={{ fontSize: 14, color: colors.icon, marginBottom: 16 }}>
-                Copiando contenido de <Text style={{ fontWeight: 'bold', color: colors.primary }}>{DAYS[selectedDay]}</Text> a:
+                {t('routines.copying_from')} <Text style={{ fontWeight: 'bold', color: colors.primary }}>{DAYS[selectedDay]}</Text> {t('routines.to')}
               </Text>
               
               {DAYS.map((dayName, index) => {
@@ -706,7 +706,7 @@ export default function RoutineDetailScreen() {
                     }}
                     onPress={() => {
                       if (isSourceDay) {
-                        Alert.alert('Aviso', `${dayName} es el día de origen (ya tiene este contenido)`);
+                        Alert.alert(t('common.warning'), `${dayName} ${t('routines.source_day_msg')}`);
                         return;
                       }
                       if (isSelected) {
@@ -741,7 +741,7 @@ export default function RoutineDetailScreen() {
                   }}
                   disabled={copyingDays}
                 >
-                  <Text style={{ color: colors.text, fontWeight: '600' }}>Cancelar</Text>
+                  <Text style={{ color: colors.text, fontWeight: '600' }}>{t('common.cancel')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={{ flex: 1, backgroundColor: colors.primary, borderRadius: 12, padding: 14, alignItems: 'center', opacity: selectedDaysForDuplicate.length > 0 && !copyingDays ? 1 : 0.5 }}

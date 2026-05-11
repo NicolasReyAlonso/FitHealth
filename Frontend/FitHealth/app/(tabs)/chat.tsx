@@ -179,24 +179,25 @@ export default function ChatScreen() {
         fetchRooms();
       } catch (e: any) {
         console.error("Error deleting room:", e);
-        const errorMessage = e.response?.data?.detail || e.message || 'Ocurrió un error desconocido al intentar borrar el chat.';
+        const errorMessage = e.response?.data?.detail || e.message || t('chat.delete_chat_unknown_error');
+        const message = `${t('chat.delete_chat_failed')} ${t('common.detail')}: ${errorMessage}`;
         if (Platform.OS === 'web') {
-          window.alert(`No se pudo borrar el chat. Detalle: ${errorMessage}`);
+          window.alert(message);
         } else {
-          Alert.alert('Error', `No se pudo borrar el chat. Detalle: ${errorMessage}`);
+          Alert.alert(t('common.error'), message);
         }
       }
     };
 
     if (Platform.OS === 'web') {
-      const confirmed = window.confirm('¿Estás seguro de que quieres borrar este chat? Se perderán todos los mensajes.');
+      const confirmed = window.confirm(t('chat.confirm_delete_chat'));
       if (confirmed) {
         performDelete();
       }
     } else {
-      Alert.alert('Confirmar', '¿Estás seguro de que quieres borrar este chat? Se perderán todos los mensajes.', [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Borrar', style: 'destructive', onPress: performDelete }
+      Alert.alert(t('common.confirm'), t('chat.confirm_delete_chat'), [
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('common.delete'), style: 'destructive', onPress: performDelete }
       ]);
     }
   };
@@ -223,13 +224,13 @@ export default function ChatScreen() {
             console.log('Message sent successfully via REST API:', res.data);
             setMessages((prev) => [...prev, res.data]);
           } catch (e: any) {
-            console.error('Error sending message via REST API:', e); // <-- Added error log
-            Alert.alert('Error', `No se pudo enviar el mensaje. Detalle: ${e.response?.data?.detail || 'Verifique la conexión o los permisos.'}`);
+            console.error('Error sending message via REST API:', e);
+            Alert.alert(t('common.error'), `${t('chat.send_message_failed')} ${t('common.detail')}: ${e.response?.data?.detail || t('chat.check_connection_or_perms')}`);
           }
         }
     } catch (outerError) {
-      console.error('Critical error during message sending process:', outerError); // <-- Added critical error log
-      Alert.alert('Error Crítico', 'Ocurrió un error inesperado al intentar enviar el mensaje.');
+      console.error('Critical error during message sending process:', outerError);
+      Alert.alert(t('chat.critical_error'), t('chat.send_message_unexpected'));
     }
   };
 
@@ -239,7 +240,7 @@ export default function ChatScreen() {
       await fetchRooms();
       openRoom(res.data);
     } catch {
-      Alert.alert('Error', t('errors.create_chat'));
+      Alert.alert(t('common.error'), t('errors.create_chat'));
     }
   };
 

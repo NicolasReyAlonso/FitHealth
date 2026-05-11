@@ -260,7 +260,7 @@ export default function EventsScreen() {
 
   const handleCreate = async () => {
     if (!name.trim()) {
-      showNotification('El nombre es requerido', 'error');
+      showNotification(t('routines.name_required'), 'error');
       return;
     }
     try {
@@ -269,9 +269,9 @@ export default function EventsScreen() {
       resetCreateForm();
       setShowModal(false);
       fetchEvents();
-      showNotification('Evento añadido correctamente', 'success');
+      showNotification(t('events.added_ok'), 'success');
     } catch {
-      showNotification('No se pudo crear el evento', 'error');
+      showNotification(t('events.create_failed_short'), 'error');
     }
   };
 
@@ -317,10 +317,10 @@ export default function EventsScreen() {
         }, 5000);
         setUndoTimeoutId(timeoutId);
       }
-      showNotification('Evento eliminado. Puedes deshacer durante 5 segundos', 'warning');
+      showNotification(t('routines.deleted_undo'), 'warning');
     } catch (error: any) {
       console.error('❌ Error al eliminar:', error);
-      showNotification(error.message || 'No se pudo eliminar el evento', 'error');
+      showNotification(error.message || t('events.delete_failed_short'), 'error');
     } finally {
       setDeleting(false);
     }
@@ -362,7 +362,7 @@ export default function EventsScreen() {
     if (!editingId) return;
     const parsedDate = parseDateTime(editingDateText, editingTimeText);
     if (!parsedDate) {
-      showNotification('Fecha u hora inválida. Usa DD/MM/AAAA y HH:MM', 'error');
+      showNotification(t('events.invalid_date_time'), 'error');
       return;
     }
     try {
@@ -384,7 +384,7 @@ export default function EventsScreen() {
       // Mostrar confirmación de cierre
       const eventTypeLabel = EVENT_TYPES.find(et => et.key === editingType)?.label || editingType;
       showClosure(
-        `¡Evento actualizado!`,
+        t('events.updated_ok'),
         `"${editingName.trim()}" - ${eventTypeLabel}`
       );
 
@@ -498,7 +498,7 @@ export default function EventsScreen() {
               )}
               {(e.event_type === 'walking' || e.event_type === 'running') && (
                 <View style={{ marginTop: 10 }}>
-                  {(e as any).activity_log?.steps != null && <Text style={[styles.cardNotes, { color: colors.text }]}>👣 {t('events.types.steps')}: {(e as any).activity_log.steps}</Text>}
+                  {(e as any).activity_log?.steps != null && <Text style={[styles.cardNotes, { color: colors.text }]}>👣 {t('routines.steps')}: {(e as any).activity_log.steps}</Text>}
                   {(e as any).activity_log?.distance_km != null && <Text style={[styles.cardNotes, { color: colors.text }]}>📏 {t('events.types.distance')}: {(e as any).activity_log.distance_km} km</Text>}
                   {(e as any).biometric?.heart_rate_avg != null && <Text style={[styles.cardNotes, { color: colors.text }]}>❤️ {t('events.types.heart_rate_avg')}: {(e as any).biometric.heart_rate_avg}</Text>}
                   {(e as any).biometric?.heart_rate_max != null && <Text style={[styles.cardNotes, { color: colors.text }]}>❤️ {t('events.types.heart_rate_max')}: {(e as any).biometric.heart_rate_max}</Text>}
@@ -886,7 +886,7 @@ export default function EventsScreen() {
                   />
                   <TextInput
                     style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text }]}
-                    placeholder={t('events.types.steps')}
+                    placeholder={t('routines.steps')}
                     placeholderTextColor={colors.icon}
                     value={steps}
                     onChangeText={setSteps}
@@ -939,7 +939,7 @@ export default function EventsScreen() {
                 </>
               )}
 
-              <Text style={{ color: colors.text, marginBottom: 8, marginTop: 4 }}>{t('events.types.associated_routine')}:</Text>
+              <Text style={{ color: colors.text, marginBottom: 8, marginTop: 4 }}>{t('events.associated_routine')}:</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 15 }}>
                 <TouchableOpacity
                   style={[

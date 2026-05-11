@@ -16,8 +16,10 @@ import { Link, useRouter } from 'expo-router';
 import { useAuth } from '@/context/auth-context';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useTranslation } from 'react-i18next';
 
 export default function RegisterScreen() {
+  const { t } = useTranslation();
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
   const { register } = useAuth();
@@ -44,27 +46,27 @@ export default function RegisterScreen() {
   const validateEmail = (text: string) => {
     setEmail(text);
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!text) setEmailErrorValidation('El email es obligatorio');
-    else if (!emailRegex.test(text)) setEmailErrorValidation('Formato de email inválido');
+    if (!text) setEmailErrorValidation(t('auth.email_required'));
+    else if (!emailRegex.test(text)) setEmailErrorValidation(t('auth.invalid_email'));
     else setEmailErrorValidation(null);
   };
 
   const validateUsername = (text: string) => {
     setUsername(text);
-    if (!text) setUsernameErrorValidation('El nombre de usuario es obligatorio');
-    else if (text.length < 3) setUsernameErrorValidation('Mínimo 3 caracteres');
+    if (!text) setUsernameErrorValidation(t('auth.username_required'));
+    else if (text.length < 3) setUsernameErrorValidation(t('auth.username_min'));
     else setUsernameErrorValidation(null);
   };
 
   const validatePassword = (text: string) => {
     setPassword(text);
-    if (!text) setPasswordErrorValidation('La contraseña es obligatoria');
-    else if (text.length < 6) setPasswordErrorValidation('La contraseña debe tener al menos 6 caracteres');
+    if (!text) setPasswordErrorValidation(t('auth.password_required'));
+    else if (text.length < 6) setPasswordErrorValidation(t('auth.password_min'));
     else setPasswordErrorValidation(null);
 
     // Validate confirmation against the new password
     if (confirmPassword && text !== confirmPassword) {
-      setConfirmPasswordErrorValidation('Las contraseñas no coinciden');
+      setConfirmPasswordErrorValidation(t('auth.passwords_dont_match'));
     } else if (confirmPassword && text === confirmPassword) {
       setConfirmPasswordErrorValidation(null);
     }
@@ -72,36 +74,33 @@ export default function RegisterScreen() {
 
   const validateConfirmPassword = (text: string) => {
     setConfirmPassword(text);
-    if (!text) setConfirmPasswordErrorValidation('Confirma tu contraseña');
-    else if (text !== password) setConfirmPasswordErrorValidation('Las contraseñas no coinciden');
+    if (!text) setConfirmPasswordErrorValidation(t('auth.confirm_password_required'));
+    else if (text !== password) setConfirmPasswordErrorValidation(t('auth.passwords_dont_match'));
     else setConfirmPasswordErrorValidation(null);
   };
 
   const handleRegister = async () => {
     setError(null);
-    
-    // Check if any fields are empty 
+
     if (!email || !username || !password || !confirmPassword) {
-      setError('Por favor completa todos los campos');
+      setError(t('auth.fill_all'));
       return;
     }
-    
-    // Refuse submission if there remain real-time errors
+
     if (emailErrorValidation || usernameErrorValidation || passwordErrorValidation || confirmPasswordErrorValidation) {
-      setError('Corrige los errores antes de continuar');
+      setError(t('auth.fix_errors'));
       return;
     }
 
     setLoading(true);
     try {
       await register(email.trim(), username.trim(), password, role);
-      // Tras registrar con éxito, vamos a la pantalla de aviso.
       router.replace('/verify-notice');
     } catch (err: any) {
       if (err.response?.data?.detail) {
         setError(err.response.data.detail);
       } else {
-        setError('No se pudo crear la cuenta. Verifica tus datos.');
+        setError(t('auth.account_create_failed'));
       }
     } finally {
       setLoading(false);
@@ -117,15 +116,15 @@ export default function RegisterScreen() {
         <View style={styles.header}>
           <Text style={styles.logo}>🏃‍♂️</Text>
           <Text style={[styles.title, { color: colors.text }]}>FitHealth</Text>
-          <Text style={[styles.subtitle, { color: colors.primary }]}>Crea tu cuenta</Text>
+          <Text style={[styles.subtitle, { color: colors.primary }]}>{t('auth.register_subtitle')}</Text>
         </View>
 
         <View style={[styles.form, { backgroundColor: colors.card }]}>
-          <Text style={[styles.formTitle, { color: colors.primary }]}>Registro</Text>
+          <Text style={[styles.formTitle, { color: colors.primary }]}>{t('auth.register_title')}</Text>
 
           <TextInput
             style={[styles.input, { backgroundColor: colors.primaryLight ?? '#F1F8E9', borderColor: colors.border, color: colors.text }, emailErrorValidation ? { borderColor: '#D32F2F', borderWidth: 1 } : {}]}
-            placeholder="Email"
+            placeholder={t('auth.email')}
             placeholderTextColor="#8E9AAF"
             value={email}
             onChangeText={validateEmail}
@@ -136,7 +135,7 @@ export default function RegisterScreen() {
 
           <TextInput
             style={[styles.input, { backgroundColor: colors.primaryLight ?? '#F1F8E9', borderColor: colors.border, color: colors.text }, usernameErrorValidation ? { borderColor: '#D32F2F', borderWidth: 1 } : {}]}
-            placeholder="Nombre de usuario"
+            placeholder={t('auth.username')}
             placeholderTextColor="#8E9AAF"
             value={username}
             onChangeText={validateUsername}
@@ -151,7 +150,7 @@ export default function RegisterScreen() {
                 styles.passwordInput,
                 passwordErrorValidation ? { borderColor: '#D32F2F', borderWidth: 1 } : {}
               ]}
-              placeholder="Contraseña"
+              placeholder={t('auth.password')}
               placeholderTextColor="#8E9AAF"
               value={password}
               onChangeText={validatePassword}
@@ -177,7 +176,7 @@ export default function RegisterScreen() {
                 styles.passwordInput,
                 confirmPasswordErrorValidation ? { borderColor: '#D32F2F', borderWidth: 1 } : {}
               ]}
-              placeholder="Confirmar contraseña"
+              placeholder={t('auth.confirm_password')}
               placeholderTextColor="#8E9AAF"
               value={confirmPassword}
               onChangeText={validateConfirmPassword}
@@ -198,14 +197,14 @@ export default function RegisterScreen() {
 
           {/* Role selector */}
           <View style={styles.roleContainer}>
-            <Text style={[styles.roleLabel, { color: colors.text }]}>Soy:</Text>
+            <Text style={[styles.roleLabel, { color: colors.text }]}>{t('auth.i_am')}</Text>
             <View style={styles.roleButtons}>
               <TouchableOpacity
                 style={[styles.roleButton, { borderColor: colors.border }, role === 'patient' && { borderColor: colors.primary, backgroundColor: 'rgba(21, 101, 192, 0.1)' }]}
                 onPress={() => setRole('patient')}
               >
                 <Text style={[styles.roleButtonText, { color: colors.icon }, role === 'patient' && { color: colors.primary }]}>
-                  Paciente
+                  {t('roles.patient')}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -213,7 +212,7 @@ export default function RegisterScreen() {
                 onPress={() => setRole('doctor')}
               >
                 <Text style={[styles.roleButtonText, { color: colors.icon }, role === 'doctor' && { color: colors.primary }]}>
-                  Doctor
+                  {t('roles.doctor')}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -229,15 +228,15 @@ export default function RegisterScreen() {
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.buttonText}>Crear Cuenta</Text>
+              <Text style={styles.buttonText}>{t('auth.register_button')}</Text>
             )}
           </TouchableOpacity>
 
           <Link href="/login" asChild>
             <TouchableOpacity style={styles.linkContainer}>
               <Text style={[styles.linkText, { color: colors.text }]}>
-                ¿Ya tienes cuenta?{' '}
-                <Text style={[styles.linkBold, { color: colors.primary }]}>Inicia Sesión</Text>
+                {t('auth.have_account')}{' '}
+                <Text style={[styles.linkBold, { color: colors.primary }]}>{t('auth.log_in')}</Text>
               </Text>
             </TouchableOpacity>
           </Link>

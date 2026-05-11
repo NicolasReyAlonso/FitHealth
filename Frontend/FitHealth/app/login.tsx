@@ -16,8 +16,10 @@ import { Link, useRouter } from 'expo-router';
 import { useAuth } from '@/context/auth-context';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useTranslation } from 'react-i18next';
 
 export default function LoginScreen() {
+  const { t } = useTranslation();
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
   const { login } = useAuth();
@@ -36,9 +38,9 @@ export default function LoginScreen() {
     setEmail(text);
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!text) {
-      setEmailErrorValidation('El email es obligatorio');
+      setEmailErrorValidation(t('auth.email_required'));
     } else if (!emailRegex.test(text)) {
-      setEmailErrorValidation('Formato de email inválido');
+      setEmailErrorValidation(t('auth.invalid_email'));
     } else {
       setEmailErrorValidation(null);
     }
@@ -47,11 +49,11 @@ export default function LoginScreen() {
   const handleLogin = async () => {
     setError(null);
     if (!email || !password) {
-      setError('Por favor completa todos los campos');
+      setError(t('auth.fill_all'));
       return;
     }
     if (emailErrorValidation) {
-      setError('Corrige los errores antes de continuar');
+      setError(t('auth.fix_errors'));
       return;
     }
     setLoading(true);
@@ -59,9 +61,9 @@ export default function LoginScreen() {
       await login(email.trim(), password);
     } catch (err: any) {
       if (err.response?.status === 403) {
-        setError(err.response.data.detail || 'Por favor, verifica tu correo antes de iniciar sesión.');
+        setError(err.response.data.detail || t('auth.verify_email_first'));
       } else {
-        setError('Email o contraseña incorrectos');
+        setError(t('auth.wrong_credentials'));
       }
     } finally {
       setLoading(false);
@@ -77,15 +79,15 @@ export default function LoginScreen() {
         <View style={styles.header}>
           <Text style={styles.logo}>🏃‍♂️</Text>
           <Text style={[styles.title, { color: colors.text }]}>FitHealth</Text>
-          <Text style={[styles.subtitle, { color: colors.primary }]}>Tu salud, tu control</Text>
+          <Text style={[styles.subtitle, { color: colors.primary }]}>{t('auth.tagline')}</Text>
         </View>
 
         <View style={[styles.form, { backgroundColor: colors.card }]}>
-          <Text style={[styles.formTitle, { color: colors.primary }]}>Iniciar Sesión</Text>
+          <Text style={[styles.formTitle, { color: colors.primary }]}>{t('auth.login_title')}</Text>
 
           <TextInput
             style={[styles.input, { backgroundColor: colors.primaryLight ?? '#F1F8E9', borderColor: colors.border, color: colors.text }, emailErrorValidation ? { borderColor: colors.danger ?? '#D32F2F', borderWidth: 1 } : {}]}
-            placeholder="Email"
+            placeholder={t('auth.email')}
             placeholderTextColor="#8E9AAF"
             value={email}
             onChangeText={validateEmail}
@@ -97,7 +99,7 @@ export default function LoginScreen() {
           <View style={styles.passwordContainer}>
             <TextInput
               style={[styles.input, { backgroundColor: colors.primaryLight ?? '#F1F8E9', borderColor: colors.border, color: colors.text }, styles.passwordInput]}
-              placeholder="Contraseña"
+              placeholder={t('auth.password')}
               placeholderTextColor="#8E9AAF"
               value={password}
               onChangeText={setPassword}
@@ -125,15 +127,15 @@ export default function LoginScreen() {
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.buttonText}>Entrar</Text>
+              <Text style={styles.buttonText}>{t('auth.login_button')}</Text>
             )}
           </TouchableOpacity>
 
           <Link href="/register" asChild>
             <TouchableOpacity style={styles.linkContainer}>
               <Text style={[styles.linkText, { color: colors.text }]}>
-                ¿No tienes cuenta?{' '}
-                <Text style={[styles.linkBold, { color: colors.primary }]}>Regístrate</Text>
+                {t('auth.no_account')}{' '}
+                <Text style={[styles.linkBold, { color: colors.primary }]}>{t('auth.sign_up')}</Text>
               </Text>
             </TouchableOpacity>
           </Link>

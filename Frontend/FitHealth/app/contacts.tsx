@@ -7,6 +7,7 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Ionicons } from '@expo/vector-icons';
 import { Stack } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 
 type Relation = {
   id: number;
@@ -28,6 +29,7 @@ type UserSearch = {
 };
 
 export default function ContactsScreen() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { lastEvent } = useNotifications();
   const colorScheme = useColorScheme() ?? 'light';
@@ -63,7 +65,7 @@ export default function ContactsScreen() {
       }
     } catch (e) {
       console.error(e);
-      Alert.alert('Error', 'No se pudieron cargar los contactos');
+      Alert.alert(t('common.error'), t('contacts.load_contacts_failed'));
     } finally {
       setLoading(false);
     }
@@ -91,7 +93,7 @@ export default function ContactsScreen() {
       const res = await api.get(`/users/search?query=${searchQuery}&role=patient`);
       setSearchResults(res.data);
     } catch (e) {
-      Alert.alert('Error', 'Fallo al buscar usuarios');
+      Alert.alert(t('common.error'), t('contacts.search_failed'));
     } finally {
       setSearchSearching(false);
     }
@@ -100,12 +102,12 @@ export default function ContactsScreen() {
   const sendRequest = async (patientId: number) => {
     try {
       await api.post(`/relationships/request?patient_id=${patientId}`);
-      Alert.alert('Éxito', 'Solicitud enviada correctamente');
+      Alert.alert(t('common.success'), t('contacts.request_sent'));
       setSearchQuery('');
       setSearchResults([]);
       fetchContacts();
     } catch (e: any) {
-       Alert.alert('Error', e.response?.data?.detail || 'No se pudo enviar la solicitud, quizá ya existe.');
+       Alert.alert(t('common.error'), e.response?.data?.detail || t('contacts.request_send_failed'));
     }
   };
 
@@ -114,16 +116,15 @@ export default function ContactsScreen() {
       await api.patch(`/relationships/${relId}/status?status=${status}`);
       fetchContacts();
     } catch (e) {
-      Alert.alert('Error', 'No se pudo actualizar la solicitud');
+      Alert.alert(t('common.error'), t('contacts.request_update_failed'));
     }
   };
 
   const unlinkContact = (relId: number) => {
     if (Platform.OS === 'web') {
-      const confirmed = window.confirm("¿Estás seguro de que quieres desligarte de este usuario? Se perderán todos los datos asociados.");
+      const confirmed = window.confirm(t('contacts.confirm_unlink'));
       if (!confirmed) return;
 
-      // Ejecutar la acción en el navegador web
       api.delete(`/relationships/${relId}`)
         .then(() => {
           console.log('Contacto desvinculado exitosamente');
@@ -131,18 +132,17 @@ export default function ContactsScreen() {
         })
         .catch((e: any) => {
           console.error("Error al desligar contacto:", e);
-          alert(`No se pudo desligar la cuenta. Detalle: ${e.response?.data?.detail || 'Verifique su conexión o permisos.'}`);
+          alert(`${t('contacts.unlink_failed')} ${t('common.detail')}: ${e.response?.data?.detail || t('contacts.check_connection_or_perms')}`);
         });
 
     } else {
-      // Lógica para móvil (React Native)
       Alert.alert(
-        "Confirmar",
-        "¿Estás seguro de que quieres desligarte de este usuario? Se perderán todos los datos asociados.",
+        t('common.confirm'),
+        t('contacts.confirm_unlink'),
         [
-          { text: "Cancelar", style: "cancel" },
-          { 
-            text: "Desligarse", 
+          { text: t('common.cancel'), style: "cancel" },
+          {
+            text: t('contacts.unlink'),
             style: "destructive",
             onPress: async () => {
               try {
@@ -150,7 +150,7 @@ export default function ContactsScreen() {
                 fetchContacts();
               } catch (e: any) {
                 console.error("Error al desligar contacto:", e);
-                Alert.alert('Error', `No se pudo desligar la cuenta. Detalle: ${e.response?.data?.detail || 'Verifique su conexión o permisos.'}`);
+                Alert.alert(t('common.error'), `${t('contacts.unlink_failed')} ${t('common.detail')}: ${e.response?.data?.detail || t('contacts.check_connection_or_perms')}`);
               }
             }
           }
@@ -162,7 +162,7 @@ export default function ContactsScreen() {
   if (!user) return null;
 
   const isDoctor = user.role === 'doctor';
-  const title = isDoctor ? 'Mis Pacientes' : 'Mis Doctores';
+  const title = isDoctor ? t('contacts.title_patients') : t('contacts.title_doctors');
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -177,18 +177,18 @@ export default function ContactsScreen() {
             {/* DOC: Add Patient Section */}
             {isDoctor && (
               <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>Añadir Paciente</Text>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('contacts.add_patient')}</Text>
                 <View style={styles.searchRow}>
                   <TextInput
                     style={[styles.searchInput, { color: colors.text, borderColor: colors.border }]}
-                    placeholder="Buscar por email o usuario..."
+                    placeholder={t('contacts.search_placeholder')}
                     placeholderTextColor={colors.icon}
                     value={searchQuery}
                     onChangeText={setSearchQuery}
                     onSubmitEditing={handleSearch}
                   />
                   <TouchableOpacity style={[styles.searchBtn, { backgroundColor: colors.primary }]} onPress={handleSearch}>
-                    {searching ? <ActivityIndicator color="#fff" /> : <Text style={styles.searchBtnText}>Buscar</Text>}
+                    {searching ? <ActivityIndicator color="#fff" /> : <Text style={styles.searchBtnText}>{t('contacts.search')}</Text>}
                   </TouchableOpacity>
                 </View>
 
@@ -206,7 +206,7 @@ export default function ContactsScreen() {
                         <Text style={[styles.resultEmail, { color: colors.icon }]}>{res.email}</Text>
                       </View>
                       <TouchableOpacity style={[styles.addBtn, { backgroundColor: colors.primary }]} onPress={() => sendRequest(res.id)}>
-                        <Text style={styles.addBtnText}>Añadir</Text>
+                        <Text style={styles.addBtnText}>{t('contacts.add')}</Text>
                       </TouchableOpacity>
                   </View>
                 ))}
@@ -216,7 +216,7 @@ export default function ContactsScreen() {
             {/* PENDING REQUESTS */}
             {pendingRequests.length > 0 && (
               <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>Solicitudes Pendientes</Text>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('contacts.pending_requests')}</Text>
                 {pendingRequests.map(req => {
                   const otherName = isDoctor ? req.patient_username : req.doctor_username;
                   const otherPic = isDoctor ? req.patient_profile_picture : req.doctor_profile_picture;
@@ -231,15 +231,15 @@ export default function ContactsScreen() {
                       )}
                       <View style={styles.reqInfo}>
                         <Text style={[styles.reqName, { color: colors.text }]}>{otherName}</Text>
-                        <Text style={[styles.reqStatus, { color: colors.icon }]}>Esperando aceptación</Text>
+                        <Text style={[styles.reqStatus, { color: colors.icon }]}>{t('contacts.waiting_acceptance')}</Text>
                       </View>
                       {!isDoctor && (
                          <View style={styles.actionRow}>
                            <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.primary }]} onPress={() => updateRequestStatus(req.id, 'accepted')}>
-                              <Text style={styles.actionText}>Aceptar</Text>
+                              <Text style={styles.actionText}>{t('contacts.accept')}</Text>
                            </TouchableOpacity>
                            <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#FF3B30' }]} onPress={() => updateRequestStatus(req.id, 'rejected')}>
-                              <Text style={styles.actionText}>Rechazar</Text>
+                              <Text style={styles.actionText}>{t('contacts.reject')}</Text>
                            </TouchableOpacity>
                          </View>
                       )}
@@ -254,7 +254,7 @@ export default function ContactsScreen() {
               <Text style={[styles.sectionTitle, { color: colors.text }]}>{title}</Text>
               {loading && <ActivityIndicator style={{ margin: 20 }} color={colors.primary} />}
               {!loading && acceptedContacts.length === 0 && (
-                <Text style={{ color: colors.icon, textAlign: 'center', marginVertical: 20 }}>No tienes {isDoctor ? 'pacientes' : 'doctores'} asociados aún.</Text>
+                <Text style={{ color: colors.icon, textAlign: 'center', marginVertical: 20 }}>{isDoctor ? t('contacts.no_patients_yet') : t('contacts.no_doctors_yet')}</Text>
               )}
               {acceptedContacts.map(c => (
                 <View key={c.id} style={[styles.contactCard, { borderColor: colors.border }]}>
@@ -270,7 +270,7 @@ export default function ContactsScreen() {
                     <Text style={[styles.contactEmail, { color: colors.icon }]}>{c.email}</Text>
                   </View>
                   <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#FF3B30' }]} onPress={() => unlinkContact(c.relationship_id)}>
-                     <Text style={styles.actionText}>Desligar</Text>
+                     <Text style={styles.actionText}>{t('contacts.unlink')}</Text>
                   </TouchableOpacity>
                 </View>
               ))}

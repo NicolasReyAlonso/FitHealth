@@ -112,7 +112,7 @@ export default function RoutinesScreen() {
 
   const handleCreate = async () => {
     if (!name.trim()) {
-      showNotification('El nombre es requerido', 'error');
+      showNotification(t('routines.name_required'), 'error');
       return;
     }
     try {
@@ -125,20 +125,19 @@ export default function RoutinesScreen() {
       setDescription('');
       setPatientId(null);
       setShowModal(false);
-      
-      // Mostrar confirmación de cierre
-      const patientName = patientId 
-        ? patients.find(p => p.id === patientId)?.username 
-        : 'Personal';
+
+      const patientName = patientId
+        ? patients.find(p => p.id === patientId)?.username
+        : t('routines.personal');
       showClosure(
-        `¡Rutina creada!`,
-        `"${name.trim()}" para ${patientName}`
+        t('routines.routine_created'),
+        `"${name.trim()}" → ${patientName}`
       );
-      
+
       fetchRoutines();
-      showNotification('Rutina añadida correctamente', 'success');
+      showNotification(t('routines.added_ok'), 'success');
     } catch {
-      showNotification('No se pudo crear la rutina', 'error');
+      showNotification(t('routines.create_failed'), 'error');
     }
   };
 
@@ -184,10 +183,10 @@ export default function RoutinesScreen() {
         }, 5000);
         setUndoTimeoutId(timeoutId);
       }
-      showNotification('Rutina eliminada. Puedes deshacer durante 5 segundos', 'warning');
+      showNotification(t('routines.deleted_undo'), 'warning');
     } catch (error: any) {
       console.error('❌ Error al eliminar:', error);
-      showNotification(error.message || 'No se pudo eliminar la rutina', 'error');
+      showNotification(error.message || t('routines.delete_failed'), 'error');
     } finally {
       setDeleting(false);
     }
@@ -200,16 +199,15 @@ export default function RoutinesScreen() {
       console.log('↶ Deshaciendo eliminación de rutina:', lastDeletedRoutineId);
       const res = await api.post(`/routines/${lastDeletedRoutineId}/restore`);
       
-      // Mostrar confirmación de cierre
       showClosure(
-        `¡Rutina restaurada!`,
-        `"${res.data.name}" está de vuelta`
+        t('routines.restored'),
+        `"${res.data.name}" ${t('routines.back_again')}`
       );
-      
+
       await fetchRoutines();
     } catch (error: any) {
       console.error('❌ Error al restaurar:', error);
-      toast.error('No se pudo restaurar la rutina');
+      toast.error(t('routines.restore_failed'));
     } finally {
       setShowUndoToast(false);
       setLastDeletedRoutineId(null);
@@ -248,21 +246,20 @@ export default function RoutinesScreen() {
       
       console.log('✅ Rutina actualizada exitosamente');
       
-      // Mostrar confirmación de cierre
       showClosure(
-        `¡Rutina actualizada!`,
+        t('routines.updated'),
         `"${editingName.trim()}"`
       );
-      
+
       setEditingId(null);
       setEditingName('');
       setEditingDescription('');
       setEditingPatientId(null);
       await fetchRoutines();
-      showNotification('Rutina actualizada correctamente', 'success');
+      showNotification(t('routines.updated_ok'), 'success');
     } catch (error: any) {
       console.error('❌ Error al actualizar:', error);
-      showNotification(error.message || 'No se pudo actualizar la rutina', 'error');
+      showNotification(error.message || t('routines.update_failed'), 'error');
     }
   };
 
@@ -287,9 +284,9 @@ export default function RoutinesScreen() {
       setUndoDeletedRoutine(null);
       setUndoTimeoutId(null);
       await fetchRoutines();
-      showNotification('Rutina recuperada correctamente', 'success');
+      showNotification(t('routines.recover_ok'), 'success');
     } catch {
-      showNotification('No se pudo recuperar la rutina', 'error');
+      showNotification(t('routines.recover_failed'), 'error');
     }
   };
 
@@ -377,10 +374,10 @@ export default function RoutinesScreen() {
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
           <View style={{ backgroundColor: colors.card, borderRadius: 16, padding: 24, width: '100%', maxWidth: 300 }}>
             <Text style={{ fontSize: 18, fontWeight: 'bold', color: colors.text, marginBottom: 12 }}>
-              ¿Eliminar rutina?
+              {t('routines.confirm_delete_question')}
             </Text>
             <Text style={{ fontSize: 14, color: colors.icon, marginBottom: 24 }}>
-              Esta acción no se puede deshacer
+              {t('events.cant_be_undone')}
             </Text>
             <View style={{ flexDirection: 'row', gap: 12 }}>
               <TouchableOpacity
@@ -391,7 +388,7 @@ export default function RoutinesScreen() {
                 }}
                 disabled={deleting}
               >
-                <Text style={{ color: colors.text, fontWeight: '600' }}>Cancelar</Text>
+                <Text style={{ color: colors.text, fontWeight: '600' }}>{t('common.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={{ flex: 1, backgroundColor: '#FF4444', borderRadius: 12, padding: 12, alignItems: 'center', opacity: deleting ? 0.6 : 1 }}
@@ -399,7 +396,7 @@ export default function RoutinesScreen() {
                 disabled={deleting}
               >
                 <Text style={{ color: '#fff', fontWeight: '600' }}>
-                  {deleting ? 'Eliminando...' : 'Eliminar'}
+                  {deleting ? t('common.deleting') : t('common.delete')}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -412,30 +409,30 @@ export default function RoutinesScreen() {
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
           <View style={{ backgroundColor: colors.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 40 }}>
             <Text style={{ fontSize: 20, fontWeight: 'bold', color: colors.text, marginBottom: 20 }}>
-              Editar Rutina
+              {t('routines.edit_routine')}
             </Text>
-            
+
             <TextInput
               style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text }]}
-              placeholder="Nombre de la rutina"
+              placeholder={t('routines.routine_name_placeholder')}
               placeholderTextColor={colors.icon}
               value={editingName}
               onChangeText={setEditingName}
             />
-            
+
             <TextInput
               style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text, height: 80 }]}
-              placeholder="Descripción"
+              placeholder={t('common.description')}
               placeholderTextColor={colors.icon}
               value={editingDescription}
               onChangeText={setEditingDescription}
               multiline
               numberOfLines={3}
             />
-            
+
             {user?.role === 'doctor' && patients.length > 0 && (
               <View style={{ marginBottom: 20 }}>
-                <Text style={{ color: colors.text, marginBottom: 8, fontWeight: '600' }}>Reasignar paciente:</Text>
+                <Text style={{ color: colors.text, marginBottom: 8, fontWeight: '600' }}>{t('routines.reassign_patient')}</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexDirection: 'row' }}>
                   <TouchableOpacity
                     style={{
@@ -448,7 +445,7 @@ export default function RoutinesScreen() {
                     }}
                     onPress={() => setEditingPatientId(user.id)}
                   >
-                    <Text style={{ color: editingPatientId === null || editingPatientId === user.id ? colors.primary : colors.text }}>Nadie (Para mi)</Text>
+                    <Text style={{ color: editingPatientId === null || editingPatientId === user.id ? colors.primary : colors.text }}>{t('routines.personal')}</Text>
                   </TouchableOpacity>
                   {patients.map(p => (
                     <TouchableOpacity
@@ -480,7 +477,7 @@ export default function RoutinesScreen() {
                   setEditingPatientId(null);
                 }}
               >
-                <Text style={{ color: colors.text, fontWeight: '600' }}>Cancelar</Text>
+                <Text style={{ color: colors.text, fontWeight: '600' }}>{t('common.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={{
@@ -494,11 +491,11 @@ export default function RoutinesScreen() {
                 onPress={confirmEdit}
                 disabled={!canSaveRoutineEdit}
               >
-                <Text style={{ color: '#fff', fontWeight: '600' }}>Guardar</Text>
+                <Text style={{ color: '#fff', fontWeight: '600' }}>{t('common.save')}</Text>
               </TouchableOpacity>
             </View>
             {!canSaveRoutineEdit && (
-              <Text style={styles.inlineErrorText}>El nombre es obligatorio para guardar la rutina.</Text>
+              <Text style={styles.inlineErrorText}>{t('routines.name_required_edit')}</Text>
             )}
           </View>
         </View>
@@ -507,17 +504,17 @@ export default function RoutinesScreen() {
       <Modal visible={showModal} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
-            <Text style={[styles.modalTitle, { color: colors.primary }]}>Nueva Rutina</Text>
+            <Text style={[styles.modalTitle, { color: colors.primary }]}>{t('routines.new_routine')}</Text>
             <TextInput
               style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text }]}
-              placeholder="Nombre"
+              placeholder={t('common.name_placeholder')}
               placeholderTextColor={colors.icon}
               value={name}
               onChangeText={setName}
             />
             <TextInput
               style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text }]}
-              placeholder="Descripción (opcional)"
+              placeholder={t('common.description_optional')}
               placeholderTextColor={colors.icon}
               value={description}
               onChangeText={setDescription}
@@ -525,7 +522,7 @@ export default function RoutinesScreen() {
             />
             {user?.role === 'doctor' && patients.length > 0 && (
               <View style={{ marginBottom: 20 }}>
-                <Text style={{ color: colors.text, marginBottom: 8, fontWeight: '600' }}>Asignar a paciente:</Text>
+                <Text style={{ color: colors.text, marginBottom: 8, fontWeight: '600' }}>{t('routines.assign_patient')}</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexDirection: 'row' }}>
                   <TouchableOpacity
                     style={{
@@ -538,7 +535,7 @@ export default function RoutinesScreen() {
                     }}
                     onPress={() => setPatientId(null)}
                   >
-                    <Text style={{ color: patientId === null ? colors.primary : colors.text }}>Nadie (Para mi)</Text>
+                    <Text style={{ color: patientId === null ? colors.primary : colors.text }}>{t('routines.personal')}</Text>
                   </TouchableOpacity>
                   {patients.map(p => (
                     <TouchableOpacity
@@ -561,7 +558,7 @@ export default function RoutinesScreen() {
             )}
             <View style={styles.modalButtons}>
               <TouchableOpacity style={[styles.modalBtn, { backgroundColor: colors.border }]} onPress={() => setShowModal(false)}>
-                <Text style={{ color: colors.text, fontWeight: '600' }}>Cancelar</Text>
+                <Text style={{ color: colors.text, fontWeight: '600' }}>{t('common.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[
@@ -571,11 +568,11 @@ export default function RoutinesScreen() {
                 onPress={handleCreate}
                 disabled={!canCreateRoutine}
               >
-                <Text style={{ color: '#fff', fontWeight: '600' }}>Crear</Text>
+                <Text style={{ color: '#fff', fontWeight: '600' }}>{t('common.create')}</Text>
               </TouchableOpacity>
             </View>
             {!canCreateRoutine && (
-              <Text style={styles.inlineErrorText}>El nombre es obligatorio para crear la rutina.</Text>
+              <Text style={styles.inlineErrorText}>{t('routines.name_required_create')}</Text>
             )}
           </View>
         </View>

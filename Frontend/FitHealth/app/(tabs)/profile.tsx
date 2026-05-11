@@ -69,7 +69,7 @@ export default function ProfileScreen() {
         logout();
       }
     } else {
-      Alert.alert(t('logout'), t('alerts.sure_logout'), [
+      Alert.alert(t('common.logout'), t('alerts.sure_logout'), [
         { text: t('common.cancel') },
         { text: t('common.confirm'), style: 'destructive', onPress: logout },
       ]);
@@ -108,8 +108,8 @@ export default function ProfileScreen() {
           <Text style={styles.roleText}
             accessibilityLabel={
               user?.role === 'doctor'
-                ? t('profile.doctor')
-                : t('profile.patient')
+                ? t('roles.doctor')
+                : t('roles.patient')
             }>
             {user?.role === 'doctor' ? `🩺 ${t('roles.doctor')}` : `🏃 ${t('roles.patient')}`}
           </Text>
