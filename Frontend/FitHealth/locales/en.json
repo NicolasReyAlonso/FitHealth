@@ -78,7 +78,9 @@
     "photo_updated": {
       "title": "Photo updated!",
       "subtitle": "Your profile looks great"
-    }
+    },
+    "delete_account": "Delete account",
+    "delete_account_failed": "Could not delete your account. Please try again."
   },
   "roles": {
     "doctor": "Doctor",
@@ -294,7 +296,8 @@
     "name_required": "Name is required"
   },
   "alerts": {
-    "sure_logout": "Are you sure you want to log out?"
+    "sure_logout": "Are you sure you want to log out?",
+    "sure_delete_account": "Are you sure you want to delete your account? This action cannot be undone and all your data will be permanently lost."
   },
   "date": {
     "this_month": "this month",

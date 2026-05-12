@@ -28,6 +28,7 @@ type AuthContextType = {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, username: string, password: string, role?: string) => Promise<void>;
   logout: () => Promise<void>;
+  deleteAccount: () => Promise<void>;
   setUser: React.Dispatch<React.SetStateAction<User | null>>;
 };
 
@@ -38,6 +39,7 @@ const AuthContext = createContext<AuthContextType>({
   login: async () => {},
   register: async () => {},
   logout: async () => {},
+  deleteAccount: async () => {},
   setUser: () => {},
 });
 
@@ -84,8 +86,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
   };
 
+  const deleteAccount = async () => {
+    if (!user) return;
+    await api.delete(`/users/${user.id}`);
+    await AsyncStorage.removeItem('access_token');
+    setToken(null);
+    setUser(null);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, login, register, logout, setUser }}>
+    <AuthContext.Provider value={{ user, token, isLoading, login, register, logout, deleteAccount, setUser }}>
       {children}
     </AuthContext.Provider>
   );

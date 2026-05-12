@@ -78,7 +78,9 @@
     "photo_updated": {
       "title": "Fotka aktualizována!",
       "subtitle": "Tvůj profil vypadá skvěle"
-    }
+    },
+    "delete_account": "Smazat účet",
+    "delete_account_failed": "Účet se nepodařilo smazat. Zkus to znovu."
   },
   "roles": {
     "doctor": "Doktor",
@@ -294,7 +296,8 @@
     "name_required": "Jméno je povinné"
   },
   "alerts": {
-    "sure_logout": "Opravdu se chceš odhlásit?"
+    "sure_logout": "Opravdu se chceš odhlásit?",
+    "sure_delete_account": "Opravdu chceš smazat svůj účet? Tato akce je nevratná a všechna tvá data budou trvale ztracena."
   },
   "date": {
     "this_month": "tento měsíc",

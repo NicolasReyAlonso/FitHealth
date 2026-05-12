@@ -16,8 +16,9 @@ export default function ProfileScreen() {
   const colors = useColors();
   const toast = useToast();
   const { component: closureOverlay, show: showClosure } = useClosureOverlay();
-  const { user, logout, setUser } = useAuth();
+  const { user, logout, deleteAccount, setUser } = useAuth();
   const [uploadingImage, setUploadingImage] = React.useState(false);
+  const [deletingAccount, setDeletingAccount] = React.useState(false);
 
   const pickImage = async () => {
     // Solicita permisos
@@ -72,6 +73,30 @@ export default function ProfileScreen() {
       Alert.alert(t('common.logout'), t('alerts.sure_logout'), [
         { text: t('common.cancel') },
         { text: t('common.confirm'), style: 'destructive', onPress: logout },
+      ]);
+    }
+  };
+
+  const performDeleteAccount = async () => {
+    setDeletingAccount(true);
+    try {
+      await deleteAccount();
+    } catch {
+      toast.error(t('profile.delete_account_failed'));
+      setDeletingAccount(false);
+    }
+  };
+
+  const handleDeleteAccount = () => {
+    if (deletingAccount) return;
+    if (Platform.OS === 'web') {
+      if (window.confirm(t('alerts.sure_delete_account'))) {
+        performDeleteAccount();
+      }
+    } else {
+      Alert.alert(t('profile.delete_account'), t('alerts.sure_delete_account'), [
+        { text: t('common.cancel') },
+        { text: t('common.delete'), style: 'destructive', onPress: performDeleteAccount },
       ]);
     }
   };
@@ -187,6 +212,26 @@ export default function ProfileScreen() {
       >
         <Text style={styles.logoutIcon}>🚪</Text>
         <Text style={styles.logoutText}>{t('common.logout')}</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[styles.deleteAccountButton, { borderColor: '#B91C1C' }]}
+        onPress={handleDeleteAccount}
+        activeOpacity={0.85}
+        disabled={deletingAccount}
+        accessibilityRole="button"
+        accessibilityLabel="delete account"
+      >
+        {deletingAccount ? (
+          <ActivityIndicator color="#B91C1C" />
+        ) : (
+          <>
+            <Text style={styles.deleteAccountIcon}>🗑️</Text>
+            <Text style={[styles.deleteAccountText, { color: '#B91C1C' }]}>
+              {t('profile.delete_account')}
+            </Text>
+          </>
+        )}
       </TouchableOpacity>
 
       <View style={{ height: 30 }} />

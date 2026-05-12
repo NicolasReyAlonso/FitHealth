@@ -813,7 +813,7 @@ export default function EventsScreen() {
                     ]}
                     onPress={() => setEventType(t.key)}
                   >
-                    <Text style={[styles.typeText, eventType === t.key && { color: colors.primary }]}>
+                    <Text style={[styles.typeText, { color: eventType === t.key ? colors.primary : colors.text }]}>
                       {t.label}
                     </Text>
                   </TouchableOpacity>

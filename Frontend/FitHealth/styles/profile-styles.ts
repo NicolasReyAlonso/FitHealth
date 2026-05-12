@@ -110,9 +110,28 @@ export const profileStyles = StyleSheet.create({
   logoutIcon: {
     fontSize: 20,
   },
-  logoutText: { 
-    color: '#fff', 
+  logoutText: {
+    color: '#fff',
     fontSize: 16,
     fontWeight: '700'
+  },
+  deleteAccountButton: {
+    marginHorizontal: 20,
+    marginTop: 14,
+    borderRadius: 14,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    borderWidth: 1.5,
+    backgroundColor: 'transparent',
+  },
+  deleteAccountIcon: {
+    fontSize: 18,
+  },
+  deleteAccountText: {
+    fontSize: 15,
+    fontWeight: '700',
   },
 });

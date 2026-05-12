@@ -78,7 +78,9 @@
     "photo_updated": {
       "title": "¡Foto actualizada!",
       "subtitle": "Tu perfil se ve genial"
-    }
+    },
+    "delete_account": "Eliminar cuenta",
+    "delete_account_failed": "No se pudo eliminar tu cuenta. Inténtalo de nuevo."
   },
   "roles": {
     "doctor": "Doctor",
@@ -294,7 +296,8 @@
     "name_required": "El nombre es requerido"
   },
   "alerts": {
-    "sure_logout": "¿Estás seguro de que quieres cerrar sesión?"
+    "sure_logout": "¿Estás seguro de que quieres cerrar sesión?",
+    "sure_delete_account": "¿Seguro que quieres eliminar tu cuenta? Esta acción no se puede deshacer y todos tus datos se perderán de forma permanente."
   },
   "date": {
     "this_month": "este mes",
