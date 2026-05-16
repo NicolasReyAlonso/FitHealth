@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import {
   StyleSheet,
   Text,
@@ -6,39 +6,69 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Alert,
   ActivityIndicator,
   Modal,
 } from 'react-native';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import api from '@/services/api';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useAuth } from '@/context/auth-context';
+import { useNotifications } from '@/context/notification-context';
+import { useToast } from '@/context/toast-context';
+import { UndoToast } from '@/components/undo-toast';
+import { useClosureOverlay } from '@/hooks/use-closure-overlay';
 
 type Routine = {
   id: number;
   name: string;
   description: string | null;
-  exercises: { id: number; name: string; sets: number | null; reps: number | null }[];
-  diet_items: { id: number; name: string; calories: number | null }[];
+  user_id: number;
+  creator_id: number | null;
+  days: {
+    id: number;
+    day_of_week: number;
+  }[];
   created_at: string;
 };
 
 export default function RoutinesScreen() {
+  const { t } = useTranslation();
+  const router = useRouter();
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
+  const toast = useToast();
+  const { component: closureOverlay, show: showClosure } = useClosureOverlay();
   const [routines, setRoutines] = useState<Routine[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingName, setEditingName] = useState('');
+  const [editingDescription, setEditingDescription] = useState('');
+  const [editingPatientId, setEditingPatientId] = useState<number | null>(null);
+  const [undoDeletedRoutine, setUndoDeletedRoutine] = useState<Routine | null>(null);
+  const [undoTimeoutId, setUndoTimeoutId] = useState<ReturnType<typeof setTimeout> | null>(null);
+  const { user } = useAuth();
+  const { showNotification } = useNotifications();
+  const [patients, setPatients] = useState<{ id: number; username: string }[]>([]);
+  const [patientId, setPatientId] = useState<number | null>(null);
+  
+  // Undo functionality
+  const [lastDeletedRoutineId, setLastDeletedRoutineId] = useState<number | null>(null);
+  const [showUndoToast, setShowUndoToast] = useState(false);
+  const undoTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchRoutines = async () => {
     try {
       const res = await api.get('/routines/');
       setRoutines(res.data);
     } catch {
-      Alert.alert('Error', 'No se pudieron cargar las rutinas');
+      showNotification('No se pudieron cargar las rutinas', 'error');
     } finally {
       setLoading(false);
     }
@@ -47,37 +77,217 @@ export default function RoutinesScreen() {
   useFocusEffect(
     useCallback(() => {
       fetchRoutines();
-    }, [])
+      if (user?.role === 'doctor') {
+        api.get('/relationships/doctor/patients').then((res) => {
+          setPatients(res.data);
+        }).catch(err => console.log('Failed fetching patients', err));
+      }
+
+      if (user) {
+        let wsUrl = api.defaults.baseURL?.replace('http', 'ws');
+        if (wsUrl?.endsWith('/')) {
+          wsUrl = wsUrl.slice(0, -1);
+        }
+        const ws = new WebSocket(`${wsUrl}/routines/ws/user/${user.id}`);
+        
+        ws.onmessage = (event) => {
+          const data = JSON.parse(event.data);
+          if (['routine_added', 'routine_deleted', 'routine_unassigned', 'routine_updated'].includes(data.type)) {
+            fetchRoutines();
+          }
+        };
+
+        return () => ws.close();
+      }
+    }, [user])
   );
+
+  useEffect(() => {
+    return () => {
+      if (undoTimeoutId) {
+        clearTimeout(undoTimeoutId);
+      }
+    };
+  }, [undoTimeoutId]);
 
   const handleCreate = async () => {
     if (!name.trim()) {
-      Alert.alert('Error', 'El nombre es requerido');
+      showNotification(t('routines.name_required'), 'error');
       return;
     }
     try {
-      await api.post('/routines/', { name: name.trim(), description: description.trim() || null });
+      const payload: any = { name: name.trim(), description: description.trim() || null };
+      if (user?.role === 'doctor' && patientId) {
+        payload.patient_id = patientId;
+      }
+      await api.post('/routines/', payload);
       setName('');
       setDescription('');
+      setPatientId(null);
       setShowModal(false);
+
+      const patientName = patientId
+        ? patients.find(p => p.id === patientId)?.username
+        : t('routines.personal');
+      showClosure(
+        t('routines.routine_created'),
+        `"${name.trim()}" → ${patientName}`
+      );
+
       fetchRoutines();
+      showNotification(t('routines.added_ok'), 'success');
     } catch {
-      Alert.alert('Error', 'No se pudo crear la rutina');
+      showNotification(t('routines.create_failed'), 'error');
     }
   };
 
   const handleDelete = (id: number) => {
-    Alert.alert('Eliminar', '¿Seguro que quieres eliminar esta rutina?', [
-      { text: 'Cancelar' },
-      {
-        text: 'Eliminar',
-        style: 'destructive',
-        onPress: async () => {
-          await api.delete(`/routines/${id}`);
-          fetchRoutines();
-        },
-      },
-    ]);
+    console.log('🗑️ Abriendo confirmación de delete para rutina:', id);
+    setDeleteId(id);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteId) return;
+    try {
+      setDeleting(true);
+      const deletedRoutine = routines.find((routine) => routine.id === deleteId) ?? null;
+      console.log('📡 Eliminando rutina:', deleteId);
+      await api.delete(`/routines/${deleteId}`);
+      console.log('✅ Rutina eliminada exitosamente');
+      
+      // Guardar ID para undo
+      setLastDeletedRoutineId(deleteId);
+      setShowUndoToast(true);
+      
+      // Limpiar timeout anterior si existe
+      if (undoTimeoutRef.current) {
+        clearTimeout(undoTimeoutRef.current);
+      }
+      
+      // Auto-dismiss después de 5 segundos
+      undoTimeoutRef.current = setTimeout(() => {
+        setShowUndoToast(false);
+        setLastDeletedRoutineId(null);
+      }, 5000);
+      
+      setDeleteId(null);
+      await fetchRoutines();
+      if (deletedRoutine) {
+        setUndoDeletedRoutine(deletedRoutine);
+        if (undoTimeoutId) {
+          clearTimeout(undoTimeoutId);
+        }
+        const timeoutId = setTimeout(() => {
+          setUndoDeletedRoutine(null);
+          setUndoTimeoutId(null);
+        }, 5000);
+        setUndoTimeoutId(timeoutId);
+      }
+      showNotification(t('routines.deleted_undo'), 'warning');
+    } catch (error: any) {
+      console.error('❌ Error al eliminar:', error);
+      showNotification(error.message || t('routines.delete_failed'), 'error');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleUndo = async () => {
+    if (!lastDeletedRoutineId) return;
+    
+    try {
+      console.log('↶ Deshaciendo eliminación de rutina:', lastDeletedRoutineId);
+      const res = await api.post(`/routines/${lastDeletedRoutineId}/restore`);
+      
+      showClosure(
+        t('routines.restored'),
+        `"${res.data.name}" ${t('routines.back_again')}`
+      );
+
+      await fetchRoutines();
+    } catch (error: any) {
+      console.error('❌ Error al restaurar:', error);
+      toast.error(t('routines.restore_failed'));
+    } finally {
+      setShowUndoToast(false);
+      setLastDeletedRoutineId(null);
+      if (undoTimeoutRef.current) {
+        clearTimeout(undoTimeoutRef.current);
+      }
+    }
+  };
+
+  const handleEdit = (routine: Routine) => {
+    console.log('✏️ Abriendo edición para rutina:', routine.id);
+    setEditingId(routine.id);
+    setEditingName(routine.name);
+    setEditingDescription(routine.description || '');
+    if (routine.creator_id !== null && routine.user_id === routine.creator_id) {
+      setEditingPatientId(null);
+    } else {
+      setEditingPatientId(routine.user_id);
+    }
+  };
+
+
+  const confirmEdit = async () => {
+    if (!editingId || !user) return;
+    try {
+      console.log('📡 Actualizando rutina:', editingId);
+      const payload: any = {
+        name: editingName,
+        description: editingDescription || null,
+      };
+      if (user.role === 'doctor') {
+        payload.user_id = editingPatientId || user.id;
+      }
+      
+      await api.patch(`/routines/${editingId}`, payload);
+      
+      console.log('✅ Rutina actualizada exitosamente');
+      
+      showClosure(
+        t('routines.updated'),
+        `"${editingName.trim()}"`
+      );
+
+      setEditingId(null);
+      setEditingName('');
+      setEditingDescription('');
+      setEditingPatientId(null);
+      await fetchRoutines();
+      showNotification(t('routines.updated_ok'), 'success');
+    } catch (error: any) {
+      console.error('❌ Error al actualizar:', error);
+      showNotification(error.message || t('routines.update_failed'), 'error');
+    }
+  };
+
+  const canCreateRoutine = name.trim().length > 0;
+  const canSaveRoutineEdit = editingName.trim().length > 0;
+
+  const handleUndoDelete = async () => {
+    if (!undoDeletedRoutine) return;
+    try {
+      const payload: any = {
+        name: undoDeletedRoutine.name,
+        description: undoDeletedRoutine.description,
+      };
+      if (user?.role === 'doctor' && undoDeletedRoutine.user_id !== user.id) {
+        payload.patient_id = undoDeletedRoutine.user_id;
+      }
+
+      await api.post('/routines/', payload);
+      if (undoTimeoutId) {
+        clearTimeout(undoTimeoutId);
+      }
+      setUndoDeletedRoutine(null);
+      setUndoTimeoutId(null);
+      await fetchRoutines();
+      showNotification(t('routines.recover_ok'), 'success');
+    } catch {
+      showNotification(t('routines.recover_failed'), 'error');
+    }
   };
 
   if (loading) {
@@ -90,14 +300,21 @@ export default function RoutinesScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.text }]}>Mis Rutinas</Text>
-        <TouchableOpacity style={[styles.addButton, { backgroundColor: colors.primary }]} onPress={() => setShowModal(true)}>
-          <Text style={styles.addButtonText}>+ Nueva</Text>
+      <View style={[styles.header, { backgroundColor: colors.primary }]}>
+        <View>
+          <Text style={styles.title}> 🏋️ {t('routines.my_routines')}</Text>
+          <Text style={styles.subtitle}>{t('routines.org_training')}</Text>
+        </View>
+        <TouchableOpacity 
+          style={[styles.addButton, { backgroundColor: 'rgba(255,255,255,0.25)' }]}
+          onPress={() => setShowModal(true)}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.addButtonText}>＋</Text>
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.list}>
+      <ScrollView style={styles.list} showsVerticalScrollIndicator={false}>
         {routines.length === 0 ? (
           <Text style={[styles.empty, { color: colors.icon }]}>
             No tienes rutinas aún. ¡Crea tu primera rutina!
@@ -107,77 +324,444 @@ export default function RoutinesScreen() {
             <TouchableOpacity
               key={r.id}
               style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}
-              onLongPress={() => handleDelete(r.id)}
+              onPress={() => router.push(`/routines/${r.id}`)}
+              activeOpacity={0.7}
             >
-              <Text style={[styles.cardTitle, { color: colors.primary }]}>{r.name}</Text>
-              {r.description && (
-                <Text style={[styles.cardDesc, { color: colors.text }]}>{r.description}</Text>
-              )}
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.cardTitle, { color: colors.text }]}>{r.name}</Text>
+                  {r.description && (
+                    <Text style={[styles.cardDesc, { color: colors.icon }]} numberOfLines={2}>{r.description}</Text>
+                  )}
+                  {user?.role === 'doctor' && r.user_id !== user?.id && (
+                    <Text style={[{ color: colors.primary, fontSize: 12, marginTop: 4, fontWeight: 'bold' }]}>
+                      👤 Paciente asignado: @{patients.find(p => p.id === r.user_id)?.username || r.user_id}
+                    </Text>
+                  )}
+                </View>
+                {(!r.creator_id || r.creator_id === user?.id) && (
+                  <View style={styles.actionButtons}>
+                    <TouchableOpacity
+                      onPress={(e) => { e.stopPropagation(); handleEdit(r); }}
+                      activeOpacity={0.6}
+                    >
+                      <Text style={{ fontSize: 18 }}>✏️</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={(e) => { e.stopPropagation(); handleDelete(r.id); }}
+                      activeOpacity={0.6}
+                    >
+                      <Text style={{ fontSize: 18 }}>🗑️</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
               <View style={styles.cardMeta}>
-                <Text style={[styles.metaText, { color: colors.icon }]}>
-                  🏋️ {r.exercises.length} ejercicios
-                </Text>
-                <Text style={[styles.metaText, { color: colors.icon }]}>
-                  🥗 {r.diet_items.length} dietas
-                </Text>
+                <View style={[styles.badge, { backgroundColor: colors.primaryLight }]}>
+                  <Text style={[styles.badgeText, { color: colors.primary }]}>
+                    📅 {r.days ? r.days.length : 0} días
+                  </Text>
+                </View>
               </View>
             </TouchableOpacity>
           ))
         )}
+        <View style={{ height: 20 }} />
       </ScrollView>
+
+      {/* Modal de Eliminación */}
+      <Modal visible={deleteId !== null} transparent animationType="fade">
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+          <View style={{ backgroundColor: colors.card, borderRadius: 16, padding: 24, width: '100%', maxWidth: 300 }}>
+            <Text style={{ fontSize: 18, fontWeight: 'bold', color: colors.text, marginBottom: 12 }}>
+              {t('routines.confirm_delete_question')}
+            </Text>
+            <Text style={{ fontSize: 14, color: colors.icon, marginBottom: 24 }}>
+              {t('events.cant_be_undone')}
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <TouchableOpacity
+                style={{ flex: 1, backgroundColor: colors.border, borderRadius: 12, padding: 12, alignItems: 'center' }}
+                onPress={() => {
+                  console.log('❌ Cancelar delete');
+                  setDeleteId(null);
+                }}
+                disabled={deleting}
+              >
+                <Text style={{ color: colors.text, fontWeight: '600' }}>{t('common.cancel')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ flex: 1, backgroundColor: '#FF4444', borderRadius: 12, padding: 12, alignItems: 'center', opacity: deleting ? 0.6 : 1 }}
+                onPress={confirmDelete}
+                disabled={deleting}
+              >
+                <Text style={{ color: '#fff', fontWeight: '600' }}>
+                  {deleting ? t('common.deleting') : t('common.delete')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal de Edición */}
+      <Modal visible={editingId !== null} transparent animationType="slide">
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: colors.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 40 }}>
+            <Text style={{ fontSize: 20, fontWeight: 'bold', color: colors.text, marginBottom: 20 }}>
+              {t('routines.edit_routine')}
+            </Text>
+
+            <TextInput
+              style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text }]}
+              placeholder={t('routines.routine_name_placeholder')}
+              placeholderTextColor={colors.icon}
+              value={editingName}
+              onChangeText={setEditingName}
+            />
+
+            <TextInput
+              style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text, height: 80 }]}
+              placeholder={t('common.description')}
+              placeholderTextColor={colors.icon}
+              value={editingDescription}
+              onChangeText={setEditingDescription}
+              multiline
+              numberOfLines={3}
+            />
+
+            {user?.role === 'doctor' && patients.length > 0 && (
+              <View style={{ marginBottom: 20 }}>
+                <Text style={{ color: colors.text, marginBottom: 8, fontWeight: '600' }}>{t('routines.reassign_patient')}</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexDirection: 'row' }}>
+                  <TouchableOpacity
+                    style={{
+                      padding: 10,
+                      marginRight: 10,
+                      borderRadius: 8,
+                      borderWidth: 1,
+                      borderColor: editingPatientId === null || editingPatientId === user.id ? colors.primary : colors.border,
+                      backgroundColor: editingPatientId === null || editingPatientId === user.id ? `${colors.primary}20` : 'transparent',
+                    }}
+                    onPress={() => setEditingPatientId(user.id)}
+                  >
+                    <Text style={{ color: editingPatientId === null || editingPatientId === user.id ? colors.primary : colors.text }}>{t('routines.personal')}</Text>
+                  </TouchableOpacity>
+                  {patients.map(p => (
+                    <TouchableOpacity
+                      key={p.id}
+                      style={{
+                        padding: 10,
+                        marginRight: 10,
+                        borderRadius: 8,
+                        borderWidth: 1,
+                        borderColor: editingPatientId === p.id ? colors.primary : colors.border,
+                        backgroundColor: editingPatientId === p.id ? `${colors.primary}20` : 'transparent',
+                      }}
+                      onPress={() => setEditingPatientId(p.id)}
+                    >
+                      <Text style={{ color: editingPatientId === p.id ? colors.primary : colors.text }}>{p.username}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+            
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <TouchableOpacity
+                style={{ flex: 1, backgroundColor: colors.border, borderRadius: 12, padding: 14, alignItems: 'center' }}
+                onPress={() => {
+                  setEditingId(null);
+                  setEditingName('');
+                  setEditingDescription('');
+                  setEditingPatientId(null);
+                }}
+              >
+                <Text style={{ color: colors.text, fontWeight: '600' }}>{t('common.cancel')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{
+                  flex: 1,
+                  backgroundColor: canSaveRoutineEdit ? colors.primary : colors.border,
+                  borderRadius: 12,
+                  padding: 14,
+                  alignItems: 'center',
+                  opacity: canSaveRoutineEdit ? 1 : 0.6,
+                }}
+                onPress={confirmEdit}
+                disabled={!canSaveRoutineEdit}
+              >
+                <Text style={{ color: '#fff', fontWeight: '600' }}>{t('common.save')}</Text>
+              </TouchableOpacity>
+            </View>
+            {!canSaveRoutineEdit && (
+              <Text style={styles.inlineErrorText}>{t('routines.name_required_edit')}</Text>
+            )}
+          </View>
+        </View>
+      </Modal>
 
       <Modal visible={showModal} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
-            <Text style={[styles.modalTitle, { color: colors.primary }]}>Nueva Rutina</Text>
+            <Text style={[styles.modalTitle, { color: colors.primary }]}>{t('routines.new_routine')}</Text>
             <TextInput
               style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text }]}
-              placeholder="Nombre"
+              placeholder={t('common.name_placeholder')}
               placeholderTextColor={colors.icon}
               value={name}
               onChangeText={setName}
             />
             <TextInput
               style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text }]}
-              placeholder="Descripción (opcional)"
+              placeholder={t('common.description_optional')}
               placeholderTextColor={colors.icon}
               value={description}
               onChangeText={setDescription}
               multiline
             />
+            {user?.role === 'doctor' && patients.length > 0 && (
+              <View style={{ marginBottom: 20 }}>
+                <Text style={{ color: colors.text, marginBottom: 8, fontWeight: '600' }}>{t('routines.assign_patient')}</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexDirection: 'row' }}>
+                  <TouchableOpacity
+                    style={{
+                      padding: 10,
+                      marginRight: 10,
+                      borderRadius: 8,
+                      borderWidth: 1,
+                      borderColor: patientId === null ? colors.primary : colors.border,
+                      backgroundColor: patientId === null ? `${colors.primary}20` : 'transparent',
+                    }}
+                    onPress={() => setPatientId(null)}
+                  >
+                    <Text style={{ color: patientId === null ? colors.primary : colors.text }}>{t('routines.personal')}</Text>
+                  </TouchableOpacity>
+                  {patients.map(p => (
+                    <TouchableOpacity
+                      key={p.id}
+                      style={{
+                        padding: 10,
+                        marginRight: 10,
+                        borderRadius: 8,
+                        borderWidth: 1,
+                        borderColor: patientId === p.id ? colors.primary : colors.border,
+                        backgroundColor: patientId === p.id ? `${colors.primary}20` : 'transparent',
+                      }}
+                      onPress={() => setPatientId(p.id)}
+                    >
+                      <Text style={{ color: patientId === p.id ? colors.primary : colors.text }}>{p.username}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
             <View style={styles.modalButtons}>
               <TouchableOpacity style={[styles.modalBtn, { backgroundColor: colors.border }]} onPress={() => setShowModal(false)}>
-                <Text style={{ color: colors.text, fontWeight: '600' }}>Cancelar</Text>
+                <Text style={{ color: colors.text, fontWeight: '600' }}>{t('common.cancel')}</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.modalBtn, { backgroundColor: colors.primary }]} onPress={handleCreate}>
-                <Text style={{ color: '#fff', fontWeight: '600' }}>Crear</Text>
+              <TouchableOpacity
+                style={[
+                  styles.modalBtn,
+                  { backgroundColor: canCreateRoutine ? colors.primary : colors.border, opacity: canCreateRoutine ? 1 : 0.6 },
+                ]}
+                onPress={handleCreate}
+                disabled={!canCreateRoutine}
+              >
+                <Text style={{ color: '#fff', fontWeight: '600' }}>{t('common.create')}</Text>
               </TouchableOpacity>
             </View>
+            {!canCreateRoutine && (
+              <Text style={styles.inlineErrorText}>{t('routines.name_required_create')}</Text>
+            )}
           </View>
         </View>
       </Modal>
+
+      {undoDeletedRoutine && (
+        <View style={[styles.undoBanner, { backgroundColor: colors.primary }]}> 
+          <Text style={styles.undoText}>Rutina eliminada</Text>
+          <TouchableOpacity onPress={handleUndoDelete}>
+            <Text style={styles.undoAction}>Deshacer</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingTop: 60 },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 16 },
-  title: { fontSize: 28, fontWeight: 'bold' },
-  addButton: { borderRadius: 12, paddingHorizontal: 16, paddingVertical: 10 },
-  addButtonText: { color: '#fff', fontWeight: '700', fontSize: 15 },
-  list: { paddingHorizontal: 20 },
-  empty: { textAlign: 'center', marginTop: 40, fontSize: 16 },
-  card: { borderRadius: 16, padding: 16, marginBottom: 12, borderWidth: 1 },
-  cardTitle: { fontSize: 18, fontWeight: '700', marginBottom: 4 },
-  cardDesc: { fontSize: 14, marginBottom: 8 },
-  cardMeta: { flexDirection: 'row', gap: 16 },
-  metaText: { fontSize: 13 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 24 },
-  modalContent: { borderRadius: 20, padding: 24 },
-  modalTitle: { fontSize: 22, fontWeight: '700', marginBottom: 16, textAlign: 'center' },
-  input: { borderWidth: 1, borderRadius: 12, padding: 14, fontSize: 16, marginBottom: 12 },
-  modalButtons: { flexDirection: 'row', gap: 12, marginTop: 8 },
-  modalBtn: { flex: 1, borderRadius: 12, padding: 14, alignItems: 'center' },
+  container: { 
+    flex: 1, 
+    paddingTop: 0,
+  },
+  center: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center' 
+  },
+  header: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    paddingHorizontal: 24, 
+    paddingVertical: 32,
+    paddingTop: 40,
+  },
+  title: { 
+    fontSize: 32, 
+    fontWeight: '800',
+    letterSpacing: -0.5,
+    color: '#FFFFFF',
+  },
+  subtitle: { 
+    fontSize: 14,
+    fontWeight: '500',
+    color: 'rgba(255,255,255,0.85)',
+    marginTop: 4,
+  },
+  addButton: { 
+    borderRadius: 12, 
+    paddingHorizontal: 14, 
+    paddingVertical: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  addButtonText: { 
+    color: '#fff', 
+    fontWeight: '800', 
+    fontSize: 18 
+  },
+  list: { 
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+  },
+  empty: { 
+    textAlign: 'center', 
+    marginTop: 60, 
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  card: { 
+    borderRadius: 16, 
+    padding: 18, 
+    marginBottom: 12, 
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  cardTitle: { 
+    fontSize: 16, 
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  cardDesc: { 
+    fontSize: 13, 
+    marginBottom: 2,
+    fontWeight: '400',
+    lineHeight: 18,
+  },
+  cardMeta: { 
+    flexDirection: 'row', 
+    gap: 8 
+  },
+  badge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  badgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  metaText: { 
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  modalOverlay: { 
+    flex: 1, 
+    backgroundColor: 'rgba(0,0,0,0.5)', 
+    justifyContent: 'center', 
+    padding: 24 
+  },
+  modalContent: { 
+    borderRadius: 24, 
+    padding: 28,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 8,
+  },
+  modalTitle: { 
+    fontSize: 24, 
+    fontWeight: '800', 
+    marginBottom: 20, 
+    textAlign: 'center' 
+  },
+  input: { 
+    borderWidth: 1, 
+    borderRadius: 14, 
+    padding: 16, 
+    fontSize: 16, 
+    marginBottom: 14,
+    fontWeight: '500',
+  },
+  modalButtons: { 
+    flexDirection: 'row', 
+    gap: 12, 
+    marginTop: 12 
+  },
+  modalBtn: { 
+    flex: 1, 
+    borderRadius: 14, 
+    padding: 16, 
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  inlineErrorText: {
+    color: '#ef4444',
+    fontSize: 12,
+    marginTop: 6,
+  },
+  undoBanner: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    bottom: 16,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    elevation: 4,
+  },
+  undoText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  undoAction: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+  },
 });

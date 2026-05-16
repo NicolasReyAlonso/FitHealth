@@ -9,6 +9,16 @@ type User = {
   role: string;
   is_active: boolean;
   created_at: string;
+  profile_picture?: string;
+
+  first_name?: string;
+  last_name?: string;
+  second_last_name?: string;
+  birthday?: string;
+  notes?: string;
+
+  preferred_language?: string;
+
 };
 
 type AuthContextType = {
@@ -18,6 +28,8 @@ type AuthContextType = {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, username: string, password: string, role?: string) => Promise<void>;
   logout: () => Promise<void>;
+  deleteAccount: () => Promise<void>;
+  setUser: React.Dispatch<React.SetStateAction<User | null>>;
 };
 
 const AuthContext = createContext<AuthContextType>({
@@ -27,6 +39,8 @@ const AuthContext = createContext<AuthContextType>({
   login: async () => {},
   register: async () => {},
   logout: async () => {},
+  deleteAccount: async () => {},
+  setUser: () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -63,7 +77,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const register = async (email: string, username: string, password: string, role = 'patient') => {
     await api.post('/auth/register', { email, username, password, role });
-    await login(email, password);
+    // Ya no hacemos autologin porque el correo no está verificado aún.
   };
 
   const logout = async () => {
@@ -72,8 +86,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
   };
 
+  const deleteAccount = async () => {
+    if (!user) return;
+    await api.delete(`/users/${user.id}`);
+    await AsyncStorage.removeItem('access_token');
+    setToken(null);
+    setUser(null);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, token, isLoading, login, register, logout, deleteAccount, setUser }}>
       {children}
     </AuthContext.Provider>
   );

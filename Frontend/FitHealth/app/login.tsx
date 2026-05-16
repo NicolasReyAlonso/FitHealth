@@ -11,26 +11,60 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { Link, useRouter } from 'expo-router';
 import { useAuth } from '@/context/auth-context';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useTranslation } from 'react-i18next';
 
 export default function LoginScreen() {
+  const { t } = useTranslation();
+  const colorScheme = useColorScheme() ?? 'light';
+  const colors = Colors[colorScheme];
   const { login } = useAuth();
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  
+  // Real-time validation states
+  const [emailErrorValidation, setEmailErrorValidation] = useState<string | null>(null);
+  
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const validateEmail = (text: string) => {
+    setEmail(text);
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!text) {
+      setEmailErrorValidation(t('auth.email_required'));
+    } else if (!emailRegex.test(text)) {
+      setEmailErrorValidation(t('auth.invalid_email'));
+    } else {
+      setEmailErrorValidation(null);
+    }
+  };
 
   const handleLogin = async () => {
+    setError(null);
     if (!email || !password) {
-      Alert.alert('Error', 'Por favor completa todos los campos');
+      setError(t('auth.fill_all'));
+      return;
+    }
+    if (emailErrorValidation) {
+      setError(t('auth.fix_errors'));
       return;
     }
     setLoading(true);
     try {
       await login(email.trim(), password);
-    } catch {
-      Alert.alert('Error', 'Email o contraseña incorrectos');
+    } catch (err: any) {
+      if (err.response?.status === 403) {
+        setError(err.response.data.detail || t('auth.verify_email_first'));
+      } else {
+        setError(t('auth.wrong_credentials'));
+      }
     } finally {
       setLoading(false);
     }
@@ -38,56 +72,73 @@ export default function LoginScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: colors.background }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
           <Text style={styles.logo}>🏃‍♂️</Text>
-          <Text style={styles.title}>FitHealth</Text>
-          <Text style={styles.subtitle}>Tu salud, tu control</Text>
+          <Text style={[styles.title, { color: colors.text }]}>FitHealth</Text>
+          <Text style={[styles.subtitle, { color: colors.primary }]}>{t('auth.tagline')}</Text>
         </View>
 
-        <View style={styles.form}>
-          <Text style={styles.formTitle}>Iniciar Sesión</Text>
+        <View style={[styles.form, { backgroundColor: colors.card }]}>
+          <Text style={[styles.formTitle, { color: colors.primary }]}>{t('auth.login_title')}</Text>
 
           <TextInput
-            style={styles.input}
-            placeholder="Email"
+            style={[styles.input, { backgroundColor: colors.primaryLight ?? '#F1F8E9', borderColor: colors.border, color: colors.text }, emailErrorValidation ? { borderColor: colors.danger ?? '#D32F2F', borderWidth: 1 } : {}]}
+            placeholder={t('auth.email')}
             placeholderTextColor="#8E9AAF"
             value={email}
-            onChangeText={setEmail}
+            onChangeText={validateEmail}
             autoCapitalize="none"
             keyboardType="email-address"
           />
+          {emailErrorValidation && <Text style={{ color: colors.danger ?? '#D32F2F', fontSize: 12, marginBottom: 10, marginTop: -15 }}>{emailErrorValidation}</Text>}
 
-          <TextInput
-            style={styles.input}
-            placeholder="Contraseña"
-            placeholderTextColor="#8E9AAF"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-          />
+          <View style={styles.passwordContainer}>
+            <TextInput
+              style={[styles.input, { backgroundColor: colors.primaryLight ?? '#F1F8E9', borderColor: colors.border, color: colors.text }, styles.passwordInput]}
+              placeholder={t('auth.password')}
+              placeholderTextColor="#8E9AAF"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+            />
+            <TouchableOpacity 
+              style={styles.eyeIcon} 
+              onPress={() => setShowPassword(!showPassword)}
+            >
+              <Ionicons 
+                name={showPassword ? 'eye-off' : 'eye'} 
+                size={24} 
+                color={colors.icon} 
+              />
+            </TouchableOpacity>
+          </View>
+
+          {error && <Text style={styles.errorText}>{error}</Text>}
 
           <TouchableOpacity
-            style={[styles.button, loading && styles.buttonDisabled]}
+            style={[styles.button, { backgroundColor: colors.primary }, loading && styles.buttonDisabled]}
             onPress={handleLogin}
             disabled={loading}
           >
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.buttonText}>Entrar</Text>
+              <Text style={styles.buttonText}>{t('auth.login_button')}</Text>
             )}
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={() => router.push('/register')} style={styles.linkContainer}>
-            <Text style={styles.linkText}>
-              ¿No tienes cuenta?{' '}
-              <Text style={styles.linkBold}>Regístrate</Text>
-            </Text>
-          </TouchableOpacity>
+          <Link href="/register" asChild>
+            <TouchableOpacity style={styles.linkContainer}>
+              <Text style={[styles.linkText, { color: colors.text }]}>
+                {t('auth.no_account')}{' '}
+                <Text style={[styles.linkBold, { color: colors.primary }]}>{t('auth.sign_up')}</Text>
+              </Text>
+            </TouchableOpacity>
+          </Link>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -97,7 +148,6 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#E8F5E9',
   },
   scroll: {
     flexGrow: 1,
@@ -115,15 +165,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 36,
     fontWeight: 'bold',
-    color: '#1B5E20',
   },
   subtitle: {
     fontSize: 16,
-    color: '#388E3C',
     marginTop: 4,
   },
   form: {
-    backgroundColor: '#fff',
     borderRadius: 20,
     padding: 24,
     shadowColor: '#000',
@@ -135,22 +182,38 @@ const styles = StyleSheet.create({
   formTitle: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#1565C0',
     marginBottom: 20,
     textAlign: 'center',
   },
+  errorText: {
+    textAlign: 'center',
+    marginBottom: 10,
+    fontSize: 14,
+    fontWeight: '600',
+  },
   input: {
     borderWidth: 1,
-    borderColor: '#C8E6C9',
     borderRadius: 12,
     padding: 14,
     fontSize: 16,
     marginBottom: 14,
-    backgroundColor: '#F1F8E9',
-    color: '#1B5E20',
+  },
+  passwordContainer: {
+    position: 'relative',
+    justifyContent: 'center',
+    marginBottom: 0, 
+  },
+  passwordInput: {
+    paddingRight: 50, // space for the eye icon
+    marginBottom: 14,
+  },
+  eyeIcon: {
+    position: 'absolute',
+    right: 14,
+    top: 14,
+    zIndex: 1,
   },
   button: {
-    backgroundColor: '#1565C0',
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
@@ -169,11 +232,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   linkText: {
-    color: '#546E7A',
     fontSize: 14,
   },
   linkBold: {
-    color: '#1565C0',
     fontWeight: '700',
   },
 });

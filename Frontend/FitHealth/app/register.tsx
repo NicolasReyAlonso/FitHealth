@@ -11,37 +11,97 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { Link, useRouter } from 'expo-router';
 import { useAuth } from '@/context/auth-context';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useTranslation } from 'react-i18next';
 
 export default function RegisterScreen() {
+  const { t } = useTranslation();
+  const colorScheme = useColorScheme() ?? 'light';
+  const colors = Colors[colorScheme];
   const { register } = useAuth();
   const router = useRouter();
+  
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [role, setRole] = useState<'patient' | 'doctor'>('patient');
+  
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  
+  // Real-time validation errors
+  const [emailErrorValidation, setEmailErrorValidation] = useState<string | null>(null);
+  const [usernameErrorValidation, setUsernameErrorValidation] = useState<string | null>(null);
+  const [passwordErrorValidation, setPasswordErrorValidation] = useState<string | null>(null);
+  const [confirmPasswordErrorValidation, setConfirmPasswordErrorValidation] = useState<string | null>(null);
+  
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const validateEmail = (text: string) => {
+    setEmail(text);
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!text) setEmailErrorValidation(t('auth.email_required'));
+    else if (!emailRegex.test(text)) setEmailErrorValidation(t('auth.invalid_email'));
+    else setEmailErrorValidation(null);
+  };
+
+  const validateUsername = (text: string) => {
+    setUsername(text);
+    if (!text) setUsernameErrorValidation(t('auth.username_required'));
+    else if (text.length < 3) setUsernameErrorValidation(t('auth.username_min'));
+    else setUsernameErrorValidation(null);
+  };
+
+  const validatePassword = (text: string) => {
+    setPassword(text);
+    if (!text) setPasswordErrorValidation(t('auth.password_required'));
+    else if (text.length < 6) setPasswordErrorValidation(t('auth.password_min'));
+    else setPasswordErrorValidation(null);
+
+    // Validate confirmation against the new password
+    if (confirmPassword && text !== confirmPassword) {
+      setConfirmPasswordErrorValidation(t('auth.passwords_dont_match'));
+    } else if (confirmPassword && text === confirmPassword) {
+      setConfirmPasswordErrorValidation(null);
+    }
+  };
+
+  const validateConfirmPassword = (text: string) => {
+    setConfirmPassword(text);
+    if (!text) setConfirmPasswordErrorValidation(t('auth.confirm_password_required'));
+    else if (text !== password) setConfirmPasswordErrorValidation(t('auth.passwords_dont_match'));
+    else setConfirmPasswordErrorValidation(null);
+  };
 
   const handleRegister = async () => {
+    setError(null);
+
     if (!email || !username || !password || !confirmPassword) {
-      Alert.alert('Error', 'Por favor completa todos los campos');
+      setError(t('auth.fill_all'));
       return;
     }
-    if (password !== confirmPassword) {
-      Alert.alert('Error', 'Las contraseñas no coinciden');
+
+    if (emailErrorValidation || usernameErrorValidation || passwordErrorValidation || confirmPasswordErrorValidation) {
+      setError(t('auth.fix_errors'));
       return;
     }
-    if (password.length < 6) {
-      Alert.alert('Error', 'La contraseña debe tener al menos 6 caracteres');
-      return;
-    }
+
     setLoading(true);
     try {
       await register(email.trim(), username.trim(), password, role);
-    } catch {
-      Alert.alert('Error', 'No se pudo crear la cuenta. Verifica tus datos.');
+      router.replace('/verify-notice');
+    } catch (err: any) {
+      if (err.response?.data?.detail) {
+        setError(err.response.data.detail);
+      } else {
+        setError(t('auth.account_create_failed'));
+      }
     } finally {
       setLoading(false);
     }
@@ -49,97 +109,137 @@ export default function RegisterScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: colors.background }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
           <Text style={styles.logo}>🏃‍♂️</Text>
-          <Text style={styles.title}>FitHealth</Text>
-          <Text style={styles.subtitle}>Crea tu cuenta</Text>
+          <Text style={[styles.title, { color: colors.text }]}>FitHealth</Text>
+          <Text style={[styles.subtitle, { color: colors.primary }]}>{t('auth.register_subtitle')}</Text>
         </View>
 
-        <View style={styles.form}>
-          <Text style={styles.formTitle}>Registro</Text>
+        <View style={[styles.form, { backgroundColor: colors.card }]}>
+          <Text style={[styles.formTitle, { color: colors.primary }]}>{t('auth.register_title')}</Text>
 
           <TextInput
-            style={styles.input}
-            placeholder="Email"
+            style={[styles.input, { backgroundColor: colors.primaryLight ?? '#F1F8E9', borderColor: colors.border, color: colors.text }, emailErrorValidation ? { borderColor: '#D32F2F', borderWidth: 1 } : {}]}
+            placeholder={t('auth.email')}
             placeholderTextColor="#8E9AAF"
             value={email}
-            onChangeText={setEmail}
+            onChangeText={validateEmail}
             autoCapitalize="none"
             keyboardType="email-address"
           />
+          {emailErrorValidation && <Text style={{ color: colors.danger ?? '#D32F2F', fontSize: 12, marginBottom: 10, marginTop: -15 }}>{emailErrorValidation}</Text>}
 
           <TextInput
-            style={styles.input}
-            placeholder="Nombre de usuario"
+            style={[styles.input, { backgroundColor: colors.primaryLight ?? '#F1F8E9', borderColor: colors.border, color: colors.text }, usernameErrorValidation ? { borderColor: '#D32F2F', borderWidth: 1 } : {}]}
+            placeholder={t('auth.username')}
             placeholderTextColor="#8E9AAF"
             value={username}
-            onChangeText={setUsername}
+            onChangeText={validateUsername}
             autoCapitalize="none"
           />
+          {usernameErrorValidation && <Text style={{ color: colors.danger ?? '#D32F2F', fontSize: 12, marginBottom: 10, marginTop: -15 }}>{usernameErrorValidation}</Text>}
 
-          <TextInput
-            style={styles.input}
-            placeholder="Contraseña"
-            placeholderTextColor="#8E9AAF"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-          />
+          <View style={styles.passwordContainer}>
+            <TextInput
+              style={[
+                styles.input, 
+                styles.passwordInput,
+                passwordErrorValidation ? { borderColor: '#D32F2F', borderWidth: 1 } : {}
+              ]}
+              placeholder={t('auth.password')}
+              placeholderTextColor="#8E9AAF"
+              value={password}
+              onChangeText={validatePassword}
+              secureTextEntry={!showPassword}
+            />
+            <TouchableOpacity 
+              style={styles.eyeIcon} 
+              onPress={() => setShowPassword(!showPassword)}
+            >
+              <Ionicons 
+                name={showPassword ? 'eye-off' : 'eye'} 
+                size={24} 
+                color={colors.icon} 
+              />
+            </TouchableOpacity>
+          </View>
+          {passwordErrorValidation && <Text style={{ color: colors.danger ?? '#D32F2F', fontSize: 12, marginBottom: 10, marginTop: -15 }}>{passwordErrorValidation}</Text>}
 
-          <TextInput
-            style={styles.input}
-            placeholder="Confirmar contraseña"
-            placeholderTextColor="#8E9AAF"
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-            secureTextEntry
-          />
+          <View style={styles.passwordContainer}>
+            <TextInput
+              style={[
+                styles.input, 
+                styles.passwordInput,
+                confirmPasswordErrorValidation ? { borderColor: '#D32F2F', borderWidth: 1 } : {}
+              ]}
+              placeholder={t('auth.confirm_password')}
+              placeholderTextColor="#8E9AAF"
+              value={confirmPassword}
+              onChangeText={validateConfirmPassword}
+              secureTextEntry={!showConfirmPassword}
+            />
+            <TouchableOpacity 
+              style={styles.eyeIcon} 
+              onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+            >
+              <Ionicons 
+                name={showConfirmPassword ? 'eye-off' : 'eye'} 
+                size={24} 
+                color={colors.icon} 
+              />
+            </TouchableOpacity>
+          </View>
+          {confirmPasswordErrorValidation && <Text style={{ color: colors.danger ?? '#D32F2F', fontSize: 12, marginBottom: 10, marginTop: -15 }}>{confirmPasswordErrorValidation}</Text>}
 
           {/* Role selector */}
           <View style={styles.roleContainer}>
-            <Text style={styles.roleLabel}>Soy:</Text>
+            <Text style={[styles.roleLabel, { color: colors.text }]}>{t('auth.i_am')}</Text>
             <View style={styles.roleButtons}>
               <TouchableOpacity
-                style={[styles.roleButton, role === 'patient' && styles.roleButtonActive]}
+                style={[styles.roleButton, { borderColor: colors.border }, role === 'patient' && { borderColor: colors.primary, backgroundColor: 'rgba(21, 101, 192, 0.1)' }]}
                 onPress={() => setRole('patient')}
               >
-                <Text style={[styles.roleButtonText, role === 'patient' && styles.roleButtonTextActive]}>
-                  Paciente
+                <Text style={[styles.roleButtonText, { color: colors.icon }, role === 'patient' && { color: colors.primary }]}>
+                  {t('roles.patient')}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.roleButton, role === 'doctor' && styles.roleButtonActive]}
+                style={[styles.roleButton, { borderColor: colors.border }, role === 'doctor' && { borderColor: colors.primary, backgroundColor: 'rgba(21, 101, 192, 0.1)' }]}
                 onPress={() => setRole('doctor')}
               >
-                <Text style={[styles.roleButtonText, role === 'doctor' && styles.roleButtonTextActive]}>
-                  Doctor
+                <Text style={[styles.roleButtonText, { color: colors.icon }, role === 'doctor' && { color: colors.primary }]}>
+                  {t('roles.doctor')}
                 </Text>
               </TouchableOpacity>
             </View>
           </View>
 
+          {error && <Text style={styles.errorText}>{error}</Text>}
+
           <TouchableOpacity
-            style={[styles.button, loading && styles.buttonDisabled]}
+            style={[styles.button, { backgroundColor: colors.primary }, loading && styles.buttonDisabled]}
             onPress={handleRegister}
             disabled={loading}
           >
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.buttonText}>Crear Cuenta</Text>
+              <Text style={styles.buttonText}>{t('auth.register_button')}</Text>
             )}
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={() => router.back()} style={styles.linkContainer}>
-            <Text style={styles.linkText}>
-              ¿Ya tienes cuenta?{' '}
-              <Text style={styles.linkBold}>Inicia Sesión</Text>
-            </Text>
-          </TouchableOpacity>
+          <Link href="/login" asChild>
+            <TouchableOpacity style={styles.linkContainer}>
+              <Text style={[styles.linkText, { color: colors.text }]}>
+                {t('auth.have_account')}{' '}
+                <Text style={[styles.linkBold, { color: colors.primary }]}>{t('auth.log_in')}</Text>
+              </Text>
+            </TouchableOpacity>
+          </Link>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -149,7 +249,6 @@ export default function RegisterScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#E8F5E9',
   },
   scroll: {
     flexGrow: 1,
@@ -167,15 +266,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 36,
     fontWeight: 'bold',
-    color: '#1B5E20',
   },
   subtitle: {
     fontSize: 16,
-    color: '#388E3C',
     marginTop: 4,
   },
   form: {
-    backgroundColor: '#fff',
     borderRadius: 20,
     padding: 24,
     shadowColor: '#000',
@@ -187,19 +283,36 @@ const styles = StyleSheet.create({
   formTitle: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#1565C0',
     marginBottom: 20,
     textAlign: 'center',
   },
+  errorText: {
+    textAlign: 'center',
+    marginBottom: 10,
+    fontSize: 14,
+    fontWeight: '600',
+  },
   input: {
     borderWidth: 1,
-    borderColor: '#C8E6C9',
     borderRadius: 12,
     padding: 14,
     fontSize: 16,
     marginBottom: 14,
-    backgroundColor: '#F1F8E9',
-    color: '#1B5E20',
+  },
+  passwordContainer: {
+    position: 'relative',
+    justifyContent: 'center',
+    marginBottom: 0,
+  },
+  passwordInput: {
+    paddingRight: 50,
+    marginBottom: 14,
+  },
+  eyeIcon: {
+    position: 'absolute',
+    right: 14,
+    top: 14,
+    zIndex: 1,
   },
   roleContainer: {
     marginBottom: 14,
@@ -207,7 +320,6 @@ const styles = StyleSheet.create({
   roleLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1B5E20',
     marginBottom: 8,
   },
   roleButtons: {
@@ -217,25 +329,19 @@ const styles = StyleSheet.create({
   roleButton: {
     flex: 1,
     borderWidth: 2,
-    borderColor: '#C8E6C9',
     borderRadius: 12,
     padding: 12,
     alignItems: 'center',
   },
   roleButtonActive: {
-    borderColor: '#1565C0',
-    backgroundColor: '#E3F2FD',
   },
   roleButtonText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#8E9AAF',
   },
   roleButtonTextActive: {
-    color: '#1565C0',
   },
   button: {
-    backgroundColor: '#2E7D32',
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
@@ -245,7 +351,6 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   buttonText: {
-    color: '#fff',
     fontSize: 18,
     fontWeight: '700',
   },
@@ -254,11 +359,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   linkText: {
-    color: '#546E7A',
     fontSize: 14,
   },
   linkBold: {
-    color: '#1565C0',
     fontWeight: '700',
   },
 });

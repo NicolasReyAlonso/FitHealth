@@ -1,0 +1,14 @@
+FROM node:20-alpine
+
+WORKDIR /usr/src/app
+
+# Install dependencies first to leverage Docker layer cache.
+COPY FitHealth/package*.json ./
+RUN npm install
+
+# Copy Expo project source.
+COPY FitHealth/ ./
+
+EXPOSE 8081 19000 19001 19002
+
+CMD ["npx", "expo", "start", "--port", "8081", "--host", "lan", "--clear"]

@@ -5,7 +5,10 @@ from pydantic import BaseModel
 
 # --- Sub-data schemas ---
 class BiometricDataCreate(BaseModel):
-    heart_rate: int | None = None
+    heart_rate_avg: int | None = None
+    heart_rate_max: int | None = None
+    heart_rate_min: int | None = None
+    blood_sugar: float | None = None
     blood_pressure_systolic: int | None = None
     blood_pressure_diastolic: int | None = None
     blood_oxygen: float | None = None
@@ -73,6 +76,7 @@ class WeightLogRead(WeightLogCreate):
 class EventCreate(BaseModel):
     name: str
     event_type: str  # biometric, water, activity, food, weight, custom
+    routine_id: int | None = None
     timestamp: datetime | None = None
     notes: str | None = None
     biometric: BiometricDataCreate | None = None
@@ -85,6 +89,7 @@ class EventCreate(BaseModel):
 class EventRead(BaseModel):
     id: int
     user_id: int
+    routine_id: int | None
     name: str
     event_type: str
     timestamp: datetime
@@ -101,5 +106,6 @@ class EventRead(BaseModel):
 
 class EventUpdate(BaseModel):
     name: str | None = None
+    routine_id: int | None = None
     timestamp: datetime | None = None
     notes: str | None = None

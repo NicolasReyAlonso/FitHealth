@@ -1,11 +1,13 @@
 from contextlib import asynccontextmanager
+import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
 from app.database import Base, engine
-from app.routers import auth, users, workouts, routines, events, chat
+from app.routers import auth, users, workouts, routines, events, chat, relationships, notifications
 
 # Import all models so they are registered with Base.metadata
 import app.models  # noqa: F401
@@ -15,6 +17,8 @@ import app.models  # noqa: F401
 async def lifespan(app: FastAPI):
     # Crea las tablas al arrancar (en producción usar Alembic en su lugar)
     Base.metadata.create_all(bind=engine)
+    # Ensure static uploads directory exists
+    os.makedirs("uploads/exercises", exist_ok=True)
     yield
 
 
@@ -25,10 +29,13 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Mount static files directory
+app.mount("/static", StaticFiles(directory="uploads"), name="static")
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -39,7 +46,8 @@ app.include_router(workouts.router)
 app.include_router(routines.router)
 app.include_router(events.router)
 app.include_router(chat.router)
-
+app.include_router(relationships.router)
+app.include_router(notifications.router)
 
 @app.get("/health", tags=["health"])
 def health_check():

@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import {
   StyleSheet,
   Text,
@@ -6,23 +6,18 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Alert,
   ActivityIndicator,
   Modal,
 } from 'react-native';
 import { useFocusEffect } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import api from '@/services/api';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-
-const EVENT_TYPES = [
-  { key: 'biometric', label: '❤️ Biométrico' },
-  { key: 'water', label: '💧 Agua' },
-  { key: 'activity', label: '🏃 Actividad' },
-  { key: 'food', label: '🍎 Alimento' },
-  { key: 'weight', label: '⚖️ Peso' },
-  { key: 'custom', label: '📝 Otro' },
-];
+import { useNotifications } from '@/context/notification-context';
+import { useToast } from '@/context/toast-context';
+import { useClosureOverlay } from '@/hooks/use-closure-overlay';
+import { UndoToast } from '@/components/undo-toast';
 
 type EventItem = {
   id: number;
@@ -33,92 +28,401 @@ type EventItem = {
 };
 
 export default function EventsScreen() {
+  const { t } = useTranslation();
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
+  const toast = useToast();
+  const { component: closureOverlay, show: showClosure } = useClosureOverlay();
   const [events, setEvents] = useState<EventItem[]>([]);
+  const [routines, setRoutines] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingName, setEditingName] = useState('');
+
+  const EVENT_TYPES = [
+    { key: 'walking', label: '🚶 ' + t('events.types.walk') },
+    { key: 'running', label: '🏃 ' + t('events.types.run') },
+    { key: 'biometric', label: '❤️ ' + t('events.types.biometry') },
+    { key: 'water', label: '💧 ' + t('events.types.water') },
+    { key: 'activity', label: '🏃 ' + t('events.types.activity') },
+    { key: 'food', label: '🍎 ' + t('events.types.snack') },
+    { key: 'weight', label: '⚖️ ' + t('events.types.weight') },
+    { key: 'custom', label: '📝 ' + t('events.types.other') },
+  ];
+
+  // Undo functionality
+  const [lastDeletedEventId, setLastDeletedEventId] = useState<number | null>(null);
+  const [showUndoToast, setShowUndoToast] = useState(false);
+  const undoTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [editingNotes, setEditingNotes] = useState('');
+  const [editingDateText, setEditingDateText] = useState('');
+  const [editingTimeText, setEditingTimeText] = useState('');
+  const [editingType, setEditingType] = useState('custom');
+  const [editingRoutineId, setEditingRoutineId] = useState('');
+  const [undoDeletedEvent, setUndoDeletedEvent] = useState<Record<string, unknown> | null>(null);
+  const [undoTimeoutId, setUndoTimeoutId] = useState<ReturnType<typeof setTimeout> | null>(null);
 
   // Form state
   const [name, setName] = useState('');
   const [eventType, setEventType] = useState('custom');
   const [notes, setNotes] = useState('');
+  const [routineId, setRoutineId] = useState('');
   // Specific fields
   const [waterMl, setWaterMl] = useState('');
   const [weightKg, setWeightKg] = useState('');
   const [activityType, setActivityType] = useState('');
   const [foodName, setFoodName] = useState('');
 
+  const [hrAvg, setHrAvg] = useState('');
+  const [hrMax, setHrMax] = useState('');
+  const [hrMin, setHrMin] = useState('');
+  const [bloodSugar, setBloodSugar] = useState('');
+
+  const [steps, setSteps] = useState('');
+  const [distanceKm, setDistanceKm] = useState('');
+
+  // Date picker state
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const { showNotification } = useNotifications();
+
+  const resetCreateForm = () => {
+    setName('');
+    setNotes('');
+    setWaterMl('');
+    setWeightKg('');
+    setActivityType('');
+    setFoodName('');
+    setRoutineId('');
+    setHrAvg('');
+    setHrMax('');
+    setHrMin('');
+    setBloodSugar('');
+    setSteps('');
+    setDistanceKm('');
+    setSelectedDate(new Date());
+  };
+
+  const getDateText = (date: Date) => `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
+  const getTimeText = (date: Date) => `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+
+  const parseDateTime = (dateText: string, timeText: string) => {
+    const dateParts = dateText.split('/');
+    const timeParts = timeText.split(':');
+    if (dateParts.length !== 3 || timeParts.length !== 2) return null;
+
+    const day = Number.parseInt(dateParts[0], 10);
+    const month = Number.parseInt(dateParts[1], 10) - 1;
+    const year = Number.parseInt(dateParts[2], 10);
+    const hours = Number.parseInt(timeParts[0], 10);
+    const minutes = Number.parseInt(timeParts[1], 10);
+
+    if (Number.isNaN(day) || Number.isNaN(month) || Number.isNaN(year) || Number.isNaN(hours) || Number.isNaN(minutes)) return null;
+    if (day < 1 || day > 31 || month < 0 || month > 11 || year < 1900 || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+
+    const parsed = new Date(year, month, day, hours, minutes);
+    if (Number.isNaN(parsed.getTime())) return null;
+    return parsed;
+  };
+
+  const mapEventToCreatePayload = (event: Record<string, unknown>) => {
+    const e = event as Record<string, any>;
+    const payload: Record<string, unknown> = {
+      name: e.name,
+      event_type: e.event_type,
+      timestamp: e.timestamp,
+      notes: e.notes ?? null,
+      routine_id: e.routine_id ?? null,
+    };
+
+    if (e.biometric) {
+      const { id, event_id, ...biometric } = e.biometric;
+      payload.biometric = biometric;
+    }
+    if (e.water_log) {
+      const { id, event_id, ...waterLog } = e.water_log;
+      payload.water_log = waterLog;
+    }
+    if (e.activity_log) {
+      const { id, event_id, ...activityLog } = e.activity_log;
+      payload.activity_log = activityLog;
+    }
+    if (e.food_log) {
+      const { id, event_id, ...foodLog } = e.food_log;
+      payload.food_log = foodLog;
+    }
+    if (e.weight_log) {
+      const { id, event_id, ...weightLog } = e.weight_log;
+      payload.weight_log = weightLog;
+    }
+
+    return payload;
+  };
+
+  const buildBiometricPayload = () => {
+    const biometricData: Record<string, unknown> = {};
+    if (hrAvg) biometricData.heart_rate_avg = Number.parseInt(hrAvg, 10);
+    if (hrMax) biometricData.heart_rate_max = Number.parseInt(hrMax, 10);
+    if (hrMin) biometricData.heart_rate_min = Number.parseInt(hrMin, 10);
+    if (bloodSugar) biometricData.blood_sugar = Number.parseFloat(bloodSugar);
+    return Object.keys(biometricData).length > 0 ? biometricData : null;
+  };
+
+  const buildActivityPayload = () => {
+    if (eventType === 'walking' || eventType === 'running') {
+      return {
+        activity_type: eventType === 'walking' ? 'Caminar' : 'Correr',
+        steps: steps ? Number.parseInt(steps, 10) : undefined,
+        distance_km: distanceKm ? Number.parseFloat(distanceKm) : undefined,
+      };
+    }
+
+    if (eventType === 'activity' && activityType) {
+      return { activity_type: activityType };
+    }
+
+    return null;
+  };
+
+  const buildCreatePayload = () => {
+    const payload: Record<string, unknown> = {
+      name: name.trim(),
+      event_type: eventType,
+      timestamp: selectedDate.toISOString(),
+      notes: notes.trim() || null,
+    };
+
+    if (routineId.trim()) {
+      payload.routine_id = Number.parseInt(routineId.trim(), 10);
+    }
+
+    const biometricPayload = buildBiometricPayload();
+    if (biometricPayload) {
+      payload.biometric = biometricPayload;
+    }
+
+    const activityPayload = buildActivityPayload();
+    if (activityPayload) {
+      payload.activity_log = activityPayload;
+    }
+
+    if (eventType === 'water' && waterMl) {
+      payload.water_log = { amount_ml: Number.parseInt(waterMl, 10) };
+    }
+
+    if (eventType === 'weight' && weightKg) {
+      payload.weight_log = { weight_kg: Number.parseFloat(weightKg) };
+    }
+
+    if (eventType === 'food' && foodName) {
+      payload.food_log = { food_name: foodName };
+    }
+
+    return payload;
+  };
+
   const fetchEvents = async () => {
     try {
       const res = await api.get('/events/');
       setEvents(res.data);
     } catch {
-      Alert.alert('Error', 'No se pudieron cargar los eventos');
+      showNotification('No se pudieron cargar los eventos', 'error');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchRoutines = async () => {
+    try {
+      const res = await api.get('/routines/');
+      setRoutines(res.data);
+    } catch {
+      console.error(t('errors.fetch_routines'));
     }
   };
 
   useFocusEffect(
     useCallback(() => {
       fetchEvents();
+      fetchRoutines();
     }, [])
   );
 
+  useEffect(() => {
+    return () => {
+      if (undoTimeoutId) {
+        clearTimeout(undoTimeoutId);
+      }
+    };
+  }, [undoTimeoutId]);
+
   const handleCreate = async () => {
     if (!name.trim()) {
-      Alert.alert('Error', 'El nombre es requerido');
+      showNotification(t('routines.name_required'), 'error');
       return;
     }
-    const payload: Record<string, unknown> = {
-      name: name.trim(),
-      event_type: eventType,
-      timestamp: new Date().toISOString(),
-      notes: notes.trim() || null,
-    };
-    if (eventType === 'water' && waterMl) {
-      payload.water_log = { amount_ml: parseInt(waterMl, 10) };
-    }
-    if (eventType === 'weight' && weightKg) {
-      payload.weight_log = { weight_kg: parseFloat(weightKg) };
-    }
-    if (eventType === 'activity' && activityType) {
-      payload.activity_log = { activity_type: activityType };
-    }
-    if (eventType === 'food' && foodName) {
-      payload.food_log = { food_name: foodName };
-    }
     try {
+      const payload = buildCreatePayload();
       await api.post('/events/', payload);
-      setName('');
-      setNotes('');
-      setWaterMl('');
-      setWeightKg('');
-      setActivityType('');
-      setFoodName('');
+      resetCreateForm();
       setShowModal(false);
       fetchEvents();
+      showNotification(t('events.added_ok'), 'success');
     } catch {
-      Alert.alert('Error', 'No se pudo crear el evento');
+      showNotification(t('events.create_failed_short'), 'error');
     }
   };
 
   const handleDelete = (id: number) => {
-    Alert.alert('Eliminar', '¿Seguro que quieres eliminar este evento?', [
-      { text: 'Cancelar' },
-      {
-        text: 'Eliminar',
-        style: 'destructive',
-        onPress: async () => {
-          await api.delete(`/events/${id}`);
-          fetchEvents();
-        },
-      },
-    ]);
+    console.log('🗑️ ' + t('events.confirm_delete'), id);
+    setDeleteId(id);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteId) return;
+    try {
+      setDeleting(true);
+      const deletedEvent = events.find((event) => event.id === deleteId) as unknown as Record<string, unknown> | undefined;
+      console.log('📡 Eliminando evento:', deleteId);
+      await api.delete(`/events/${deleteId}`);
+      console.log('✅ Evento eliminado exitosamente');
+
+      // Guardar ID para undo
+      setLastDeletedEventId(deleteId);
+      setShowUndoToast(true);
+
+      // Limpiar timeout anterior si existe
+      if (undoTimeoutRef.current) {
+        clearTimeout(undoTimeoutRef.current);
+      }
+
+      // Auto-dismiss después de 5 segundos
+      undoTimeoutRef.current = setTimeout(() => {
+        setShowUndoToast(false);
+        setLastDeletedEventId(null);
+      }, 5000);
+
+      setDeleteId(null);
+      await fetchEvents();
+      if (deletedEvent) {
+        setUndoDeletedEvent(deletedEvent);
+        if (undoTimeoutId) {
+          clearTimeout(undoTimeoutId);
+        }
+        const timeoutId = setTimeout(() => {
+          setUndoDeletedEvent(null);
+          setUndoTimeoutId(null);
+        }, 5000);
+        setUndoTimeoutId(timeoutId);
+      }
+      showNotification(t('routines.deleted_undo'), 'warning');
+    } catch (error: any) {
+      console.error('❌ Error al eliminar:', error);
+      showNotification(error.message || t('events.delete_failed_short'), 'error');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleUndo = async () => {
+    if (!lastDeletedEventId) return;
+
+    try {
+      console.log('↶ Deshaciendo eliminación de evento:', lastDeletedEventId);
+      await api.post(`/events/${lastDeletedEventId}/restore`);
+      toast.success('↶ Evento restaurado');
+      await fetchEvents();
+    } catch (error: any) {
+      console.error('❌ Error al restaurar:', error);
+      toast.error(t('errors.restore_event'));
+    } finally {
+      setShowUndoToast(false);
+      setLastDeletedEventId(null);
+      if (undoTimeoutRef.current) {
+        clearTimeout(undoTimeoutRef.current);
+      }
+    }
+  };
+
+  const handleEdit = (event: EventItem) => {
+    console.log('✏️ Abriendo edición para evento:', event.id);
+    setEditingId(event.id);
+    setEditingName(event.name);
+    setEditingNotes(event.notes || '');
+    const eventDate = new Date(event.timestamp);
+    setEditingDateText(getDateText(eventDate));
+    setEditingTimeText(getTimeText(eventDate));
+    setEditingType(event.event_type);
+    setEditingRoutineId((event as any).routine_id ? String((event as any).routine_id) : '');
+  };
+
+  const confirmEdit = async () => {
+    if (!editingId) return;
+    const parsedDate = parseDateTime(editingDateText, editingTimeText);
+    if (!parsedDate) {
+      showNotification(t('events.invalid_date_time'), 'error');
+      return;
+    }
+    try {
+      console.log('📡 Actualizando evento:', editingId);
+      const payload: Record<string, unknown> = {
+        name: editingName,
+        notes: editingNotes || null,
+        timestamp: parsedDate.toISOString(),
+        event_type: editingType,
+      };
+      if (editingRoutineId) {
+        payload.routine_id = Number.parseInt(editingRoutineId, 10);
+      } else {
+        payload.routine_id = null;
+      }
+      await api.patch(`/events/${editingId}`, payload);
+      console.log('✅ Evento actualizado exitosamente');
+
+      // Mostrar confirmación de cierre
+      const eventTypeLabel = EVENT_TYPES.find(et => et.key === editingType)?.label || editingType;
+      showClosure(
+        t('events.updated_ok'),
+        `"${editingName.trim()}" - ${eventTypeLabel}`
+      );
+
+      setEditingId(null);
+      setEditingName('');
+      setEditingNotes('');
+      setEditingDateText('');
+      setEditingTimeText('');
+      setEditingType('custom');
+      setEditingRoutineId('');
+      await fetchEvents();
+      showNotification('Evento actualizado correctamente', 'success');
+    } catch (error: any) {
+      console.error('❌ Error al actualizar:', error);
+      showNotification(error.message || 'No se pudo actualizar el evento', 'error');
+    }
   };
 
   const getTypeEmoji = (type: string) => EVENT_TYPES.find((t) => t.key === type)?.label ?? '📝';
+  const canCreateEvent = name.trim().length > 0;
+  const canSaveEdit = editingName.trim().length > 0 && !!parseDateTime(editingDateText, editingTimeText);
+
+  const handleUndoDelete = async () => {
+    if (!undoDeletedEvent) return;
+    try {
+      const payload = mapEventToCreatePayload(undoDeletedEvent);
+      await api.post('/events/', payload);
+      if (undoTimeoutId) {
+        clearTimeout(undoTimeoutId);
+      }
+      setUndoDeletedEvent(null);
+      setUndoTimeoutId(null);
+      await fetchEvents();
+      showNotification('Evento recuperado correctamente', 'success');
+    } catch {
+      showNotification('No se pudo recuperar el evento', 'error');
+    }
+  };
 
   if (loading) {
     return (
@@ -130,53 +434,372 @@ export default function EventsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.text }]}>Mis Eventos</Text>
-        <TouchableOpacity style={[styles.addButton, { backgroundColor: colors.secondary }]} onPress={() => setShowModal(true)}>
-          <Text style={styles.addButtonText}>+ Nuevo</Text>
+      <View style={[styles.header, { backgroundColor: colors.secondary }]}>
+        <View>
+          <Text style={styles.title}>{t('events.my_events')}</Text>
+          <Text style={styles.subtitle}>{t('events.register_health')}</Text>
+        </View>
+        <TouchableOpacity
+          style={[styles.addButton, { backgroundColor: 'rgba(255,255,255,0.25)' }]}
+          onPress={() => setShowModal(true)}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.addButtonText}>＋</Text>
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.list}>
+      <ScrollView style={styles.list} showsVerticalScrollIndicator={false}>
         {events.length === 0 ? (
           <Text style={[styles.empty, { color: colors.icon }]}>
-            No tienes eventos registrados aún.
+            {t('events.no_events')}
           </Text>
         ) : (
           events.map((e) => (
-            <TouchableOpacity
+            <View
               key={e.id}
               style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}
-              onLongPress={() => handleDelete(e.id)}
             >
               <View style={styles.cardHeader}>
-                <Text style={styles.emoji}>{getTypeEmoji(e.event_type)}</Text>
+                <View style={[styles.emoji, { backgroundColor: `${colors.secondary}20` }]}>
+                  <Text>{getTypeEmoji(e.event_type).split(' ')[0]}</Text>
+                </View>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.cardTitle, { color: colors.text }]}>{e.name}</Text>
                   <Text style={[styles.cardDate, { color: colors.icon }]}>
-                    {new Date(e.timestamp).toLocaleString()}
+                    {new Date(e.timestamp).toLocaleString('es-ES')}
                   </Text>
+                </View>
+                <View style={styles.actionButtons}>
+                  <TouchableOpacity
+                    onPress={() => handleEdit(e)}
+                    activeOpacity={0.6}
+                  >
+                    <Text style={styles.deleteIcon}>✏️</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => handleDelete(e.id)}
+                    activeOpacity={0.6}
+                  >
+                    <Text style={styles.deleteIcon}>🗑️</Text>
+                  </TouchableOpacity>
                 </View>
               </View>
               {e.notes && <Text style={[styles.cardNotes, { color: colors.icon }]}>{e.notes}</Text>}
-            </TouchableOpacity>
+              {(e as any).routine_id != null && (
+                <Text style={[styles.cardNotes, { color: colors.primary, fontWeight: '600' }]}>
+                  🎯 {t('routines.routine')}: {routines.find((r) => r.id === (e as any).routine_id)?.name || (e as any).routine_id}
+                </Text>
+              )}
+              {e.event_type === 'biometric' && (e as any).biometric && (
+                <View style={{ marginTop: 10 }}>
+                  {(e as any).biometric.heart_rate_avg != null && <Text style={[styles.cardNotes, { color: colors.text }]}>❤️ {t('events.types.heart_rate_avg')}: {(e as any).biometric.heart_rate_avg}</Text>}
+                  {(e as any).biometric.blood_sugar != null && <Text style={[styles.cardNotes, { color: colors.text }]}>🍬 {t('events.types.blood_sugar')}: {(e as any).biometric.blood_sugar} mg/dL</Text>}
+                </View>
+              )}
+              {(e.event_type === 'walking' || e.event_type === 'running') && (
+                <View style={{ marginTop: 10 }}>
+                  {(e as any).activity_log?.steps != null && <Text style={[styles.cardNotes, { color: colors.text }]}>👣 {t('routines.steps')}: {(e as any).activity_log.steps}</Text>}
+                  {(e as any).activity_log?.distance_km != null && <Text style={[styles.cardNotes, { color: colors.text }]}>📏 {t('events.types.distance')}: {(e as any).activity_log.distance_km} km</Text>}
+                  {(e as any).biometric?.heart_rate_avg != null && <Text style={[styles.cardNotes, { color: colors.text }]}>❤️ {t('events.types.heart_rate_avg')}: {(e as any).biometric.heart_rate_avg}</Text>}
+                  {(e as any).biometric?.heart_rate_max != null && <Text style={[styles.cardNotes, { color: colors.text }]}>❤️ {t('events.types.heart_rate_max')}: {(e as any).biometric.heart_rate_max}</Text>}
+                  {(e as any).biometric?.heart_rate_min != null && <Text style={[styles.cardNotes, { color: colors.text }]}>❤️ {t('events.types.heart_rate_min')}: {(e as any).biometric.heart_rate_min}</Text>}
+                </View>
+              )}
+            </View>
           ))
         )}
+        <View style={{ height: 20 }} />
       </ScrollView>
 
+      {/* Modal de Confirmación de Delete */}
+      <Modal visible={deleteId !== null} transparent animationType="fade">
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+          <View style={{ backgroundColor: colors.card, borderRadius: 16, padding: 24, width: '100%', maxWidth: 300 }}>
+            <Text style={{ fontSize: 18, fontWeight: 'bold', color: colors.text, marginBottom: 12 }}>
+              {t('events.remove_event')}
+            </Text>
+            <Text style={{ fontSize: 14, color: colors.icon, marginBottom: 24 }}>
+              {t('events.cant_be_undone')}
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <TouchableOpacity
+                style={{ flex: 1, backgroundColor: colors.border, borderRadius: 12, padding: 12, alignItems: 'center' }}
+                onPress={() => {
+                  console.log('❌ Cancelar delete');
+                  setDeleteId(null);
+                }}
+                disabled={deleting}
+              >
+                <Text style={{ color: colors.text, fontWeight: '600' }}>{t('common.cancel')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ flex: 1, backgroundColor: '#FF4444', borderRadius: 12, padding: 12, alignItems: 'center', opacity: deleting ? 0.6 : 1 }}
+                onPress={confirmDelete}
+                disabled={deleting}
+              >
+                <Text style={{ color: '#fff', fontWeight: '600' }}>
+                  {deleting ? t('common.deleting') : t('common.delete')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal de Edición de Evento */}
+      <Modal visible={editingId !== null} transparent animationType="slide">
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: colors.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 40, maxHeight: '90%' }}>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={{ fontSize: 20, fontWeight: 'bold', color: colors.text, marginBottom: 16 }}>
+                {t('events.edit_event')}
+              </Text>
+
+              {/* Nombre */}
+              <TextInput
+                style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text }]}
+                placeholder={t('events.event_name')}
+                placeholderTextColor={colors.icon}
+                value={editingName}
+                onChangeText={setEditingName}
+              />
+
+              {/* Tipo de Evento */}
+              <Text style={{ color: colors.text, marginBottom: 8, marginTop: 12, fontWeight: '600', fontSize: 14 }}>{t('events.event_type')}:</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+                {EVENT_TYPES.map((type) => (
+                  <TouchableOpacity
+                    key={type.key}
+                    style={[
+                      styles.typeChip,
+                      { borderColor: colors.border, marginRight: 8 },
+                      editingType === type.key
+                        ? { backgroundColor: colors.primary, borderColor: colors.primary }
+                        : { backgroundColor: colors.background }
+                    ]}
+                    onPress={() => setEditingType(type.key)}
+                  >
+                    <Text style={{ color: editingType === type.key ? '#fff' : colors.text, fontSize: 12 }}>
+                      {type.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+
+              {/* Fecha y Hora (compacto) */}
+              <Text style={{ color: colors.text, marginBottom: 8, fontWeight: '600', fontSize: 14 }}>{t('date.date_time')}:</Text>
+              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+                <TextInput
+                  style={[styles.input, {
+                    flex: 1.5,
+                    borderColor: colors.border,
+                    backgroundColor: colors.background,
+                    color: colors.text,
+                    height: 40,
+                    fontSize: 12
+                  }]}
+                  placeholder={t('date.date_format')}
+                  placeholderTextColor={colors.icon}
+                  value={editingDateText}
+                  onChangeText={setEditingDateText}
+                />
+                <TextInput
+                  style={[styles.input, {
+                    flex: 1,
+                    borderColor: colors.border,
+                    backgroundColor: colors.background,
+                    color: colors.text,
+                    height: 40,
+                    fontSize: 12
+                  }]}
+                  placeholder="HH:MM"
+                  placeholderTextColor={colors.icon}
+                  value={editingTimeText}
+                  onChangeText={setEditingTimeText}
+                />
+              </View>
+              {!parseDateTime(editingDateText, editingTimeText) && (
+                <Text style={styles.inlineErrorText}>Formato inválido. Usa DD/MM/AAAA y HH:MM.</Text>
+              )}
+
+              {/* Rutina asociada */}
+              <Text style={{ color: colors.text, marginBottom: 8, fontWeight: '600', fontSize: 14 }}>{t('events.associated_routine')}:</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+                <TouchableOpacity
+                  style={[
+                    styles.typeChip,
+                    { borderColor: colors.border, marginRight: 8 },
+                    editingRoutineId.length > 0
+                      ? { backgroundColor: colors.background }
+                      : { backgroundColor: colors.primary, borderColor: colors.primary }
+                  ]}
+                  onPress={() => setEditingRoutineId('')}
+                >
+                  <Text style={{ color: editingRoutineId.length > 0 ? colors.text : '#fff', fontSize: 12 }}>Ninguna</Text>
+                </TouchableOpacity>
+                {routines.map((r) => (
+                  <TouchableOpacity
+                    key={r.id}
+                    style={[
+                      styles.typeChip,
+                      { borderColor: colors.border, marginRight: 8 },
+                      editingRoutineId === String(r.id) ? { backgroundColor: colors.primary, borderColor: colors.primary } : { backgroundColor: colors.background }
+                    ]}
+                    onPress={() => setEditingRoutineId(String(r.id))}
+                  >
+                    <Text style={{ color: editingRoutineId === String(r.id) ? '#fff' : colors.text, fontSize: 12 }}>
+                      {r.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+
+              {/* Notas */}
+              <Text style={{ color: colors.text, marginBottom: 8, fontWeight: '600', fontSize: 14 }}>{t('events.notes')}:</Text>
+              <TextInput
+                style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text, height: 60 }]}
+                placeholder={t('events.add_notes')}
+                placeholderTextColor={colors.icon}
+                value={editingNotes}
+                onChangeText={setEditingNotes}
+                multiline
+                numberOfLines={2}
+              />
+
+              {/* Botones */}
+              <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
+                <TouchableOpacity
+                  style={{ flex: 1, backgroundColor: colors.border, borderRadius: 12, padding: 12, alignItems: 'center' }}
+                  onPress={() => {
+                    setEditingId(null);
+                    setEditingName('');
+                    setEditingNotes('');
+                    setEditingDateText('');
+                    setEditingTimeText('');
+                    setEditingType('custom');
+                    setEditingRoutineId('');
+                  }}
+                >
+                  <Text style={{ color: colors.text, fontWeight: '600', fontSize: 14 }}>{t('common.cancel')}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={{
+                    flex: 1,
+                    backgroundColor: canSaveEdit ? colors.secondary : colors.border,
+                    borderRadius: 12,
+                    padding: 12,
+                    alignItems: 'center',
+                    opacity: canSaveEdit ? 1 : 0.6,
+                  }}
+                  onPress={confirmEdit}
+                  disabled={!canSaveEdit}
+                >
+                  <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>{t('common.save')}</Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal de Crear Evento */}
       <Modal visible={showModal} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <ScrollView>
             <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
-              <Text style={[styles.modalTitle, { color: colors.primary }]}>Nuevo Evento</Text>
+              <Text style={[styles.modalTitle, { color: colors.primary }]}>{t('events.new_event')}</Text>
 
               <TextInput
                 style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text }]}
-                placeholder="Nombre del evento"
+                placeholder={t('events.event_name')}
                 placeholderTextColor={colors.icon}
                 value={name}
                 onChangeText={setName}
               />
+
+              <Text style={{ color: colors.text, marginBottom: 8, marginTop: 12, fontWeight: '600' }}>Fecha y Hora:</Text>
+              <View style={{ backgroundColor: colors.background, borderRadius: 12, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: colors.border }}>
+                <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+                  <TextInput
+                    style={[styles.input, { flex: 1, borderColor: colors.border, backgroundColor: colors.card, color: colors.text, height: 44 }]}
+                    placeholder="DD"
+                    placeholderTextColor={colors.icon}
+                    maxLength={2}
+                    keyboardType="numeric"
+                    value={String(selectedDate.getDate()).padStart(2, '0')}
+                    onChangeText={(val) => {
+                      const day = Math.min(31, Math.max(1, Number.parseInt(val, 10) || selectedDate.getDate()));
+                      const newDate = new Date(selectedDate);
+                      newDate.setDate(day);
+                      setSelectedDate(newDate);
+                    }}
+                  />
+                  <TextInput
+                    style={[styles.input, { flex: 1, borderColor: colors.border, backgroundColor: colors.card, color: colors.text, height: 44 }]}
+                    placeholder="MM"
+                    placeholderTextColor={colors.icon}
+                    maxLength={2}
+                    keyboardType="numeric"
+                    value={String(selectedDate.getMonth() + 1).padStart(2, '0')}
+                    onChangeText={(val) => {
+                      const month = Math.min(12, Math.max(1, Number.parseInt(val, 10) || selectedDate.getMonth() + 1)) - 1;
+                      const newDate = new Date(selectedDate);
+                      newDate.setMonth(month);
+                      setSelectedDate(newDate);
+                    }}
+                  />
+                  <TextInput
+                    style={[styles.input, { flex: 1, borderColor: colors.border, backgroundColor: colors.card, color: colors.text, height: 44 }]}
+                    placeholder="AAAA"
+                    placeholderTextColor={colors.icon}
+                    maxLength={4}
+                    keyboardType="numeric"
+                    value={String(selectedDate.getFullYear())}
+                    onChangeText={(val) => {
+                      const year = Number.parseInt(val, 10) || selectedDate.getFullYear();
+                      const newDate = new Date(selectedDate);
+                      newDate.setFullYear(year);
+                      setSelectedDate(newDate);
+                    }}
+                  />
+                </View>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <TextInput
+                    style={[styles.input, { flex: 1, borderColor: colors.border, backgroundColor: colors.card, color: colors.text, height: 44 }]}
+                    placeholder="HH"
+                    placeholderTextColor={colors.icon}
+                    maxLength={2}
+                    keyboardType="numeric"
+                    value={String(selectedDate.getHours()).padStart(2, '0')}
+                    onChangeText={(val) => {
+                      const hours = Math.min(23, Math.max(0, Number.parseInt(val, 10) || selectedDate.getHours()));
+                      const newDate = new Date(selectedDate);
+                      newDate.setHours(hours);
+                      setSelectedDate(newDate);
+                    }}
+                  />
+                  <TextInput
+                    style={[styles.input, { flex: 1, borderColor: colors.border, backgroundColor: colors.card, color: colors.text, height: 44 }]}
+                    placeholder="MM"
+                    placeholderTextColor={colors.icon}
+                    maxLength={2}
+                    keyboardType="numeric"
+                    value={String(selectedDate.getMinutes()).padStart(2, '0')}
+                    onChangeText={(val) => {
+                      const minutes = Math.min(59, Math.max(0, Number.parseInt(val, 10) || selectedDate.getMinutes()));
+                      const newDate = new Date(selectedDate);
+                      newDate.setMinutes(minutes);
+                      setSelectedDate(newDate);
+                    }}
+                  />
+                  <TouchableOpacity
+                    style={[styles.input, { flex: 1, backgroundColor: colors.primary, borderColor: colors.primary, justifyContent: 'center', height: 44 }]}
+                    onPress={() => setSelectedDate(new Date())}
+                  >
+                    <Text style={{ color: '#fff', fontWeight: '600', textAlign: 'center' }}>Ahora</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
 
               <Text style={[styles.label, { color: colors.text }]}>Tipo:</Text>
               <View style={styles.typeGrid}>
@@ -190,7 +813,7 @@ export default function EventsScreen() {
                     ]}
                     onPress={() => setEventType(t.key)}
                   >
-                    <Text style={[styles.typeText, eventType === t.key && { color: colors.primary }]}>
+                    <Text style={[styles.typeText, { color: eventType === t.key ? colors.primary : colors.text }]}>
                       {t.label}
                     </Text>
                   </TouchableOpacity>
@@ -200,7 +823,7 @@ export default function EventsScreen() {
               {eventType === 'water' && (
                 <TextInput
                   style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text }]}
-                  placeholder="Cantidad (ml)"
+                  placeholder={t('events.types.water_amount')}
                   placeholderTextColor={colors.icon}
                   value={waterMl}
                   onChangeText={setWaterMl}
@@ -210,7 +833,7 @@ export default function EventsScreen() {
               {eventType === 'weight' && (
                 <TextInput
                   style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text }]}
-                  placeholder="Peso (kg)"
+                    placeholder={`${t('events.types.weight')} (kg)`}
                   placeholderTextColor={colors.icon}
                   value={weightKg}
                   onChangeText={setWeightKg}
@@ -220,7 +843,7 @@ export default function EventsScreen() {
               {eventType === 'activity' && (
                 <TextInput
                   style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text }]}
-                  placeholder="Tipo de actividad"
+                  placeholder={t('events.types.activity_type')}
                   placeholderTextColor={colors.icon}
                   value={activityType}
                   onChangeText={setActivityType}
@@ -229,16 +852,123 @@ export default function EventsScreen() {
               {eventType === 'food' && (
                 <TextInput
                   style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text }]}
-                  placeholder="Nombre del alimento"
+                  placeholder={t('events.types.food_name')}
                   placeholderTextColor={colors.icon}
                   value={foodName}
                   onChangeText={setFoodName}
                 />
               )}
+              {(eventType === 'walking' || eventType === 'running') && (
+                <>
+                  <TextInput
+                    style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text }]}
+                    placeholder={t('events.types.heart_rate_avg')}
+                    placeholderTextColor={colors.icon}
+                    value={hrAvg}
+                    onChangeText={setHrAvg}
+                    keyboardType="numeric"
+                  />
+                  <TextInput
+                    style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text }]}
+                    placeholder={t('events.types.heart_rate_max')}
+                    placeholderTextColor={colors.icon}
+                    value={hrMax}
+                    onChangeText={setHrMax}
+                    keyboardType="numeric"
+                  />
+                  <TextInput
+                    style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text }]}
+                    placeholder={t('events.types.heart_rate_min')}
+                    placeholderTextColor={colors.icon}
+                    value={hrMin}
+                    onChangeText={setHrMin}
+                    keyboardType="numeric"
+                  />
+                  <TextInput
+                    style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text }]}
+                    placeholder={t('routines.steps')}
+                    placeholderTextColor={colors.icon}
+                    value={steps}
+                    onChangeText={setSteps}
+                    keyboardType="numeric"
+                  />
+                  <TextInput
+                    style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text }]}
+                    placeholder={t('events.types.distance')}
+                    placeholderTextColor={colors.icon}
+                    value={distanceKm}
+                    onChangeText={setDistanceKm}
+                    keyboardType="decimal-pad"
+                  />
+                </>
+              )}
+              {eventType === 'biometric' && (
+                <>
+                  <TextInput
+                    style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text }]}
+                    placeholder={t('events.types.heart_rate_avg')}
+                    placeholderTextColor={colors.icon}
+                    value={hrAvg}
+                    onChangeText={setHrAvg}
+                    keyboardType="numeric"
+                  />
+                  <TextInput
+                    style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text }]}
+                    placeholder={t('events.types.heart_rate_max')}
+                    placeholderTextColor={colors.icon}
+                    value={hrMax}
+                    onChangeText={setHrMax}
+                    keyboardType="numeric"
+                  />
+                  <TextInput
+                    style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text }]}
+                    placeholder={t('events.types.heart_rate_min')}
+                    placeholderTextColor={colors.icon}
+                    value={hrMin}
+                    onChangeText={setHrMin}
+                    keyboardType="numeric"
+                  />
+                  <TextInput
+                    style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text }]}
+                    placeholder={t('events.types.blood_sugar') + ' (mg/dL)'}
+                    placeholderTextColor={colors.icon}
+                    value={bloodSugar}
+                    onChangeText={setBloodSugar}
+                    keyboardType="decimal-pad"
+                  />
+                </>
+              )}
+
+              <Text style={{ color: colors.text, marginBottom: 8, marginTop: 4 }}>{t('events.associated_routine')}:</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 15 }}>
+                <TouchableOpacity
+                  style={[
+                    styles.typeChip,
+                    { borderColor: colors.border, marginRight: 8 },
+                    routineId ? { backgroundColor: colors.background } : { backgroundColor: colors.primary, borderColor: colors.primary }
+                  ]}
+                  onPress={() => setRoutineId('')}
+                >
+                  <Text style={{ color: routineId ? colors.text : '#fff' }}>{t('events.types.no_routine')}</Text>
+                </TouchableOpacity>
+                {routines.map((r) => (
+                  <TouchableOpacity
+                    key={r.id}
+                    style={[
+                      styles.typeChip,
+                      { borderColor: colors.border, marginRight: 8 },
+                      routineId === String(r.id) ? { backgroundColor: colors.primary, borderColor: colors.primary } : { backgroundColor: colors.background }
+                    ]}
+                    onPress={() => setRoutineId(String(r.id))}
+                  >
+                    <Text style={{ color: routineId === String(r.id) ? '#fff' : colors.text }}>{r.name}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
 
               <TextInput
                 style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text }]}
-                placeholder="Notas (opcional)"
+                placeholder={t('events.notes')}
                 placeholderTextColor={colors.icon}
                 value={notes}
                 onChangeText={setNotes}
@@ -247,43 +977,246 @@ export default function EventsScreen() {
 
               <View style={styles.modalButtons}>
                 <TouchableOpacity style={[styles.modalBtn, { backgroundColor: colors.border }]} onPress={() => setShowModal(false)}>
-                  <Text style={{ color: colors.text, fontWeight: '600' }}>Cancelar</Text>
+                  <Text style={{ color: colors.text, fontWeight: '600' }}>{t('common.cancel')}</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={[styles.modalBtn, { backgroundColor: colors.secondary }]} onPress={handleCreate}>
+                <TouchableOpacity
+                  style={[
+                    styles.modalBtn,
+                    { backgroundColor: canCreateEvent ? colors.secondary : colors.border, opacity: canCreateEvent ? 1 : 0.6 },
+                  ]}
+                  onPress={handleCreate}
+                  disabled={!canCreateEvent}
+                >
                   <Text style={{ color: '#fff', fontWeight: '600' }}>Crear</Text>
                 </TouchableOpacity>
               </View>
+              {!canCreateEvent && (
+                <Text style={styles.inlineErrorText}>El nombre es obligatorio para crear el evento.</Text>
+              )}
             </View>
           </ScrollView>
         </View>
       </Modal>
+
+      {undoDeletedEvent && (
+        <View style={[styles.undoBanner, { backgroundColor: colors.secondary }]}>
+          <Text style={styles.undoText}>Evento eliminado</Text>
+          <TouchableOpacity onPress={handleUndoDelete}>
+            <Text style={styles.undoAction}>Deshacer</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingTop: 60 },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 16 },
-  title: { fontSize: 28, fontWeight: 'bold' },
-  addButton: { borderRadius: 12, paddingHorizontal: 16, paddingVertical: 10 },
-  addButtonText: { color: '#fff', fontWeight: '700', fontSize: 15 },
-  list: { paddingHorizontal: 20 },
-  empty: { textAlign: 'center', marginTop: 40, fontSize: 16 },
-  card: { borderRadius: 16, padding: 16, marginBottom: 12, borderWidth: 1 },
-  cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  emoji: { fontSize: 24 },
-  cardTitle: { fontSize: 16, fontWeight: '700' },
-  cardDate: { fontSize: 12, marginTop: 2 },
-  cardNotes: { fontSize: 13, marginTop: 8 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 24 },
-  modalContent: { borderRadius: 20, padding: 24 },
-  modalTitle: { fontSize: 22, fontWeight: '700', marginBottom: 16, textAlign: 'center' },
-  label: { fontSize: 15, fontWeight: '600', marginBottom: 8 },
-  typeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 },
-  typeButton: { borderWidth: 2, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8 },
-  typeText: { fontSize: 13, fontWeight: '600', color: '#8E9AAF' },
-  input: { borderWidth: 1, borderRadius: 12, padding: 14, fontSize: 16, marginBottom: 12 },
-  modalButtons: { flexDirection: 'row', gap: 12, marginTop: 8 },
-  modalBtn: { flex: 1, borderRadius: 12, padding: 14, alignItems: 'center' },
+  container: {
+    flex: 1,
+    paddingTop: 0
+  },
+  center: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 32,
+    paddingTop: 40,
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+    color: '#FFFFFF',
+  },
+  subtitle: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: 'rgba(255,255,255,0.85)',
+    marginTop: 4,
+  },
+  addButton: {
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  addButtonText: {
+    color: '#fff',
+    fontWeight: '800',
+    fontSize: 18
+  },
+  list: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+  },
+  empty: {
+    textAlign: 'center',
+    marginTop: 60,
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  card: {
+    borderRadius: 16,
+    padding: 18,
+    marginBottom: 12,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12
+  },
+  emoji: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    fontSize: 22,
+  },
+  cardTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    flex: 1,
+  },
+  cardDate: {
+    fontSize: 12,
+    marginTop: 4,
+    fontWeight: '500',
+  },
+  cardNotes: {
+    fontSize: 13,
+    marginTop: 10,
+    lineHeight: 18,
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  deleteButton: {
+    padding: 4,
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  deleteIcon: {
+    fontSize: 18
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    padding: 24
+  },
+  modalContent: {
+    borderRadius: 24,
+    padding: 28,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 8,
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    marginBottom: 20,
+    textAlign: 'center'
+  },
+  label: {
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 10
+  },
+  typeGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 18
+  },
+  typeButton: {
+    borderWidth: 2,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10
+  },
+  typeText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  input: {
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 16,
+    fontSize: 16,
+    marginBottom: 14,
+    fontWeight: '500',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 12
+  },
+  modalBtn: {
+    flex: 1,
+    borderRadius: 14,
+    padding: 16,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  inlineErrorText: {
+    color: '#ef4444',
+    fontSize: 12,
+    marginTop: 6,
+    marginBottom: 8,
+  },
+  typeChip: {
+    borderWidth: 1.5,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  undoBanner: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    bottom: 16,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    elevation: 4,
+  },
+  undoText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  undoAction: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+  },
 });

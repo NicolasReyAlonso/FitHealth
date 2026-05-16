@@ -1,6 +1,10 @@
 .DS_Store
+.env
 *.env
 ^
 *.cpython-*
 *.pyc
 __pycache__/
+__pycache__/
+Backend/uploads/*
+db_backup/

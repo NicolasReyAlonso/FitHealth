@@ -2,11 +2,25 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, View, LogBox } from 'react-native';
 import 'react-native-reanimated';
+import '@/services/i18n';
+
+LogBox.ignoreLogs([
+  'Invalid DOM property `transform-origin`',
+  'Unknown event handler property `onStartShouldSetResponder`',
+  'Unknown event handler property `onResponderTerminationRequest`',
+  'Unknown event handler property `onResponderGrant`',
+  'Unknown event handler property `onResponderMove`',
+  'Unknown event handler property `onResponderRelease`',
+  'Unknown event handler property `onResponderTerminate`'
+]);
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider, useAuth } from '@/context/auth-context';
+import { ToastProvider } from '@/context/toast-context';
+import { NotificationProvider } from '@/context/notification-context';
+import i18n from '@/services/i18n';
 
 function RootNavigator() {
   const { user, isLoading } = useAuth();
@@ -16,7 +30,7 @@ function RootNavigator() {
   useEffect(() => {
     if (isLoading) return;
 
-    const inAuthGroup = segments[0] === 'login' || segments[0] === 'register';
+    const inAuthGroup = segments[0] === 'login' || segments[0] === 'register' || segments[0] === 'verify-notice';
 
     if (!user && !inAuthGroup) {
       router.replace('/login');
@@ -24,6 +38,13 @@ function RootNavigator() {
       router.replace('/(tabs)');
     }
   }, [user, isLoading, segments]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const lang = user.preferred_language ?? 'en';
+    i18n.changeLanguage(lang);
+  }, [user]);
 
   if (isLoading) {
     return (
@@ -35,11 +56,14 @@ function RootNavigator() {
 
   return (
     <>
+      {/* so we have one parent */}
       <Stack>
         <Stack.Screen name="login" options={{ headerShown: false }} />
         <Stack.Screen name="register" options={{ headerShown: false }} />
+        <Stack.Screen name="verify-notice" options={{ headerShown: false }} />
+        <Stack.Screen name="routines/[id]" options={{ title: 'Detalles de Rutina' }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+        <Stack.Screen name="contacts" options={{ presentation: 'modal' }} />
       </Stack>
       <StatusBar style="auto" />
     </>
@@ -76,7 +100,11 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={colorScheme === 'dark' ? customDarkTheme : customLightTheme}>
       <AuthProvider>
-        <RootNavigator />
+        <NotificationProvider>
+          <ToastProvider>
+            <RootNavigator />
+          </ToastProvider>
+        </NotificationProvider>
       </AuthProvider>
     </ThemeProvider>
   );
